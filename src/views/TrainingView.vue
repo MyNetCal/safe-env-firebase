@@ -298,6 +298,6 @@ function deleteReq(index) {
   row-gap: 4px;
 }
 .grid-input {
-  @apply input-ring relative w-full rounded border-0 bg-white px-2 py-2 text-sm outline-none ring-1 placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-300;
+  @apply relative w-full rounded border-0 bg-white px-2 py-2 text-sm outline-none ring-1 placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-300;
 }
 </style>

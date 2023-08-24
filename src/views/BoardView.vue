@@ -55,19 +55,7 @@
       <MyFab @click="addNewUser" color="bg-green-600" posY="bottom-14">
         <FontAwesomeIcon icon="user-plus" />
       </MyFab>
-      <CommitteeViewEdit
-        :show-modal="showCommitteeViewEdit"
-        :id="id"
-        @onClose="showCommitteeViewEdit = false"
-        @onUpdate="onUpdate"
-      ></CommitteeViewEdit>
-      <CommitteeViewAdd
-        :show-modal="showCommitteeViewAdd"
-        :id="id"
-        :branch="branchSelected"
-        @onClose="showCommitteeViewAdd = false"
-        @onUpdate="onUpdate"
-      ></CommitteeViewAdd>
+      
     </div>
     <div></div>
   </div>
@@ -81,8 +69,6 @@ import MyFab from '@/components/MyFab.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import MyInputBranch from '@/components/MyInputs/MyInputBranch.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
-import CommitteeViewEdit from './CommitteeViewEdit.vue'
-import CommitteeViewAdd from './CommitteeViewAdd.vue'
 import { storeToRefs } from 'pinia'
 
 const store = useGeneralStore()
@@ -144,12 +130,6 @@ function editUser(userInfo) {
   showCommitteeViewEdit.value = true
 }
 
-function onUpdate() {
-  showCommitteeViewAdd.value = false
-  store.getAllRowsByCond('Users', cond.value).then((res) => {
-    users.value = res.data
-  })
-}
 </script>
 
 <style scoped>
