@@ -24,7 +24,7 @@
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="home" />
-        <div class="ml-6 whitespace-nowrap">My Status</div>
+        <div class="ml-6 whitespace-nowrap line-through">My Status</div>
       </div>
       <!-- Menu: Personnel -->
       <div
@@ -60,34 +60,35 @@
       </div>
       <!-- Menu: Sponsoring Entities -->
       <div
-        @click="goto('/places')"
+        @click="goto('/')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="map-location-dot" />
-        <div class="ml-6 whitespace-nowrap">* Sites</div>
+        <div class="ml-6 whitespace-nowrap line-through">* Sites</div>
       </div>
       <!-- Menu: Participants -->
       <div
-        @click="goto('/participants')"
+        @click="goto('/')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="children" />
-        <div class="ml-6 whitespace-nowrap">Participants</div>
+        <div class="ml-6 whitespace-nowrap line-through">Participants</div>
       </div>
       <!-- Menu: Activities -->
       <div
-        @click="goto('/activities')"
+        @click="goto('/')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-2 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="puzzle-piece" />
-        <div class="ml-6 whitespace-nowrap">Activities</div>
+        <div class="ml-6 whitespace-nowrap line-through">Activities</div>
       </div>
+      <!-- Abuse Report -->
       <div
-        @click="goto('/abuse-report')"
+        @click="goto('/')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-2 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="person-burst" />
-        <div class="ml-6 whitespace-nowrap">Abuse Report</div>
+        <div class="ml-6 whitespace-nowrap line-through">Abuse Report</div>
       </div>
       <!-- Menu: Logout -->
       <div
@@ -95,7 +96,7 @@
         class="flex cursor-pointer place-items-center rounded p-2 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="right-from-bracket" />
-        <div class="ml-6">Logout</div>
+        <div class="ml-6 line-through">Logout</div>
       </div>
     </div>
   </div>
