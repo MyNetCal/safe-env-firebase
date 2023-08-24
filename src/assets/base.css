@@ -1,0 +1,106 @@
+/* color palette from <https://github.com/vuejs/theme> */
+@tailwind base;
+@layer base {
+  h1 {
+    @apply text-2xl;
+  }
+  h2 {
+    @apply text-xl;
+  }
+  h3 {
+    @apply text-lg;
+  }
+  a {
+    @apply text-blue-600 underline;
+  }
+  .thinsb::-webkit-scrollbar {
+    width: 10px;
+    height: 8px;
+  }
+
+  /* Track */
+  .thinsb::-webkit-scrollbar-track {
+    background: #f1f1f1;
+  }
+
+  /* Handle */
+  .thinsb::-webkit-scrollbar-thumb {
+    background: #888;
+    @apply rounded-md;
+  }
+
+  /* Handle on hover */
+  .thinsb::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+}
+@tailwind components;
+@layer components {
+  .text-secondary {
+    @apply text-gray-600;
+  }
+  .input-ring {
+    @apply shadow ring-slate-300 hover:shadow-md hover:ring-slate-400;
+  }
+  /* For Tabs */
+  .tabs {
+    @apply mt-3 flex justify-evenly text-center text-sm;
+  }
+
+  .tab {
+    @apply bg-slate-200 grow w-16 cursor-pointer rounded-t-md px-5 py-3 border shadow;
+  }
+  .tab:hover {
+    @apply bg-slate-500 text-slate-50;
+  }
+  .tab-active {
+    @apply bg-slate-700 text-slate-50;
+  }
+  .tab-active:hover {
+    @apply bg-slate-700
+  }
+  .modal-height {
+    height: calc(100vh - 48px);
+  }
+  .screen-height {
+    height: calc(100vh - 48px);
+  }
+  .shake {
+    animation: shake 0.82s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    transform: translate3d(0, 0, 0);
+  }
+
+  @keyframes shake {
+    10%,
+    90% {
+      transform: translate3d(-1px, 0, 0);
+    }
+
+    20%,
+    80% {
+      transform: translate3d(2px, 0, 0);
+    }
+
+    30%,
+    50%,
+    70% {
+      transform: translate3d(-4px, 0, 0);
+    }
+
+    40%,
+    60% {
+      transform: translate3d(4px, 0, 0);
+    }
+  }
+  .thin-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 8px;
+    border-radius: 5px;
+    background-color: white; /* or add it to the track */
+  }
+  .thin-scrollbar::-webkit-scrollbar-thumb {
+    background: #aaa;
+    border-radius: 5px;
+  }
+}
+@tailwind utilities;
