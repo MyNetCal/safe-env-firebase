@@ -9,7 +9,7 @@
       <div>
         <!-- Buttons -->
         <div class="mt-2 flex justify-center">
-          <MyButton @delete="onDelete" color="bg-red-600"> Delete </MyButton>
+          <MyButton @click="onDelete" color="bg-red-600"> Delete </MyButton>
           <MyButton @click="$emit('onClose')" color="bg-blue-600">
             Close
           </MyButton>

@@ -2,7 +2,7 @@
   <div class="flex h-full justify-between">
     <div></div>
     <div class="flex h-full grow flex-col">
-      <h1 class="m-3 text-blue-800">Sponsoring Entities</h1>
+      <h1 class="m-3 text-blue-800">Corporations</h1>
       <div v-if="branch == 'Both'" class="flex justify-center">
         <MyInputBranch label="Branch" v-model="branchSelected" noBothOption></MyInputBranch>
       </div>

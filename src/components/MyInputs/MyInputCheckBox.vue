@@ -11,10 +11,13 @@
         type="checkbox"
         tabindex="0"
         :value="modelValue"
-        @click="$emit('update:modelValue', !modelValue)"
+        @click="onClick"
         placeholder="Regular Input"
         class="flex h-9 w-min place-items-center justify-center rounded border-none bg-white px-2 shadow outline-none hover:shadow-md focus:outline-none focus:ring-0 active:shadow-inner"
-        :class="{ 'ring-1 ring-red-500': isError.formula }"
+        :class="{
+          'ring-1 ring-red-500': isError.formula,
+          'cursor-not-allowed text-slate-400': disable
+        }"
       >
         <font-awesome-icon
           :icon="['far', 'check-square']"
@@ -46,13 +49,20 @@ export default {
       }
     },
     info: { type: Boolean, default: false },
-    infoTitle: { type: String, default: '' }
+    infoTitle: { type: String, default: '' },
+    disable: { type: Boolean, default: false }
   },
   emits: ['update:modelValue'],
   data() {
     return {}
   },
-  methods: {}
+  methods: {
+    onClick() {
+      if (!this.disable) {
+        this.$emit('update:modelValue', !this.modelValue)
+      }
+    }
+  }
 }
 </script>
 

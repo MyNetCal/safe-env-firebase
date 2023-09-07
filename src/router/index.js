@@ -1,5 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
+import { getCurrentUser } from 'vuefire'
 
 const router = createRouter({
   history: createWebHashHistory(import.meta.env.BASE_URL),
@@ -7,27 +8,13 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      component: HomeView
+      component: HomeView,
+      props: (route) => ({ query: route.query.q, id: route.query.id })
     },
     {
       path: '/corporations',
       name: 'corporations',
       component: () => import('../views/CorporationsView.vue')
-    },
-    {
-      path: '/board',
-      name: 'board',
-      component: () => import('../views/BoardView.vue')
-    },
-    {
-      path: '/board-edit',
-      name: 'board-edit',
-      component: () => import('../views/BoardViewEdit.vue')
-    },
-    {
-      path: '/board-add',
-      name: 'board-add',
-      component: () => import('../views/BoardViewAdd.vue')
     },
     {
       path: '/personnel',
@@ -48,8 +35,35 @@ const router = createRouter({
       path: '/screening',
       name: 'screening',
       component: () => import('../views/ScreeningView.vue')
+    },
+    {
+      path: '/login',
+      name: 'Login',
+      component: () => import('../views/LogIn.vue')
+    },
+    {
+      path: '/board',
+      name: 'Board',
+      component: () => import('../views/UsersViewTabBoard.vue')
+    },
+    {
+      path: '/welcome/:email',
+      name: 'Welcome',
+      component: () => import('../views/WelcomeView.vue'),
+      props: true
     }
   ]
+})
+
+router.beforeEach(async (to) => {
+  const currentUser = await getCurrentUser()
+  if (to.query.email) {
+    console.log('Should go to the Welcome Page!', to.query.email)
+    return '/welcome/' + to.query.email
+  }
+  if (!currentUser && to.name !== 'Login') {
+    return { name: 'Login' }
+  }
 })
 
 export default router

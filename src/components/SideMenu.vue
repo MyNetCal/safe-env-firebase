@@ -26,14 +26,52 @@
         <FontAwesomeIcon icon="home" />
         <div class="ml-6 whitespace-nowrap line-through">My Status</div>
       </div>
-      <!-- Menu: Personnel -->
-      <div
-        @click="goto('/personnel')"
-        class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
-      >
-        <FontAwesomeIcon icon="users" />
-        <div class="ml-6 whitespace-nowrap">* Personnel</div>
-      </div>
+      <!-- Menu: Users -->
+      <Disclosure v-slot="{ open, close }">
+        <DisclosureButton
+          @click="onClickDisclosureButton(close, 'Users')"
+          class="flex w-full cursor-pointer place-items-center justify-between rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
+        >
+          <div class="flex place-items-center">
+            <FontAwesomeIcon icon="users" />
+            <div class="ml-6 whitespace-nowrap">* Users</div>
+          </div>
+          <font-awesome-icon
+            class="transition-all"
+            icon="chevron-right"
+            :class="open ? 'rotate-90 transform' : ''"
+          ></font-awesome-icon>
+        </DisclosureButton>
+        <div
+          class="overflow-hidden transition-all duration-300"
+          :style="{ height: open ? '80px' : '0px' }"
+        >
+          <DisclosurePanel class="disclosure-panel">
+            <!-- Board -->
+            <div
+              class="flex place-items-center rounded p-2 pl-8 text-slate-700 hover:bg-slate-400"
+              @click="goto('/board')"
+            >
+              <font-awesome-icon
+                icon="users-line"
+                class="mr-3"
+              ></font-awesome-icon>
+              <div class="whitespace-nowrap">Board</div>
+            </div>
+            <!-- Templates -->
+            <div
+              class="flex place-items-center rounded p-2 pl-9 text-slate-700 hover:bg-slate-400"
+              @click="goto('/personnel')"
+            >
+              <font-awesome-icon
+                icon="user-tie"
+                class="mr-4"
+              ></font-awesome-icon>
+              <div class="whitespace-nowrap">Personnel</div>
+            </div>
+          </DisclosurePanel>
+        </div>
+      </Disclosure>
       <!-- Menu: Corporations -->
       <div
         @click="goto('/corporations')"
@@ -103,20 +141,22 @@
 </template>
 
 <script setup>
-import { ref, toRefs } from 'vue'
+import { ref, watchEffect } from 'vue'
 import { onClickOutside, useMediaQuery } from '@vueuse/core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { useGeneralStore } from '@/stores/general'
 import router from '@/router'
+import { useFirebaseAuth } from 'vuefire'
+import { signOut } from 'firebase/auth'
+import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
+
+const auth = useFirebaseAuth()
+
 
 const sidebar = ref(null)
 const showSidemenu = ref(false)
 const stateBeforeClicking = ref(false)
 
 const isLargeScreen = useMediaQuery('(min-width: 640px)')
-
-const store = useGeneralStore()
-const { keepLogin, validId } = toRefs(store)
 
 function onEnterMenu() {
   stateBeforeClicking.value = showSidemenu.value
@@ -139,14 +179,31 @@ function onClickShowOpen() {
   showSidemenu.value = !stateBeforeClicking.value
 }
 function onLogout() {
-  store.initUser()
-  keepLogin.value = false
-  validId.value = '0'
-  router.push('/login')
+  signOut(auth)
+    .then(() => {
+      router.push('/login')
+    })
+    .catch((error) => {
+      console.log(error)
+    })
 }
 onClickOutside(sidebar, () => {
   showSidemenu.value = false
 })
+
+const allPanels = ref([]);
+function onClickDisclosureButton(close, name) {
+  if (allPanels.value.includes(name)) {
+    return;
+  }
+  showSidemenu.value = true;
+  allPanels.value.push(name);
+  watchEffect(() => {
+    if (!showSidemenu.value) {
+      close();
+    }
+  });
+}
 
 </script>
 

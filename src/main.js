@@ -6,7 +6,7 @@ import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
 
-import { VueFire } from 'vuefire'
+import { VueFire, VueFireAuth } from 'vuefire'
 import { firebaseApp } from '@/firebase.js'
 
 import { library } from '@fortawesome/fontawesome-svg-core'
@@ -59,7 +59,8 @@ import {
   faCloudArrowUp,
   faFile,
   faFileArchive,
-  faPlusSquare
+  faPlusSquare,
+  faPen
 } from '@fortawesome/free-solid-svg-icons'
 import { faWindowClose, faCheckSquare, faSquare } from '@fortawesome/free-regular-svg-icons'
 
@@ -116,7 +117,8 @@ library.add(
   faCloudArrowUp,
   faFile,
   faFileArchive,
-  faPlusSquare
+  faPlusSquare,
+  faPen
 )
 
 const app = createApp(App)
@@ -124,7 +126,7 @@ const app = createApp(App)
 app.use(createPinia())
 app.use(VueFire, {
   firebaseApp,
-  modules: []
+  modules: [VueFireAuth()]
 })
 
 app

@@ -12,7 +12,8 @@ const props = defineProps({
     default: () => {
       return { formula: false, label: '' }
     }
-  }
+  },
+  label: { type: String, default: 'Activity'}
 })
 const emit = defineEmits(['update:modelValue', 'newEntry'])
 
@@ -35,7 +36,7 @@ const optionSelected = computed({
     v-model="optionSelected"
     :items="items"
     items-label="Name"
-    label="Activity"
+    :label="label"
     :info="info"
     :info-title="infoTitle"
     :isError="isError"

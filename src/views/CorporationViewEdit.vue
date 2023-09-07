@@ -68,7 +68,7 @@
           <div class="ml-1 min-h-[28px] w-full rounded border bg-white shadow">
             <div
               class="m-1 flex grow cursor-pointer place-items-center rounded bg-blue-200 p-1 text-sm hover:bg-blue-300"
-              @click="downloadFile()"
+              @click="downloadFile"
               v-if="codeOfConductFileName"
             >
               <FontAwesomeIcon icon="file-archive" />
@@ -115,7 +115,13 @@ import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
 import { useFileDialog } from '@vueuse/core'
-import { deleteObject, listAll, ref as storageRef, uploadBytesResumable } from 'firebase/storage'
+import {
+  deleteObject,
+  getDownloadURL,
+  listAll,
+  ref as storageRef,
+  uploadBytesResumable
+} from 'firebase/storage'
 
 const emit = defineEmits(['onClose', 'onUpdate'])
 const props = defineProps({ showModal: Boolean, id: String, branch: String, rowSelected: Object })
@@ -195,6 +201,21 @@ function deleteFile() {
     })
 }
 
+function downloadFile() {
+  getDownloadURL(
+    storageRef(storage, `Corporations/${dataToEdit.value.id}/Code/${codeOfConductFileName.value}`)
+  )
+    .then((url) => {
+      // `url` is the download URL for 'images/stars.jpg'
+      window.open(url, '_blank')
+      // This can be downloaded directly:
+    })
+    .catch((error) => {
+      console.log('Error: ', error)
+      // Handle any errors
+    })
+}
+
 const activitiesSelected = computed({
   get() {
     const a = []
@@ -225,14 +246,68 @@ function initPlace() {
     Branch: branch.value,
     Code: '',
     Entity: '',
-    Activities: []
+    Activities: [],
+    Screening: {
+      Staff: {
+        Application: true,
+        Interview: true,
+        Reference: 0,
+        Background: true,
+        Code: true,
+        Consent: true
+      },
+      Junior_Counselor: {
+        Application: true,
+        Interview: true,
+        Reference: 0,
+        Background: true,
+        Code: true,
+        Consent: true
+      },
+      Low_Access: {
+        Application: true,
+        Interview: true,
+        Reference: 0,
+        Background: true,
+        Code: true,
+        Consent: true
+      }
+    }
   }
 }
 
 function onOpenModal() {
   initPlace()
   if (id.value != '0') {
-    dataToEdit.value = { ...rowSelected.value }
+    dataToEdit.value = {
+      Screening: {
+        Staff: {
+          Application: true,
+          Interview: true,
+          Reference: 0,
+          Background: true,
+          Code: true,
+          Consent: true
+        },
+        Junior_Counselor: {
+          Application: true,
+          Interview: true,
+          Reference: 0,
+          Background: true,
+          Code: true,
+          Consent: true
+        },
+        Low_Access: {
+          Application: true,
+          Interview: true,
+          Reference: 0,
+          Background: true,
+          Code: true,
+          Consent: true
+        }
+      },
+      ...rowSelected.value
+    }
   }
   getCodeOfConductFile()
 }

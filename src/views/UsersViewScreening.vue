@@ -8,56 +8,27 @@
       @onOpenModal="onOpenModal()"
     >
       <div class="relative">
-        <div class="m-2">
+        <div class="m-2 text-center">
           <h1>Screening</h1>
-          <!-- Display Screening By Coorporations -->
-          <div v-for="c in screeningNeeded" :key="c.id.id">
-            <!-- Name of Coorporation and Screen Level -->
-            <h2 class="mb-2 mt-4">{{ c.id.Short }}: {{ store.SCREENING_TYPES[c.screenLevel] }}</h2>
-            <!-- List of Screen Requirements -->
-            <div class="screening-grid">
-              <template v-for="(t, index) in store.SCREENING_REQ" :key="t">
-                <template v-if="screening[t][c.screenLevel]">
-                  <!-- Upload Icon -->
-                  <FontAwesomeIcon
-                    v-if="index != 4"
-                    icon="cloud-arrow-up"
-                    class="cursor-pointer rounded bg-slate-300 p-2 hover:bg-slate-600 hover:text-slate-50"
-                    @click="openFileDiologAndUpload(t)"
-                  />
-                  <div v-else></div>
-                  <!-- Screen Req. Title -->
-                  <div>
-                    <div>{{ store.SCREENING_REQ_TITLES[index] }}</div>
-                    <div v-if="index == 3">Expires:</div>
-                  </div>
-                  <!-- LIst of Files uploaded -->
-                  <div class="h-full rounded border bg-white shadow">
-                    <div
-                      v-for="(f, n) in allScreeningFiles[t]"
-                      :key="f"
-                      class="flex place-items-center"
-                    >
-                      <div
-                        class="m-1 flex grow cursor-pointer place-items-center rounded bg-blue-200 p-1 text-sm hover:bg-blue-300"
-                        @click="downloadFile(store.SCREENING_REQ[index], f)"
-                      >
-                        <FontAwesomeIcon icon="file-archive" />
-                        <div class="ml-2">{{ n + 1 }}. {{ f }}</div>
-                      </div>
-                      <div
-                        class="mr-1 cursor-pointer rounded px-2 py-1 hover:bg-slate-300"
-                        @click="deleteFile(store.SCREENING_REQ[index], f)"
-                      >
-                        <FontAwesomeIcon icon="trash" class="text-slate-600" />
-                      </div>
-                    </div>
-                  </div>
-                </template>
-              </template>
+
+          <!-- Selector: Coorporations -->
+          <div class="flex justify-center">
+            <div class="w-60">
+              <MySelectAuto
+                v-model="currentUserCorp"
+                label="Corporation"
+                :items="allUserCorpsCollection"
+                items-key="id"
+                items-label="CorporationName"
+              >
+              </MySelectAuto>
             </div>
           </div>
-          <div></div>
+
+          <div v-if="currentCorp">
+            <h3 class="mb-2">{{ store.getScreening(currentUserCorp.Function) }}</h3>
+            <UserViewScreeningCorporation :corporation="currentCorp" :user="currentUserCorp" />
+          </div>
         </div>
         <!-- Buttons -->
         <div class="mb-6 mt-10 flex justify-center">
@@ -84,142 +55,35 @@
 import MyModal from '@/components/MyModal.vue'
 import MyButton from '@/components/MyButton.vue'
 import { toRefs, computed, ref } from 'vue'
-import { useDocument, useFirebaseStorage, useFirestore } from 'vuefire'
-import { collection, doc } from 'firebase/firestore'
 import { useGeneralStore } from '@/stores/general'
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import {
-  deleteObject,
-  getDownloadURL,
-  listAll,
-  ref as storageRef,
-  uploadBytesResumable
-} from 'firebase/storage'
-import { useFileDialog } from '@vueuse/core'
+import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
+import UserViewScreeningCorporation from '@/components/UserViewScreeningCorporation.vue'
+import { collection, doc, query, where } from 'firebase/firestore'
+import { useCollection, useDocument, useFirestore } from 'vuefire'
 
-const props = defineProps({ showModal: Boolean, id: String, user: Object })
-const { showModal, id, user } = toRefs(props)
+const props = defineProps({ showModal: Boolean, userCorp: Object })
+const { showModal, userCorp } = toRefs(props)
 const store = useGeneralStore()
-
-const storage = useFirebaseStorage()
-const percentage = ref(0)
-const allScreeningFiles = ref(null)
-
-function getUserScreeningFilesByReq(el) {
-  const dirFiles = storageRef(storage, `Users/${user.value.id}/Screening/${el}`)
-  allScreeningFiles.value[el] = []
-  listAll(dirFiles)
-    .then((res) => {
-      res.prefixes.forEach((folderRef) => {
-        console.log('Folder: ', folderRef)
-        console.log('Name: ', folderRef.name)
-      })
-      res.items.forEach((itemRef) => {
-        console.log('File Item: ', itemRef)
-        console.log('Name: ', itemRef.name)
-        allScreeningFiles.value[el].push(itemRef.name)
-      })
-    })
-    .catch((error) => {
-      // Uh-oh, an error occurred!
-      console.log('Error: ', error)
-    })
-}
-
-function getUserScreeningFilesAll() {
-  allScreeningFiles.value = {}
-  store.SCREENING_REQ.forEach((el) => {
-    getUserScreeningFilesByReq(el)
-  })
-}
-
-function downloadFile(type, name) {
-  getDownloadURL(storageRef(storage, `Users/${user.value.id}/Screening/${type}/${name}`))
-    .then((url) => {
-      // `url` is the download URL for 'images/stars.jpg'
-      window.open(url, '_blank')
-      // This can be downloaded directly:
-    })
-    .catch((error) => {
-      console.log('Error: ', error)
-      // Handle any errors
-    })
-}
-
-function deleteFile(type, name) {
-  deleteObject(storageRef(storage, `Users/${user.value.id}/Screening/${type}/${name}`))
-    .then(() => {
-      console.log('File Deleted')
-      getUserScreeningFilesAll()
-    })
-    .catch((error) => {
-      console.log('Error: ', error)
-    })
-}
-
-const screeningTypeFile = ref('')
-const isLoading = ref(false)
-function uploadPicture() {
-  const data = files.value?.item(0)
-  if (data) {
-    isLoading.value = true
-    const fileRef = storageRef(
-      storage,
-      `Users/${user.value.id}/Screening/${screeningTypeFile.value}/${data.name}`
-    )
-    const uploadTask = uploadBytesResumable(fileRef, data)
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        percentage.value = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-      },
-      (error) => {
-        isLoading.value = false
-        console.log('ERROR', error)
-      },
-      () => {
-        console.log('DONE')
-        isLoading.value = false
-        getUserScreeningFilesAll()
-      }
-    )
-  }
-}
-
-const { files, open, onChange } = useFileDialog()
-onChange(() => {
-  uploadPicture()
-})
-
-function openFileDiologAndUpload(screeningType) {
-  screeningTypeFile.value = screeningType
-  open({ multiple: false })
-}
-
 const db = useFirestore()
-const screening = useDocument(doc(collection(db, 'Screening'), 'Options'))
 
-const screeningNeeded = computed(() => {
-  let a = []
-  user.value.Corporations.forEach((c) => {
-    let userFunction = store.getFunction(c.Role)
-    let userScreenLevel = 0
-    if (userFunction == store.FUNCTION_LOW_ACCESS) {
-      userScreenLevel = 1
-    }
-    if (userFunction == store.FUNCTION_JUNIOR_COUNSELOR) {
-      userScreenLevel = 2
-    }
-    a.push({ ...c, screenLevel: userScreenLevel })
-  })
-  return a
-})
+const currentUserCorp = ref({})
+const currentUserId = computed(() => currentUserCorp.value?.UserId || 'xxx')
+const currentCorpId = computed(() => currentUserCorp.value?.CorporationId || 'xxx')
+
+const isLoading = computed(() => store.isUploadingFiles)
+const percentage = computed(() => store.isUploadingFilesPercentage)
+
+const queryAllUserCorpRef = computed(() =>
+  query(collection(db, 'UsersCorporations'), where('UserId', '==', currentUserId.value))
+)
+const allUserCorpsCollection = useCollection(queryAllUserCorpRef)
+
+const currentCorpRef = computed(() => doc(db, 'Corporations', currentCorpId.value))
+const currentCorp = useDocument(currentCorpRef)
 
 function onOpenModal() {
-  console.log('oppening Modal: ', id.value)
-  getUserScreeningFilesAll()
+  currentUserCorp.value = JSON.parse(JSON.stringify(userCorp.value))
 }
-
 </script>
 
 <style scoped>

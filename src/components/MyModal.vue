@@ -8,7 +8,7 @@
           class="fixed inset-1 z-20 items-center justify-center outline-none focus:outline-none"
         >
           <span></span>
-          <div class="relative my-1 mx-auto w-auto bg-slate-200" :class="[maxWidth]">
+          <div class="relative mx-auto my-1 w-auto bg-slate-200" :class="[maxWidth]">
             <!--content-->
             <div
               class="relative flex w-full flex-col rounded-lg border-0 bg-slate-50/80 shadow-lg outline-none backdrop-blur focus:outline-none"
@@ -27,6 +27,7 @@
                 </span>
               </div>
               <!--body-->
+              <my-loader v-if="isLoading || isLoadingModal || isCountingListAll" class="top-7" />
               <div
                 class="modal-max-height mostly-customized-scrollbar relative flex-auto overflow-x-auto overflow-y-auto px-2 text-left"
                 :class="{ 'modal-height': maxHight }"
@@ -45,32 +46,36 @@
   </div>
 </template>
 
-<script>
-export default {
-  components: {},
-  props: {
-    showModal: Boolean,
-    title: String,
-    dark: { type: Boolean, default: false },
-    maxWidth: { type: String, default: 'max-w-4xl' },
-    maxHight: { type: Boolean, defaault: false }
-  },
-  emits: ['onClose', 'onOpenModal', 'onCloseModal'],
-  data() {
-    return {}
-  },
-  watch: {
-    showModal(n) {
-      if (n) {
-        this.$emit('onOpenModal')
-      } else {
-        this.$emit('onCloseModal')
-      }
-    }
-  },
-  methods: {}
-}
+<script setup>
+import { toRefs, watchEffect, computed } from 'vue'
+import MyLoader from './MyLoader.vue'
+import { useGeneralStore } from '@/stores/general'
+
+const props = defineProps({
+  showModal: Boolean,
+  title: String,
+  dark: { type: Boolean, default: false },
+  maxWidth: { type: String, default: 'max-w-4xl' },
+  maxHight: { type: Boolean, defaault: false },
+  isLoading: { type: Boolean, default: false }
+})
+const emit = defineEmits(['onClose', 'onOpenModal', 'onCloseModal'])
+const { showModal } = toRefs(props)
+
+const store = useGeneralStore()
+
+const isLoadingModal = computed(() => store.isLoadingModal)
+const isCountingListAll = computed(() => store.countListAll > 0)
+
+watchEffect(() => {
+  if (showModal.value) {
+    emit('onOpenModal')
+  } else {
+    emit('onCloseModal')
+  }
+})
 </script>
+
 <style scoped>
 .modal-max-height {
   max-height: calc(100vh - 48px);

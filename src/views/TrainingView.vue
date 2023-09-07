@@ -1,85 +1,119 @@
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, watchEffect } from 'vue'
 import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 import { useGeneralStore } from '@/stores/general'
 import { useCollection, useDocument, useFirestore } from 'vuefire'
-import { Timestamp, addDoc, collection, deleteDoc, doc, updateDoc } from 'firebase/firestore'
+import {
+  Timestamp,
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  orderBy,
+  updateDoc
+} from 'firebase/firestore'
 import MyButton from '@/components/MyButton.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import MySelectCorporation from '@/components/MySelect/MySelectCorporation.vue'
+import { query } from 'firebase/database'
 
 const store = useGeneralStore()
 const db = useFirestore()
 const currentTab = ref(0)
 
 const currentFunction = ref(store.FUNCTION_BOARD)
+const currentCorporation = ref(store.loginCorporationId)
+const loginCorporationId = computed(() => store.loginCorporationId)
+
+watchEffect(() => {
+  currentCorporation.value = loginCorporationId.value
+})
+
+const corporationRef = computed(() => doc(db, 'Corporations', currentCorporation.value))
+
+const dataCurrentCorporation = useDocument(corporationRef)
 
 const initialTrainingRef = computed(() =>
-  collection(db, `Training/Initial Training/${currentFunction.value}`)
+  query(
+    collection(
+      db,
+      `Corporations/${currentCorporation.value}/Training/Initial Training/${currentFunction.value}`
+    ),
+    orderBy('Title')
+  )
 )
 const ongoingTrainingRef = computed(() =>
-  collection(db, `Training/Ongoing Training/${currentFunction.value}`)
+  query(
+    collection(
+      db,
+      `Corporations/${currentCorporation.value}/Training/Ongoing Training/${currentFunction.value}`
+    ),
+    orderBy('Title')
+  )
 )
-const currentInitialTraining = useCollection(initialTrainingRef)
-const currentOngoingTraining = useCollection(ongoingTrainingRef)
+const currentInitialTrainingOrder = useCollection(initialTrainingRef)
+const currentOngoingTrainingOrder = useCollection(ongoingTrainingRef)
 
-const currentInitialTrainingOrder = computed(() => {
-  let a = []
-  currentInitialTraining.value.forEach((el) => {
-    a.push({ ...el, id: el.id })
-  })
-  a.sort((a, b) => {
-    if (a.Title < b.Title) {
-      return -1
-    }
-    if (a.Title > b.Title) {
-      return 1
-    }
-    return 0
-  })
-  return a
-})
-const currentOngoingTrainingOrder = computed(() => {
-  let a = []
-  currentOngoingTraining.value.forEach((el) => {
-    a.push({ ...el, id: el.id, Starts: el.Starts, Ends: el.Ends })
-  })
-  a.sort((a, b) => {
-    if (a.Title < b.Title) {
-      return -1
-    }
-    if (a.Title > b.Title) {
-      return 1
-    }
-    return 0
-  })
-  return a
-})
+// const presetTraining = useDocument(doc(collection(db, 'Training'), 'YvFVMjLI9agoLUbgQIGx'))
+// const presetOptions = computed(() => presetTraining.value?.Preset || [])
+const queryOptioins = query(collection(db, 'Training'), orderBy('Title'))
+const presetOptions = useCollection(queryOptioins)
 
-const presetTraining = useDocument(doc(collection(db, 'Training'), 'YvFVMjLI9agoLUbgQIGx'))
-const presetOptions = computed(() => presetTraining.value?.Preset || [])
-const optionSelected = ref('')
+const optionSelected = ref({})
 
 watch([currentFunction, currentTab], () => (editingIndex.value = -1))
 
+function addTrainingtoCorporation() {
+  const trainingRef = doc(db, 'Training', optionSelected.value.id)
+  if (currentTab.value == 0) {
+    addDoc(
+      collection(
+        db,
+        `Corporations/${currentCorporation.value}/Training/Initial Training/${currentFunction.value}`
+      ),
+      {
+        Expiration: 60,
+        idRef: trainingRef,
+        Title: optionSelected.value.Title,
+        idTitle: optionSelected.value.id,
+        id: ''
+      }
+    )
+  } else {
+    addDoc(
+      collection(
+        db,
+        `Corporations/${currentCorporation.value}/Training/Ongoing Training/${currentFunction.value}`
+      ),
+      {
+        Starts: Timestamp.fromDate(new Date(new Date().toISOString().slice(0, 10))),
+        Ends: Timestamp.fromDate(new Date(new Date().toISOString().slice(0, 10))),
+        Complete: 90,
+        Expiration: 60,
+        idRef: trainingRef,
+        Title: optionSelected.value.Title,
+        idTitle: optionSelected.value.id,
+        id: ''
+      }
+    )
+  }
+}
+
 function addRequirement() {
   editingIndex.value = -1
-  if (currentTab.value == 0) {
-    addDoc(collection(db, `Training/Initial Training/${currentFunction.value}`), {
-      Title: optionSelected.value,
-      Expiration: 60,
-      id: ''
-    })
-  } else {
-    addDoc(collection(db, `Training/Ongoing Training/${currentFunction.value}`), {
-      Title: optionSelected.value,
-      Starts: Timestamp.fromDate(new Date(new Date().toISOString().slice(0, 10))),
-      Ends: Timestamp.fromDate(new Date(new Date().toISOString().slice(0, 10))),
-      Complete: 90,
-      Expiration: 60,
-      id: 'id'
-    })
+  if (optionSelected.value.id == null) {
+    console.log('IT needs to add training')
+    addDoc(collection(db, 'Training'), { Title: optionSelected.value.Title, id: '' }).then(
+      (docRef) => {
+        console.log('New Training Id ', docRef.id)
+        optionSelected.value.id = docRef.id
+        addTrainingtoCorporation()
+      }
+    )
+    return
   }
+  addTrainingtoCorporation()
 }
 
 const editingIndex = ref(-1)
@@ -104,7 +138,11 @@ function editingOngoingRow(index) {
 
 function inputMonths() {
   const idDoc = currentInitialTrainingOrder.value[editingIndex.value].id
-  const reqRef = doc(db, `Training/Initial Training/${currentFunction.value}`, idDoc)
+  const reqRef = doc(
+    db,
+    `Corporations/${currentCorporation.value}/Training/Initial Training/${currentFunction.value}`,
+    idDoc
+  )
   updateDoc(reqRef, {
     Expiration: Number(editingMonths.value)
   })
@@ -112,7 +150,11 @@ function inputMonths() {
 
 function inputOngoingRow() {
   const idDoc = currentOngoingTrainingOrder.value[editingIndex.value].id
-  const reqRef = doc(db, `Training/Ongoing Training/${currentFunction.value}`, idDoc)
+  const reqRef = doc(
+    db,
+    `Corporations/${currentCorporation.value}/Training/Ongoing Training/${currentFunction.value}`,
+    idDoc
+  )
   updateDoc(reqRef, {
     Starts: Timestamp.fromDate(new Date(editingRow.value.Starts)),
     Ends: Timestamp.fromDate(new Date(editingRow.value.Ends)),
@@ -127,7 +169,9 @@ function deleteReq(index) {
     currentTab.value == 0
       ? currentInitialTrainingOrder.value[index].id
       : currentOngoingTrainingOrder.value[index].id
-  deleteDoc(doc(db, `Training/${t}/${currentFunction.value}`, id))
+  deleteDoc(
+    doc(db, `Corporations/${currentCorporation.value}/Training/${t}/${currentFunction.value}`, id)
+  )
 }
 </script>
 
@@ -135,7 +179,8 @@ function deleteReq(index) {
   <div class="m-2">
     <h1>Training</h1>
     <div class="mt-5 flex justify-center place-self-center">
-      <div class="w-60">
+      <div class="flex gap-x-2 text-left">
+        <MySelectCorporation v-model="currentCorporation" />
         <MySelectAuto v-model="currentFunction" label="Function" :items="store.FUNCTIONS">
         </MySelectAuto>
       </div>
@@ -143,32 +188,57 @@ function deleteReq(index) {
     <!-- Tabs -->
     <div class="flex justify-center">
       <div class="tabs w-full max-w-2xl">
-        <div class="tab" :class="{ 'tab-active': currentTab == 0 }" @click="currentTab = 0">
+        <div
+          class="tab border-b border-b-slate-400"
+          :class="{ 'tab-active': currentTab == 0 }"
+          @click="currentTab = 0"
+        >
           Initial Training Requirement
         </div>
-        <div class="tab" :class="{ 'tab-active': currentTab == 1 }" @click="currentTab = 1">
+        <div
+          class="tab border-b border-b-slate-400"
+          :class="{ 'tab-active': currentTab == 1 }"
+          @click="currentTab = 1"
+        >
           Ongoing Training Requirement
         </div>
       </div>
     </div>
-    <!-- Content Tabs: Selector and add button -->
-    <div class="mb-1 mt-5 flex place-items-center justify-center gap-x-2">
-      <div class="min-w-[460px]">
-        <MySelectAuto v-model="optionSelected" :items="presetOptions" customValues class="max-h-60">
-        </MySelectAuto>
-      </div>
-      <div>
-        <MyButton @click="addRequirement">Add</MyButton>
-      </div>
-    </div>
 
     <!-- Content Tabs -->
-    <div class="flex justify-center">
-      <div class="max-w-2xl">
+    <div v-if="dataCurrentCorporation" class="mt-5 flex justify-center">
+      <div class="max-w-2xl border-b border-b-slate-300 pb-10">
         <!-- Tab: Initial Training -->
         <div class="text-left" v-if="currentTab == 0">
-          <h2 class="my-1 text-center">Initial Training Requirement for {{ currentFunction }}</h2>
-          <div class="initial-training-grid items-center">
+          <h2 class="my-1 text-center">
+            <div class="font-semibold">
+              {{ dataCurrentCorporation.Short }} - {{ currentFunction }}
+            </div>
+            <div class="font-semibold">Initial Training Requirement</div>
+          </h2>
+          <!-- Content Tabs: Selector and add button -->
+          <div class="mb-1 mt-5 flex place-items-center justify-center gap-x-2">
+            <div class="min-w-[460px]">
+              <MySelectAuto
+                v-model="optionSelected"
+                :items="presetOptions"
+                items-key="id"
+                items-label="Title"
+                customValues
+                class="max-h-60"
+              >
+              </MySelectAuto>
+            </div>
+            <div>
+              <MyButton :disabled="!optionSelected?.Title?.length > 0" @click="addRequirement"
+                >Add</MyButton
+              >
+            </div>
+          </div>
+          <div
+            v-if="currentInitialTrainingOrder?.length > 0"
+            class="initial-training-grid items-center"
+          >
             <div class="col-start-3 mt-1 justify-self-center text-center text-xs">
               Expire after [months]
             </div>
@@ -198,11 +268,38 @@ function deleteReq(index) {
               </div>
             </template>
           </div>
+          <div v-else class="mt-10 text-center">None</div>
         </div>
         <!-- Tab: Ongoing training -->
         <div class="text-left" v-if="currentTab == 1">
-          <h2 class="my-1 text-center">Ongoing Training Requirement for {{ currentFunction }}</h2>
-          <div class="ongoing-training-grid items-center">
+          <h2 class="my-1 text-center">
+            <div class="font-semibold">
+              {{ dataCurrentCorporation.Short }} - {{ currentFunction }}
+            </div>
+            <div class="font-semibold">Ongoing Training Requirement</div>
+          </h2>
+
+          <!-- Content Tabs: Selector and add button -->
+          <div class="mb-1 mt-5 flex place-items-center justify-center gap-x-2">
+            <div class="min-w-[460px]">
+              <MySelectAuto
+                v-model="optionSelected"
+                :items="presetOptions"
+                items-key="id"
+                items-label="Title"
+                customValues
+                class="max-h-60"
+              >
+              </MySelectAuto>
+            </div>
+            <div>
+              <MyButton @click="addRequirement">Add</MyButton>
+            </div>
+          </div>
+          <div
+            v-if="currentOngoingTrainingOrder?.length > 0"
+            class="ongoing-training-grid items-center"
+          >
             <div class="col-start-3 mt-1 justify-self-center text-center text-xs">Starts</div>
             <div class="mt-1 justify-self-center text-center text-xs">Ends</div>
             <div class="mt-1 justify-self-center text-center text-xs">Complete [days]</div>
@@ -276,6 +373,7 @@ function deleteReq(index) {
               </div>
             </template>
           </div>
+          <div v-else class="mt-10 text-center">None</div>
         </div>
       </div>
     </div>

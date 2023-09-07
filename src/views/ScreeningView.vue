@@ -1,81 +1,122 @@
 <script setup>
 import MyInputCheckBox from '@/components/MyInputs/MyInputCheckBox.vue'
 import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
+import MySelectCorporation from '@/components/MySelect/MySelectCorporation.vue'
 import { useGeneralStore } from '@/stores/general'
 import { collection, doc, updateDoc } from 'firebase/firestore'
-import { computed, ref } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import { useDocument, useFirestore } from 'vuefire'
 
 const db = useFirestore()
 const store = useGeneralStore()
-const currentScreeningType = ref(store.SCREENING_TYPES[0])
-const currentScreeningTypeValue = computed(() =>
-  store.SCREENING_TYPES.findIndex((el) => el == currentScreeningType.value)
-)
 
-const { data: screeningValues, promise } = useDocument(doc(collection(db, 'Screening'), 'Options'))
+const currentCorporationId = ref(store.loginCorporationId)
+
+const loginCorporationId = computed(() => store.loginCorporationId)
+
+watchEffect(() => {
+  currentCorporationId.value = loginCorporationId.value
+})
+
+const currentCorporationRef = computed(() =>
+  doc(collection(db, 'Corporations'), currentCorporationId.value)
+)
+const currentCorporationDoc = useDocument(currentCorporationRef)
 
 const editingValues = ref(null)
 
-function saveChanges(type) {
-  updateDoc(doc(db, 'Screening', 'Options'), { [type]: [...editingValues.value[type]] }).then(
-    () => {
-      editingValues.value = JSON.parse(JSON.stringify(screeningValues.value))
-    }
-  )
-}
+const currentScreeningType = ref(store.SCREENING_TYPES[0])
 
-promise.value.then((res) => {
-  editingValues.value = JSON.parse(JSON.stringify(res))
+watchEffect(() => {
+  console.log('Getting new data!!!!')
+  if (currentCorporationDoc.value?.Screening) {
+    editingValues.value = JSON.parse(JSON.stringify(currentCorporationDoc.value?.Screening))
+  }
 })
+
+function saveChanges(type) {
+  const key = `Screening.${currentScreeningType.value}.${type}`
+  updateDoc(doc(db, 'Corporations', currentCorporationId.value), {
+    [key]: editingValues.value[currentScreeningType.value][type]
+  }).then(() => {
+    editingValues.value = JSON.parse(JSON.stringify(currentCorporationDoc.value.Screening))
+  })
+}
 </script>
 
 <template>
   <div class="m-2">
     <h1>Screening</h1>
-    <div class="flex justify-center">
-      <div class="w-fit my-8">
-        <MySelectAuto v-model="currentScreeningType" :items="store.SCREENING_TYPES" label="type">
-        </MySelectAuto>
+
+    <!-- Selector: Corporation -->
+    <div class="mx-auto mt-3 w-60">
+      <MySelectCorporation v-model="currentCorporationId" />
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs mx-auto max-w-md">
+      <div
+        class="tab border-b border-b-slate-400"
+        :class="{ 'tab-active': currentScreeningType == store.SCREENING_STAFF }"
+        @click="currentScreeningType = store.SCREENING_STAFF"
+      >
+        Staff
+      </div>
+      <div
+        class="tab border-b border-b-slate-400"
+        :class="{ 'tab-active': currentScreeningType == store.SCREENING_JUNIOR_COUNSELOR }"
+        @click="currentScreeningType = store.SCREENING_JUNIOR_COUNSELOR"
+      >
+        Junior Counselor
+      </div>
+      <div
+        class="tab border-b border-b-slate-400"
+        :class="{ 'tab-active': currentScreeningType == store.SCREENING_LOW_ACCESS }"
+        @click="currentScreeningType = store.SCREENING_LOW_ACCESS"
+      >
+        Low Access
       </div>
     </div>
-    <div v-if="!(editingValues == null)" class="flex justify-center">
+
+    <!-- List -->
+    <div v-if="!(editingValues == null)" class="mt-5 flex justify-center">
       <div class="w-80">
         <MyInputCheckBox
-          v-model="editingValues.Application[currentScreeningTypeValue]"
+          v-model="editingValues[currentScreeningType].Application"
           @update:modelValue="saveChanges('Application')"
         >
           Written Application
         </MyInputCheckBox>
         <MyInputCheckBox
-          v-model="editingValues.Interview[currentScreeningTypeValue]"
+          v-model="editingValues[currentScreeningType].Interview"
           @update:modelValue="saveChanges('Interview')"
         >
           Face-to-face interview
         </MyInputCheckBox>
         <div class="flex place-items-center">
-          <div class="mb-4 w-32 ml-12 text-left text-sm">Reference Check</div>
-          <MySelectAuto
-            :items="[0, 1, 2, 3]"
-            v-model="editingValues.Reference[currentScreeningTypeValue]"
-            class="w-20"
-            @update:modelValue="saveChanges('Reference')"
-          ></MySelectAuto>
+          <div class="mb-4 ml-12 w-40 text-left text-sm">Reference Check:</div>
+          <div class="w-16">
+            <MySelectAuto
+              :items="[0, 1, 2, 3]"
+              v-model="editingValues[currentScreeningType].Reference"
+              @update:modelValue="saveChanges('Reference')"
+            ></MySelectAuto>
+          </div>
         </div>
         <MyInputCheckBox
-          v-model="editingValues.Background[currentScreeningTypeValue]"
+          v-model="editingValues[currentScreeningType].Background"
           @update:modelValue="saveChanges('Background')"
         >
           Criminal background check
         </MyInputCheckBox>
         <MyInputCheckBox
-          v-model="editingValues.Code[currentScreeningTypeValue]"
+          v-model="editingValues[currentScreeningType].Code"
           @update:modelValue="saveChanges('Code')"
         >
           Signed code of conduct
         </MyInputCheckBox>
         <MyInputCheckBox
-          v-model="editingValues.Consent[currentScreeningTypeValue]"
+          v-model="editingValues[currentScreeningType].Consent"
           @update:modelValue="saveChanges('Consent')"
         >
           Consent to Release and Share Information

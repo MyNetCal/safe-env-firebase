@@ -3,9 +3,51 @@ import { RouterView } from 'vue-router'
 import { useGeneralStore } from './stores/general'
 import { storeToRefs } from 'pinia'
 import SideMenu from './components/SideMenu.vue'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { getCurrentUser, useFirebaseAuth, useFirestore } from 'vuefire'
+import { signOut } from 'firebase/auth'
+import router from './router'
+import MyListBox from './components/MyInputs/MyListBox.vue'
+import { ref, watchEffect } from 'vue'
+import { doc, updateDoc } from 'firebase/firestore'
 
 const storeGeneral = useGeneralStore()
-const { countRequests } = storeToRefs(storeGeneral)
+const { countRequests, loginUser, loginUserCorporationCollection, loginUserId, loginUserCorporation } =
+  storeToRefs(storeGeneral)
+
+const db = useFirestore()
+
+const auth = useFirebaseAuth()
+
+getCurrentUser().then((user) => {
+  if (!user) {
+    router.push('/login')
+  }
+})
+const selUserCorp = ref('')
+watchEffect(() => {
+  console.log('Corp: ',loginUserCorporation.value)
+  selUserCorp.value = loginUserCorporation.value || ''
+  // TODO When the sel chages save it
+})
+
+function saveNuewLoginCorp() {
+  console.log('New Corp: ', selUserCorp.value.CorporationId)
+  const userDocRef = doc(db, 'Users', loginUserId.value)
+  updateDoc(userDocRef, {
+    CurrentUsersCorporationsId: selUserCorp.value.id
+  })
+}
+
+function logout() {
+  signOut(auth)
+    .then(() => {
+      router.push('/login')
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+}
 </script>
 
 <template>
@@ -17,6 +59,39 @@ const { countRequests } = storeToRefs(storeGeneral)
           <div class="loaderBar"></div>
         </div>
       </div>
+      <!-- Header -->
+      <div class="app-layout-header flex place-items-center justify-between bg-blue-800 text-white">
+        <!-- Header Left -->
+        <div class="ml-1">
+          <div
+            v-if="loginUser"
+            class="flex w-fit cursor-pointer place-items-center px-1 pl-2 hover:bg-blue-500"
+          >
+            <FontAwesomeIcon icon="shop" />
+            <div class="ml-3 w-40">
+              <MyListBox
+                :items="loginUserCorporationCollection"
+                v-model="selUserCorp"
+                title="CorporationName"
+                @update:model-value="saveNuewLoginCorp"
+              />
+            </div>
+          </div>
+        </div>
+        <!-- Header Center -->
+        <div>Safe Environment</div>
+        <!-- Header Right -->
+        <div class="mr-1 flex w-52 justify-end">
+          <div
+            v-if="loginUser"
+            @click="logout"
+            class="flex w-fit cursor-pointer place-items-center px-1 py-1 hover:bg-blue-500"
+          >
+            <div class="mr-2">{{ loginUser.Nickname }}</div>
+            <FontAwesomeIcon icon="right-from-bracket" />
+          </div>
+        </div>
+      </div>
       <!-- Side Menu -->
       <div class="app-layout-sidebar z-10"><SideMenu /></div>
       <!-- Content -->
@@ -25,7 +100,7 @@ const { countRequests } = storeToRefs(storeGeneral)
       </div>
       <!-- Footer -->
       <div
-        class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-200 px-3 text-slate-800 print:hidden"
+        class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-300 px-3 text-slate-800 print:hidden"
       ></div>
     </div>
     <!-- Modals -->
@@ -37,9 +112,9 @@ const { countRequests } = storeToRefs(storeGeneral)
 .app-layout-grid {
   display: grid;
   grid-template-columns: [panel] 2px [main] 1fr [end];
-  grid-template-rows: [main] 1fr [footer] 24px [end];
+  grid-template-rows: [header] 36px [main] 1fr [footer] 24px [end];
   grid-template-areas:
-    'sidebar content'
+    'header header'
     'sidebar content'
     'footer footer';
   width: 100vw;
@@ -50,11 +125,16 @@ const { countRequests } = storeToRefs(storeGeneral)
     grid-template-columns: [panel] 40px [main] 1fr [end];
   }
 }
+.app-layout-header {
+  grid-area: header;
+}
 .app-layout-sidebar {
   grid-area: sidebar;
 }
 .app-layout-content {
   grid-area: content;
+  width: calc(100vw - 40px);
+  overflow: hidden;
 }
 .app-layout-footer {
   grid-area: footer;

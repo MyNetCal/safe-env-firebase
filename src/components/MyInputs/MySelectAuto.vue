@@ -1,5 +1,5 @@
 <template>
-  <div class="mb-4 pt-0 w-full">
+  <div class="mb-4 w-full pt-0">
     <MyInfoModal :info="info" :infoTitle="infoTitle" :label="label">
       <slot></slot>
     </MyInfoModal>
@@ -12,20 +12,20 @@
         <div class="relative w-full">
           <div
             v-if="isMultiple"
-            class="input-ring relative w-full rounded border-0 bg-white px-2 py-2 text-sm outline-none ring-1 placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-300 ring-red-800"
+            class="input-ring relative w-full rounded border-0 bg-white px-2 py-2 text-sm outline-none ring-1 ring-red-800 placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-300"
           >
             <div
-              class="min-w-[180px] h-5 text-ellipsis whitespace-nowrap overflow-hidden mr-4 flex"
+              class="mr-4 flex h-5 min-w-[180px] overflow-hidden text-ellipsis whitespace-nowrap"
             >
               <div v-for="activity in items" :key="activity.id">
                 <div v-if="modelValue.find((el) => el.id == activity.id)">
-                  <FontAwesomeIcon icon="circle" class="text-gray-500 mr-1 ml-1" size="2xs" />
+                  <FontAwesomeIcon icon="circle" class="ml-1 mr-1 text-gray-500" size="2xs" />
                   <span>{{ activity.Name }}</span>
                 </div>
               </div>
             </div>
             <ComboboxButton
-              class="absolute input-ring inset-y-0 right-0 left-0 flex items-center justify-end pr-2"
+              class="input-ring absolute inset-y-0 left-0 right-0 flex items-center justify-end pr-2"
             >
               <FontAwesomeIcon icon="chevron-right" />
             </ComboboxButton>
@@ -34,14 +34,14 @@
             <ComboboxInput
               ref="target"
               autocomplete="off"
-              class="input-ring relative w-full rounded border-0 bg-white pl-2 pr-6 py-2 text-sm outline-none ring-1 placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-300"
+              class="input-ring relative w-full rounded border-0 bg-white py-2 pl-2 pr-6 text-sm outline-none ring-1 placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-300"
               :class="[isError.formula ? 'ring-red-500' : '']"
               @change="query = $event.target.value"
               @focus="query = ''"
               :displayValue="(item) => (itemsLabel ? item[itemsLabel] : item)"
             />
             <ComboboxButton
-              class="absolute inset-y-0 right-0 left-0 flex items-center justify-end pr-2"
+              class="absolute inset-y-0 left-0 right-0 flex items-center justify-end pr-2"
             >
               <FontAwesomeIcon icon="chevron-right" />
             </ComboboxButton>
@@ -60,7 +60,7 @@
             v-bind="$attrs"
           >
             <ComboboxOption
-              v-if="queryItem && customValues"
+              v-if="queryItem"
               :value="queryItem"
               class="p-2 ui-selected:bg-blue-200 ui-active:bg-blue-500 ui-active:text-white ui-not-active:text-black"
             >
@@ -126,7 +126,7 @@ const emit = defineEmits(['update:modelValue'])
 const query = ref('')
 
 const queryItem = computed(() => {
-  return query.value === '' ? null : query.value
+  return query.value === '' ? null : { [itemsKey.value]: null, [itemsLabel.value]: query.value }
 })
 
 const filteredItems = computed(() =>

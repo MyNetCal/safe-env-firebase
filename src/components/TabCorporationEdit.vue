@@ -37,14 +37,15 @@ const isErrorRole = computed(() => {
 function activitySelected() {
   corporation.value.Role = roles.value[0]
   corporation.value.Screening = store.getFunction(corporation.value.Role) == store.FUNCTION_BOARD
+  corporation.value.Board = store.getFunction(corporation.value.Role) == store.FUNCTION_BOARD
 }
 </script>
 
 <template>
-  <div class="w-full justify-center pt-4 pb-6">
-    <div class="text-center text-blue-700 p-1 border-slate-300 rounded-md mb-4">
+  <div class="w-full justify-center pb-6 pt-4">
+    <div class="mb-4 rounded-md border-slate-300 p-1 text-center text-blue-700">
       <div class="text-2xl">Function: {{ store.getFunction(corporation.Role) }}</div>
-      <div class="text-slate-500 text-xs">
+      <div class="text-xs text-slate-500">
         [This is determined automatically from Activity and Role]
       </div>
     </div>
@@ -52,13 +53,11 @@ function activitySelected() {
     <div class="flex w-full gap-x-2">
       <MySelectActivity
         v-model="corporation.Activity"
-        info
-        info-title="Activity"
         @newEntry="activitySelected"
         class="max-h-44"
+        label="Activity: Choose the first option that applies"
         :isError="isErrorActivity"
-        >Choose the first option that applies</MySelectActivity
-      >
+      ></MySelectActivity>
       <MySelectAuto
         :items="roles"
         v-model="corporation.Role"
@@ -69,12 +68,15 @@ function activitySelected() {
       ></MySelectAuto>
     </div>
     <div class="flex gap-x-2">
-      <MySelectAuto
-        label="Entity"
-        :items="entities"
-        v-model="corporation.Entity"
-        :id="null"
-      ></MySelectAuto>
+      <div class="grow">
+        <MySelectAuto
+          label="Entity"
+          :items="entities"
+          v-model="corporation.Entity"
+          :id="null"
+        ></MySelectAuto>
+      </div>
+
       <MyInputCheckBox
         v-if="
           store.getFunction(corporation.Role) == store.FUNCTION_BOARD ||
@@ -83,7 +85,15 @@ function activitySelected() {
         v-model="corporation.Screening"
         label="Screening Staff"
         class="w-32"
+        :disable="store.getFunction(corporation.Role) == store.FUNCTION_BOARD"
       ></MyInputCheckBox>
+      <MyInputCheckBox
+        :disable="store.getFunction(corporation.Role) == store.FUNCTION_BOARD"
+        v-model="corporation.Board"
+        label="Board"
+        class="w-32"
+      ></MyInputCheckBox>
+      
     </div>
   </div>
 </template>

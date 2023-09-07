@@ -12,7 +12,8 @@
           class="relative mx-2 inline-flex h-6 w-11 items-center rounded-full bg-slate-400"
         >
           <span
-            class="inline-block h-4 w-4 transform rounded-full bg-white transition ui-checked:translate-x-6 ui-not-checked:translate-x-1"
+            class="inline-block h-4 w-4 transform rounded-full bg-white transition"
+            :class='modelValue ? "translate-x-6" : "translate-x-1"'
           ></span>
         </Switch>
         <SwitchLabel
