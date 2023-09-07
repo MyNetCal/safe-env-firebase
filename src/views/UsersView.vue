@@ -9,7 +9,7 @@
       </div>
     </div>
     <!-- List of Users by cards -->
-    <div class="mx-3 grow">
+    <div class="grow mx-auto">
       <!-- Users loop -->
       <template v-for="(p) in personnelFilter" :key="p.id">
         <!-- Outter Box -->
@@ -17,9 +17,9 @@
           <!-- Header Row -->
           <div class="flex place-items-center justify-between rounded-t bg-slate-300 p-1 shadow-sm">
             <!-- Left Header -->
-            <div></div>
+        
             <!-- Center Header: Name -->
-            <div class="flex grow place-items-center justify-center">
+            <div class="flex grow place-items-center mr-10">
               <h3 class="font-semibold">
                 <span
                   >{{ p.UserRef.Nickname }} {{ p.UserRef.Middle }} {{ p.UserRef.LastName }}</span
