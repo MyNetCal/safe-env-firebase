@@ -2,32 +2,29 @@
   <div>
     <MyModal
       :showModal="showModal"
-      title="Screening "
+      :title="
+        userCorp?.UserRef?.Nickname +
+        ' ' +
+        userCorp?.UserRef?.LastName +
+        ' @ ' +
+        userCorp?.CorporationName
+      "
       maxWidth="max-w-2xl"
       @onClose="$emit('onClose')"
-      @onOpenModal="onOpenModal()"
     >
       <div class="relative">
         <div class="m-2 text-center">
-          <h1>Screening</h1>
+          <h1 class="mb-3 text-blue-600">Screening</h1>
 
-          <!-- Selector: Coorporations -->
-          <div class="flex justify-center">
-            <div class="w-60">
-              <MySelectAuto
-                v-model="currentUserCorp"
-                label="Corporation"
-                :items="allUserCorpsCollection"
-                items-key="id"
-                items-label="CorporationName"
-              >
-              </MySelectAuto>
-            </div>
-          </div>
-
-          <div v-if="currentCorp">
-            <h3 class="mb-2">{{ store.getScreening(currentUserCorp.Function) }}</h3>
-            <UserViewScreeningCorporation :corporation="currentCorp" :user="currentUserCorp" />
+          <div v-if="userCorp?.id">
+            <h3 class="mb-2">{{ currentScreeningType }}</h3>
+            <template v-for="req in store.SCREENING_REQ" :key="req">
+              <UserViewScreeningCorpItem
+                v-if="currentCorp?.Screening[currentScreeningType][req]"
+                :user="userCorp"
+                :item="req"
+              />
+            </template>
           </div>
         </div>
         <!-- Buttons -->
@@ -52,38 +49,44 @@
 </template>
 
 <script setup>
+/*
+Every Corporation:
+- Code of Conduct
+- Consent to Release and Share Information
+
+All Corporations:
+- Background Check
+
+Sharing and Every Corporation:
+- Written application
+- Face to Face Interview
+- Reference Check
+
+
+*/
 import MyModal from '@/components/MyModal.vue'
 import MyButton from '@/components/MyButton.vue'
-import { toRefs, computed, ref } from 'vue'
+import { toRefs, computed } from 'vue'
 import { useGeneralStore } from '@/stores/general'
-import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
-import UserViewScreeningCorporation from '@/components/UserViewScreeningCorporation.vue'
-import { collection, doc, query, where } from 'firebase/firestore'
-import { useCollection, useDocument, useFirestore } from 'vuefire'
+import { doc } from 'firebase/firestore'
+import { useDocument, useFirestore } from 'vuefire'
+import UserViewScreeningCorpItem from '@/components/UserViewScreeningCorpItem.vue'
 
-const props = defineProps({ showModal: Boolean, userCorp: Object })
-const { showModal, userCorp } = toRefs(props)
+const props = defineProps({ showModal: Boolean, userCorpId: String })
+const { showModal, userCorpId } = toRefs(props)
 const store = useGeneralStore()
 const db = useFirestore()
 
-const currentUserCorp = ref({})
-const currentUserId = computed(() => currentUserCorp.value?.UserId || 'xxx')
-const currentCorpId = computed(() => currentUserCorp.value?.CorporationId || 'xxx')
+const userCorpDocRef = computed(() => doc(db, 'UsersCorporations', userCorpId.value || 'xxx'))
+const userCorp = useDocument(userCorpDocRef)
 
+const currentScreeningType = computed(() => store.getScreening(userCorp.value?.Function))
 const isLoading = computed(() => store.isUploadingFiles)
 const percentage = computed(() => store.isUploadingFilesPercentage)
 
-const queryAllUserCorpRef = computed(() =>
-  query(collection(db, 'UsersCorporations'), where('UserId', '==', currentUserId.value))
-)
-const allUserCorpsCollection = useCollection(queryAllUserCorpRef)
-
-const currentCorpRef = computed(() => doc(db, 'Corporations', currentCorpId.value))
+const currentCorpRef = computed(() => doc(db, 'Corporations', userCorp.value?.CorporationId || 'xxx'))
 const currentCorp = useDocument(currentCorpRef)
 
-function onOpenModal() {
-  currentUserCorp.value = JSON.parse(JSON.stringify(userCorp.value))
-}
 </script>
 
 <style scoped>

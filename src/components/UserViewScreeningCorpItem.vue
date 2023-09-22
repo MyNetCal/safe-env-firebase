@@ -1,4 +1,20 @@
 <script setup>
+/*
+Every Corporation:
+- Code of Conduct
+- Consent to Release and Share Information
+
+All Corporations:
+- Background Check
+
+Sharing and Every Corporation:
+- Written application
+- Face to Face Interview
+- Reference Check
+
+
+*/
+
 import { useGeneralStore } from '@/stores/general'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { toRefs, ref, computed, watch } from 'vue'
@@ -10,33 +26,47 @@ import {
   ref as storageRef,
   uploadBytesResumable
 } from 'firebase/storage'
-import { useFirebaseStorage } from 'vuefire'
+import { useFirebaseStorage, useFirestore } from 'vuefire'
+import { doc, updateDoc } from 'firebase/firestore'
 
-const props = defineProps({ item: String, corporation: Object, user: Object })
-const { corporation, item, user } = toRefs(props)
+const props = defineProps({ item: String, user: Object })
+// item= [Application, Interview, Reference, Background, Code, Consent]
+
+const { item, user } = toRefs(props)
 
 const store = useGeneralStore()
 const storage = useFirebaseStorage()
+const db = useFirestore()
 
-const screeningLevel = computed(() => store.getScreening(user.value.Function)) 
-
+function screeningChecked() {
+  updateDoc(doc(db, 'UsersCorporations', user.value.id), {
+    [`ScreeningReq.${item.value}`]: !user.value?.ScreeningReq?.[item.value]
+  })
+}
 
 // ***********************
 // #region - Get All Files
 // ***********************
 const allFiles = ref([])
-function getUserScreeningFiles(dirInit, newDir) {
+function getUserScreeningFiles(dirInit, newDir, acc) {
   store.countListAll++
+  if (store.countListAll > 80) {
+    return
+  }
   let pathDir = newDir ? dirInit + '/' + newDir : dirInit
   const dirFiles = storageRef(storage, pathDir)
   listAll(dirFiles)
     .then((res) => {
       store.countListAll--
       res.prefixes.forEach((folderRef) => {
-        getUserScreeningFiles(pathDir, folderRef.name)
+        getUserScreeningFiles(pathDir, folderRef.name, acc)
       })
       res.items.forEach((itemRef) => {
-        allFiles.value.push({ name: itemRef.name, by: newDir, path: itemRef.fullPath })
+        acc.push({
+          name: itemRef.name,
+          by: newDir == '' ? user.value.CorporationName : newDir,
+          path: itemRef.fullPath
+        })
       })
     })
     .catch((error) => {
@@ -45,24 +75,22 @@ function getUserScreeningFiles(dirInit, newDir) {
     })
 }
 
-const dirInit = ref(`Users/${user.value.UserId}/Screening/${item.value}`)
-console.log('dirInit: ', dirInit.value);
-const noSharingFiles = computed(() => item.value == 'Code' || item.value == 'Consent')
-dirInit.value = noSharingFiles.value ? dirInit.value + '/' + corporation.value.Short : dirInit.value
-
-allFiles.value = []
-getUserScreeningFiles(dirInit.value, '')
+const dirInit = computed(() => {
+  return item.value == 'Code' || item.value == 'Consent'
+    ? `Users/${user.value.UserId}/Screening/${item.value}/${user.value.CorporationName}`
+    : `Users/${user.value.UserId}/Screening/${item.value}`
+})
 
 watch(
-  () => corporation.value.Short,
-  () => {
-    dirInit.value = noSharingFiles.value
-      ? `Users/${user.value.UserId}/Screening/${item.value}` + '/' + corporation.value.Short
-      : `Users/${user.value.UserId}/Screening/${item.value}`
+  () => user.value.id,
+  (newUser) => {
+    console.log('on Watch: ', newUser)
     allFiles.value = []
-    getUserScreeningFiles(dirInit.value, '')
-  }
+    getUserScreeningFiles(dirInit.value, '', allFiles.value)
+  },
+  { immediate: true }
 )
+
 // #endregion - Get All Files
 // --------------------------
 
@@ -76,7 +104,7 @@ function uploadFile() {
     store.isUploadingFilesPercentage = 0
     const fileRef = storageRef(
       storage,
-      `Users/${user.value.UserId}/Screening/${item.value}/${corporation.value.Short}/${data.name}`
+      `Users/${user.value.UserId}/Screening/${item.value}/${user.value.CorporationName}/${data.name}`
     )
     const uploadTask = uploadBytesResumable(fileRef, data)
     uploadTask.on(
@@ -92,7 +120,7 @@ function uploadFile() {
         console.log('DONE')
         store.isUploadingFiles = false
         allFiles.value = []
-        getUserScreeningFiles(dirInit.value, '')
+        getUserScreeningFiles(dirInit.value, '', allFiles.value)
       }
     )
   }
@@ -133,7 +161,7 @@ function deleteFile(e, f) {
     .then(() => {
       console.log('File Deleted')
       allFiles.value = []
-      getUserScreeningFiles(dirInit.value, '')
+      getUserScreeningFiles(dirInit.value, '', allFiles.value)
     })
     .catch((error) => {
       console.log('Error: ', error)
@@ -144,53 +172,55 @@ function deleteFile(e, f) {
 </script>
 
 <template>
-  <template v-if="corporation.Screening[screeningLevel][item]">
-    <div class="mx-auto mb-2 flex max-w-sm justify-center">
-      <div class="flex w-10 place-items-center justify-center bg-green-700">
-        <div>x</div>
-      </div>
-      <div class="w-full bg-slate-300">
-        <div class="flex justify-between p-1 font-semibold">
-          <div></div>
-          <div>{{ store.SCREENING_TITLE[item] }}</div>
+  <div class="mx-auto mb-2 flex max-w-md justify-center">
+    <div
+      class="flex w-12 cursor-pointer place-items-center justify-center"
+      :class="[user.ScreeningReq?.[item] ? 'bg-green-700' : 'bg-red-700']"
+      @click="screeningChecked"
+    >
+      <div><FontAwesomeIcon :icon="user.ScreeningReq?.[item] ? 'check' : 'xmark'" /></div>
+    </div>
+    <div class="w-full bg-slate-300">
+      <div class="flex justify-between p-1 font-semibold">
+        <div></div>
+        <div>{{ store.SCREENING_TITLE[item] }}</div>
 
-          <div
-            class="cursor-pointer rounded hover:bg-slate-600 hover:text-slate-50"
-            @click="openFileDiologAndUpload"
-          >
-            <FontAwesomeIcon icon="cloud-arrow-up" class="px-1" />
-          </div>
+        <div
+          class="cursor-pointer rounded hover:bg-slate-600 hover:text-slate-50"
+          @click="openFileDiologAndUpload"
+        >
+          <FontAwesomeIcon icon="cloud-arrow-up" class="px-1" />
         </div>
+      </div>
+      <div>
+        <!-- List of Files uploaded -->
         <div class="flex min-h-[28px] bg-slate-200">
-          <!-- List of Files uploaded -->
-          <div>
-            <!-- For Loop -->
-            <div v-for="(f, n) in allFiles" :key="f" class="flex place-items-center">
-              <!-- File Icon and Name -->
+          <!-- For Loop -->
+          <div v-for="(f, n) in allFiles" :key="f" class="flex place-items-center">
+            <!-- File Icon and Name -->
+            <div
+              class="m-1 flex grow cursor-pointer place-items-center rounded pl-1 text-left text-xs hover:bg-blue-300"
+              :class="[f.by != user.CorporationName ? 'bg-orange-200' : 'bg-green-100']"
+              @click="downloadFile(f)"
+            >
+              <div class="py-1">
+                {{ n + 1 }}. {{ f.name }}
+                <span v-if="f.by != user.CorporationName">[{{ f.by }}]</span>
+              </div>
               <div
-                class="m-1 flex grow cursor-pointer place-items-center rounded pl-1 text-left text-xs hover:bg-blue-300"
-                :class="[f.by != corporation.Short ? 'bg-orange-200' : 'bg-green-100']"
-                @click="downloadFile(f)"
+                v-if="f.by == user.CorporationName"
+                class="mr-1 cursor-pointer rounded px-2 py-1 hover:bg-slate-300"
+                @click="deleteFile($event, f)"
               >
-                <div class="py-1">
-                  {{ n + 1 }}. {{ f.name }}
-                  <span v-if="f.by != corporation.Short">[{{ f.by }}]</span>
-                </div>
-                <div
-                  v-if="f.by == corporation.Short"
-                  class="mr-1 cursor-pointer rounded px-2 py-1 hover:bg-slate-300"
-                  @click="deleteFile($event, f)"
-                >
-                  <!-- Trash Icon -->
-                  <FontAwesomeIcon icon="trash" class="text-slate-600" />
-                </div>
+                <!-- Trash Icon -->
+                <FontAwesomeIcon icon="trash" class="text-slate-600" />
               </div>
             </div>
           </div>
         </div>
       </div>
     </div>
-  </template>
+  </div>
 </template>
 
 <style scoped></style>

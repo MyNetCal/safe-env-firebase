@@ -47,7 +47,7 @@
 </template>
 
 <script setup>
-import { toRefs, watchEffect, computed } from 'vue'
+import { toRefs, computed, watch } from 'vue'
 import MyLoader from './MyLoader.vue'
 import { useGeneralStore } from '@/stores/general'
 
@@ -67,8 +67,9 @@ const store = useGeneralStore()
 const isLoadingModal = computed(() => store.isLoadingModal)
 const isCountingListAll = computed(() => store.countListAll > 0)
 
-watchEffect(() => {
-  if (showModal.value) {
+watch(showModal, (nv) => {
+  if (nv) {
+    console.log('on watch');
     emit('onOpenModal')
   } else {
     emit('onCloseModal')

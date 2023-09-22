@@ -1,23 +1,26 @@
 <script setup>
 import { toRefs, ref, computed } from 'vue'
-import { collection, doc, query, where } from 'firebase/firestore'
+import { collection, query, where } from 'firebase/firestore'
 import { useCollection, useFirestore } from 'vuefire'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import ListCorpsByUserEdit from '@/components/ListCorpsByUserEdit.vue'
 import MyButton from './MyButton.vue'
 import { useElementBounding } from '@vueuse/core'
 import { useGeneralStore } from '@/stores/general'
+import { storeToRefs } from 'pinia'
+import { initUserCorp } from '@/stores/datadb'
 
-const props = defineProps({ userId: String, idCorp: String })
-const { userId, idCorp } = toRefs(props)
-
-// TODO
-console.log("Need to limit list to: ", idCorp.value);
+const props = defineProps({ userId: String, user: Object })
+const { userId, user } = toRefs(props)
 
 const db = useFirestore()
 const store = useGeneralStore()
 
-const collref = query(collection(db, 'UsersCorporations'), where('UserId', '==', userId.value))
+const { isUserBoardPrelature } = storeToRefs(store)
+
+const collref = computed(() =>
+  query(collection(db, 'UsersCorporations'), where('UserId', '==', userId.value))
+)
 const corps = useCollection(collref)
 
 const showEditCorp = ref(false)
@@ -26,25 +29,13 @@ const idToEdit = ref('')
 
 function editCorp(corp) {
   showEditCorp.value = true
-  corpToEdit.value = { ...corp }
+  corpToEdit.value = { ...corp, id: corp.id }
   idToEdit.value = corp.id
 }
 
 function addCorporation() {
-  corpToEdit.value = {
-    Active: true,
-    Activity: '0',
-    Board: false,
-    CorporationId: store.loginCorporationId,
-    CorporationName: store.loginCorporation?.Short || 'xxx',
-    Entity: 'Prelature',
-    Function: store.getFunction(store.activities[0].Role[0]),
-    Role: store.activities[0].Role[0],
-    Screening: false,
-    UserId: userId.value,
-    //CorporationRef: doc(db,'Corporations', store.loginCorporationId),
-    UserRef: doc(db, 'Users', userId.value)
-  }
+  corpToEdit.value = initUserCorp(user.value, store.loginCorporation)
+  
   idToEdit.value = null
   showEditCorp.value = true
 }
@@ -56,14 +47,16 @@ const yPx = computed(() => y.value + 'px')
 <template>
   <div>
     <div class="mt-2">
-      <h2 class="text-center">Corporations</h2>
+      <h2 class="text-center font-medium text-blue-500">Corporations</h2>
     </div>
     <template v-if="corps.length > 0">
       <div class="listBox thin-scrollbar mt-2 overflow-auto px-2" ref="elBox">
         <!-- Loop by corporations -->
         <template v-for="c in corps" :key="c.id">
-          <div class="rounded bg-slate-200 mb-2 shadow">
-            <div class="flex place-items-center justify-between rounded-t bg-slate-300 p-1 shadow-sm">
+          <div class="mb-2 rounded bg-slate-200 shadow">
+            <div
+              class="flex place-items-center justify-between rounded-t bg-slate-300 p-1 shadow-sm"
+            >
               <div></div>
               <div class="flex grow place-items-center justify-center">
                 <h3 class="font-semibold">{{ c.CorporationName }}</h3>
@@ -101,7 +94,7 @@ const yPx = computed(() => y.value + 'px')
         </template>
       </div>
     </template>
-    <div class="my-8 text-center">
+    <div class="my-8 text-center" v-if="isUserBoardPrelature">
       <MyButton @click="addCorporation" color="bg-blue-600"> Add Corporation </MyButton>
     </div>
     <ListCorpsByUserEdit

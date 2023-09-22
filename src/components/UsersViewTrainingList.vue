@@ -16,11 +16,11 @@ const props = defineProps({
   trainingCollection: Array,
   allTrainingFiles: Object,
   userId: String,
-  trainingCompleted: Array
+  user: Object
 })
 const emit = defineEmits(['onUpdateFileList'])
 
-const { trainingCollection, allTrainingFiles, userId, trainingCompleted } = toRefs(props)
+const { trainingCollection, allTrainingFiles, userId, user } = toRefs(props)
 
 const storage = useFirebaseStorage()
 
@@ -29,19 +29,15 @@ const editingDateSt = ref('')
 
 const editingDateTrainingId = ref('')
 
-const trainingCompletedById = computed(() => {
-  let a = {}
-  trainingCompleted.value.forEach((el) => {
-    a = { ...a, [el.id]: { date: el.date } }
-  })
-  return a
-})
+const trainingCompletedById = computed(() => user.value.UserData.Training || {})
 
-function editDate(id) {
-  editingDateSt.value = trainingCompletedById.value[id]
-    ? trainingCompletedById.value[id].date
+const trainingToEdit = ref({})
+function editDate(training) {
+  editingDateSt.value = trainingCompletedById.value[training.id]
+    ? trainingCompletedById.value[training.id]
     : dayjs().format('YYYY-MM-DD')
-  editingDateTrainingId.value = id // This is the id of the document in Collecection  "Training"
+  editingDateTrainingId.value = training.id // This is the id of the document in Collecection  "Training"
+  trainingToEdit.value = training
   openEditDateModal.value = true
 }
 
@@ -58,9 +54,8 @@ function downloadFile(idReq, name) {
     })
 }
 
-
 function deleteFile(e, idReq, name) {
-  e.stopPropagation();
+  e.stopPropagation()
   deleteObject(storageRef(storage, `Users/${userId.value}/Training/${idReq}/${name}`))
     .then(() => {
       console.log('File Deleted')
@@ -78,10 +73,6 @@ function uploadPicture() {
     isLoading.value = true
     const fileRef = storageRef(
       storage,
-      `Users/${userId.value}/Training/${uploadingFileUserId.value}/${data.name}`
-    )
-    console.log(
-      'To update to: ',
       `Users/${userId.value}/Training/${uploadingFileUserId.value}/${data.name}`
     )
     const uploadTask = uploadBytesResumable(fileRef, data)
@@ -122,41 +113,52 @@ function openFileDiologAndUpload(id) {
     <div class="mt-1">
       <template v-for="row in trainingCollection" :key="row.id">
         <!-- Card with all Information -->
-        <div class="mx-auto mb-2 flex max-w-md justify-center rounded shadow">
+        <div class="mx-auto mb-2 flex max-w-lg justify-center rounded shadow">
           <!-- Date Box -->
           <div
-            @click="editDate(row.idTitle)"
-            class="flex w-40 cursor-pointer place-items-center justify-center rounded-l text-green-50"
-            :class="[trainingCompletedById[row.idTitle] ? 'bg-green-700' : 'bg-red-700']"
+            @click="editDate(row)"
+            class="w-40 cursor-pointer place-items-center justify-center rounded-l py-2 text-green-50"
+            :class="[
+              trainingCompletedById[row.idTitle]
+                ? 'bg-green-700'
+                : row.Complete == 0
+                ? 'bg-red-700'
+                : 'bg-sky-700'
+            ]"
           >
-            <div>
-              <div class="text-xs">Completed on</div>
-              <div v-if="trainingCompletedById[row.idTitle]" class="font-semibold">
-                {{ dayjs(trainingCompletedById[row.idTitle].date).format('MMM D, YYYY') }}
+            <div class="date-grid h-full">
+              <div class="text-sm">Completed on</div>
+              <div v-if="trainingCompletedById[row.idTitle]" class="font-semibold flex place-items-center justify-center">
+                {{ dayjs(trainingCompletedById[row.idTitle]).format('MMM D, YYYY') }}
               </div>
               <div v-else><FontAwesomeIcon icon="pen" /></div>
+              <div class="text-xs">[{{ row.Complete }} days]</div>
             </div>
           </div>
 
           <!-- Right Section -->
-          <div class="w-full rounded-r bg-slate-200 text-left font-semibold text-slate-800">
+          <div class="w-full rounded-r bg-slate-200 text-left text-slate-800">
             <!-- Title -->
-            <div class="rounded-tr bg-slate-300 p-1">{{ row.Title }}</div>
+            <div class="rounded-tr bg-slate-300 p-1">
+              <div class="font-semibold flex justify-between place-items-start">
+                {{ row.Title }}
+                <!-- Upload Icon -->
+                <FontAwesomeIcon
+                  icon="cloud-arrow-up"
+                  class="cursor-pointer rounded px-2 py-1 hover:bg-slate-600 hover:text-slate-50"
+                  @click="openFileDiologAndUpload(row.id)"
+                />
+              </div>
+              <div class="text-xs">{{ row.Functions }}</div>
+            </div>
 
             <!-- File Section -->
             <div class="flex">
-              <!-- Upload Icon -->
-              <FontAwesomeIcon
-                icon="cloud-arrow-up"
-                class="cursor-pointer rounded p-2 hover:bg-slate-600 hover:text-slate-50"
-                @click="openFileDiologAndUpload(row.id)"
-              />
-
               <!-- List of Files uploaded -->
               <div>
                 <!-- For Loop -->
                 <div
-                  v-for="(f, n) in allTrainingFiles[row.id]"
+                  v-for="(f, n) in allTrainingFiles?.[row.id]"
                   :key="f"
                   class="flex place-items-center"
                 >
@@ -186,6 +188,7 @@ function openFileDiologAndUpload(id) {
       :user-id="userId"
       :training-id="editingDateTrainingId"
       :show-modal="openEditDateModal"
+      :training="trainingToEdit"
       @onClose="openEditDateModal = false"
     >
     </DateEditModal>
@@ -211,6 +214,11 @@ function openFileDiologAndUpload(id) {
   grid-auto-rows: auto;
   column-gap: 8px;
   row-gap: 4px;
+}
+.date-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto 1fr auto;
 }
 .grid-input {
   @apply relative w-full rounded border-0 bg-white px-2 py-2 text-sm outline-none ring-1 placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-300;

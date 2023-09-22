@@ -26,7 +26,7 @@
         <FontAwesomeIcon icon="home" />
         <div class="ml-6 whitespace-nowrap line-through">My Status</div>
       </div>
-      <!-- Menu: Users -->
+      <!-- Menu: Users 
       <Disclosure v-slot="{ open, close }">
         <DisclosureButton
           @click="onClickDisclosureButton(close, 'Users')"
@@ -47,7 +47,7 @@
           :style="{ height: open ? '80px' : '0px' }"
         >
           <DisclosurePanel class="disclosure-panel">
-            <!-- Board -->
+           Board
             <div
               class="flex place-items-center rounded p-2 pl-8 text-slate-700 hover:bg-slate-400"
               @click="goto('/board')"
@@ -58,7 +58,7 @@
               ></font-awesome-icon>
               <div class="whitespace-nowrap">Board</div>
             </div>
-            <!-- Templates -->
+            Templates
             <div
               class="flex place-items-center rounded p-2 pl-9 text-slate-700 hover:bg-slate-400"
               @click="goto('/personnel')"
@@ -71,7 +71,23 @@
             </div>
           </DisclosurePanel>
         </div>
-      </Disclosure>
+      </Disclosure> -->
+      <!-- Menu: Board -->
+      <div
+        @click="goto('/board')"
+        class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
+      >
+        <FontAwesomeIcon icon="users-line" />
+        <div class="ml-6 whitespace-nowrap">* Board</div>
+      </div>
+      <!-- Menu: Personnel -->
+      <div
+        @click="goto('/personnel')"
+        class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
+      >
+        <FontAwesomeIcon icon="users" />
+        <div class="ml-6 whitespace-nowrap">* Personnel</div>
+      </div>
       <!-- Menu: Corporations -->
       <div
         @click="goto('/corporations')"
@@ -147,7 +163,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import router from '@/router'
 import { useFirebaseAuth } from 'vuefire'
 import { signOut } from 'firebase/auth'
-import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
+// import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
 
 const auth = useFirebaseAuth()
 
@@ -191,7 +207,7 @@ onClickOutside(sidebar, () => {
   showSidemenu.value = false
 })
 
-const allPanels = ref([]);
+/* const allPanels = ref([]);
 function onClickDisclosureButton(close, name) {
   if (allPanels.value.includes(name)) {
     return;
@@ -203,7 +219,7 @@ function onClickDisclosureButton(close, name) {
       close();
     }
   });
-}
+} */
 
 </script>
 

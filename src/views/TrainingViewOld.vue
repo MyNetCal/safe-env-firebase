@@ -6,15 +6,11 @@ import { useCollection, useDocument, useFirestore } from 'vuefire'
 import {
   Timestamp,
   addDoc,
-  arrayUnion,
   collection,
   deleteDoc,
   doc,
-  getDoc,
   orderBy,
-  setDoc,
-  updateDoc,
-  where
+  updateDoc
 } from 'firebase/firestore'
 import MyButton from '@/components/MyButton.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
@@ -40,16 +36,20 @@ const dataCurrentCorporation = useDocument(corporationRef)
 
 const initialTrainingRef = computed(() =>
   query(
-    collection(db, `Corporations/${currentCorporation.value}/Initial Training`),
-    where('Functions', 'array-contains', currentFunction.value),
-    orderBy("Title")
+    collection(
+      db,
+      `Corporations/${currentCorporation.value}/Training/Initial Training/${currentFunction.value}`
+    ),
+    orderBy('Title')
   )
 )
 const ongoingTrainingRef = computed(() =>
   query(
-    collection(db, `Corporations/${currentCorporation.value}/Ongoing Training`),
-    where('Functions', 'array-contains', currentFunction.value),
-    orderBy("Title")
+    collection(
+      db,
+      `Corporations/${currentCorporation.value}/Training/Ongoing Training/${currentFunction.value}`
+    ),
+    orderBy('Title')
   )
 )
 const currentInitialTrainingOrder = useCollection(initialTrainingRef)
@@ -64,76 +64,49 @@ const optionSelected = ref({})
 
 watch([currentFunction, currentTab], () => (editingIndex.value = -1))
 
-function addInitialTraining() {
+function addTrainingtoCorporation() {
   const trainingRef = doc(db, 'Training', optionSelected.value.id)
-  setDoc(
-    doc(db, `Corporations/${currentCorporation.value}/Initial Training`, optionSelected.value.id),
-    {
-      Functions: [currentFunction.value],
-      Complete: 90,
-      Expiration: 60,
-      idRef: trainingRef,
-      Title: optionSelected.value.Title,
-      idTitle: optionSelected.value.id,
-      id: ''
-    }
-  )
-}
-
-function addOngoingTraining() {
-  const trainingRef = doc(db, 'Training', optionSelected.value.id)
-  setDoc(
-    doc(db, `Corporations/${currentCorporation.value}/Ongoing Training`, optionSelected.value.id),
-    {
-      Functions: [currentFunction.value],
-      Starts: Timestamp.fromDate(new Date(new Date().toISOString().slice(0, 10))),
-      Ends: Timestamp.fromDate(new Date(new Date().toISOString().slice(0, 10))),
-      Complete: 90,
-      Expiration: 60,
-      idRef: trainingRef,
-      Title: optionSelected.value.Title,
-      idTitle: optionSelected.value.id,
-      id: ''
-    }
-  )
-}
-
-function updateTraining() {
-  const inPath = currentTab.value == 0 ? 'Initial Training' : 'Ongoing Training'
-  const trainingRef = doc(
-    db,
-    `Corporations/${currentCorporation.value}/${inPath}`,
-    optionSelected.value.id
-  )
-  updateDoc(trainingRef, {
-    Functions: arrayUnion(currentFunction.value)
-  })
-}
-
-async function addTrainingtoCorporation() {
-  const inPath = currentTab.value == 0 ? 'Initial Training' : 'Ongoing Training'
-  const trainingRef = doc(
-    db,
-    `Corporations/${currentCorporation.value}/${inPath}`,
-    optionSelected.value.id
-  )
-  const docSnap = await getDoc(trainingRef)
-  if (docSnap.exists()) {
-    updateTraining()
-    return
-  }
   if (currentTab.value == 0) {
-    addInitialTraining()
-    return
+    addDoc(
+      collection(
+        db,
+        `Corporations/${currentCorporation.value}/Training/Initial Training/${currentFunction.value}`
+      ),
+      {
+        Expiration: 60,
+        idRef: trainingRef,
+        Title: optionSelected.value.Title,
+        idTitle: optionSelected.value.id,
+        id: ''
+      }
+    )
+  } else {
+    addDoc(
+      collection(
+        db,
+        `Corporations/${currentCorporation.value}/Training/Ongoing Training/${currentFunction.value}`
+      ),
+      {
+        Starts: Timestamp.fromDate(new Date(new Date().toISOString().slice(0, 10))),
+        Ends: Timestamp.fromDate(new Date(new Date().toISOString().slice(0, 10))),
+        Complete: 90,
+        Expiration: 60,
+        idRef: trainingRef,
+        Title: optionSelected.value.Title,
+        idTitle: optionSelected.value.id,
+        id: ''
+      }
+    )
   }
-  addOngoingTraining()
 }
 
 function addRequirement() {
   editingIndex.value = -1
   if (optionSelected.value.id == null) {
+    console.log('IT needs to add training')
     addDoc(collection(db, 'Training'), { Title: optionSelected.value.Title, id: '' }).then(
       (docRef) => {
+        console.log('New Training Id ', docRef.id)
         optionSelected.value.id = docRef.id
         addTrainingtoCorporation()
       }
@@ -145,11 +118,9 @@ function addRequirement() {
 
 const editingIndex = ref(-1)
 const editingMonths = ref(30)
-const editingComplete = ref(90)
-function editingExpirinig(index, months, complete) {
+function editingExpirinig(index, months) {
   editingIndex.value = index
   editingMonths.value = months
-  editingComplete.value = complete
   editingRow.value = {}
 }
 const editingRow = ref({})
@@ -167,16 +138,23 @@ function editingOngoingRow(index) {
 
 function inputMonths() {
   const idDoc = currentInitialTrainingOrder.value[editingIndex.value].id
-  const reqRef = doc(db, `Corporations/${currentCorporation.value}/Initial Training`, idDoc)
+  const reqRef = doc(
+    db,
+    `Corporations/${currentCorporation.value}/Training/Initial Training/${currentFunction.value}`,
+    idDoc
+  )
   updateDoc(reqRef, {
-    Expiration: Number(editingMonths.value),
-    Complete: Number(editingComplete.value)
+    Expiration: Number(editingMonths.value)
   })
 }
 
 function inputOngoingRow() {
   const idDoc = currentOngoingTrainingOrder.value[editingIndex.value].id
-  const reqRef = doc(db, `Corporations/${currentCorporation.value}/Ongoing Training`, idDoc)
+  const reqRef = doc(
+    db,
+    `Corporations/${currentCorporation.value}/Training/Ongoing Training/${currentFunction.value}`,
+    idDoc
+  )
   updateDoc(reqRef, {
     Starts: Timestamp.fromDate(new Date(editingRow.value.Starts)),
     Ends: Timestamp.fromDate(new Date(editingRow.value.Ends)),
@@ -191,7 +169,9 @@ function deleteReq(index) {
     currentTab.value == 0
       ? currentInitialTrainingOrder.value[index].id
       : currentOngoingTrainingOrder.value[index].id
-  deleteDoc(doc(db, `Corporations/${currentCorporation.value}/${t}`, id))
+  deleteDoc(
+    doc(db, `Corporations/${currentCorporation.value}/Training/${t}/${currentFunction.value}`, id)
+  )
 }
 </script>
 
@@ -200,7 +180,7 @@ function deleteReq(index) {
     <h1>Training</h1>
     <div class="mt-5 flex justify-center place-self-center">
       <div class="flex gap-x-2 text-left">
-        <MySelectCorporation v-model="currentCorporation" v-if="store.isUserBoardPrelature" />
+        <MySelectCorporation v-model="currentCorporation" />
         <MySelectAuto v-model="currentFunction" label="Function" :items="store.FUNCTIONS">
         </MySelectAuto>
       </div>
@@ -237,7 +217,7 @@ function deleteReq(index) {
             <div class="font-semibold">Initial Training Requirement</div>
           </h2>
           <!-- Content Tabs: Selector and add button -->
-          <div class="mt-5 flex place-items-center justify-center gap-x-2">
+          <div class="mb-1 mt-5 flex place-items-center justify-center gap-x-2">
             <div class="min-w-[460px]">
               <MySelectAuto
                 v-model="optionSelected"
@@ -255,41 +235,20 @@ function deleteReq(index) {
               >
             </div>
           </div>
-          <div class="text-center text-sm text-slate-500">
-            [Complete Days and Expire Months are shared between Functions]
-          </div>
           <div
             v-if="currentInitialTrainingOrder?.length > 0"
             class="initial-training-grid items-center"
           >
             <div class="col-start-3 mt-1 justify-self-center text-center text-xs">
-              Complete [days]
+              Expire after [months]
             </div>
-            <div class="mt-1 justify-self-center text-center text-xs">Expire [months]</div>
             <div></div>
             <template v-for="(req, index) in currentInitialTrainingOrder" :key="req.Title">
               <div>{{ index + 1 }}.</div>
               <div>{{ req.Title }}</div>
               <div>
                 <MyInputText
-                  @onFocus="editingExpirinig(index, req.Expiration, req.Complete)"
-                  typeInput="number"
-                  v-model="editingComplete"
-                  v-if="index == editingIndex"
-                  @onChange="inputMonths"
-                ></MyInputText>
-                <div
-                  v-else
-                  tabindex="0"
-                  class="grid-input"
-                  @focus="editingExpirinig(index, req.Expiration, req.Complete)"
-                >
-                  {{ req.Complete }}
-                </div>
-              </div>
-              <div>
-                <MyInputText
-                  @onFocus="editingExpirinig(index, req.Expiration, req.Complete)"
+                  @onFocus="editingExpirinig(index, req.Expiration)"
                   typeInput="number"
                   v-model="editingMonths"
                   v-if="index == editingIndex"
@@ -299,7 +258,7 @@ function deleteReq(index) {
                   v-else
                   tabindex="0"
                   class="grid-input"
-                  @focus="editingExpirinig(index, req.Expiration, req.Complete)"
+                  @focus="editingExpirinig(index, req.Expiration)"
                 >
                   {{ req.Expiration }}
                 </div>
@@ -424,7 +383,7 @@ function deleteReq(index) {
 <style scoped>
 .initial-training-grid {
   display: grid;
-  grid-template-columns: 26px minmax(0, 1fr) 70px 70px 40px;
+  grid-template-columns: 26px minmax(0, 1fr) 70px 40px;
   grid-auto-rows: 42px;
   column-gap: 8px;
   row-gap: 4px;

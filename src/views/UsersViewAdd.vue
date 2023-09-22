@@ -2,56 +2,26 @@
   <div>
     <MyModal
       :showModal="showModal"
-      title="New User"
+      :title="titleWindow"
       maxWidth="max-w-xl"
       @onClose="$emit('onClose')"
       @onOpenModal="onOpenModal"
     >
       <div class="content">
-        <!-- Branch & Dot -->
-        <div class="mt-3 flex justify-between">
-          <!-- Dot -->
-          <div>
-            <FontAwesomeIcon :color="isAllValid ? 'green' : 'red'" icon="circle" />
-          </div>
-        </div>
-
-        <!-- Name, Last Name -->
-        <div class="mt-1 flex gap-x-2">
-          <MyInputText label="Name" class="grow" v-model="dataToEdit.Name" :isError="isErrorName">
-          </MyInputText>
-          <MyInputText label="Middle" class="w-20" v-model="dataToEdit.Middle"> </MyInputText>
-          <MyInputText
-            label="Last Name"
-            class="grow"
-            v-model="dataToEdit.LastName"
-            :isError="isErrorLastName"
-          >
-          </MyInputText>
-          <MyInputText label="Nickname" class="w-20" v-model="dataToEdit.Nickname"> </MyInputText>
-        </div>
-
-        <!-- Email -->
-        <div class="mt-1 flex">
-          <div class="w-full">
-            <MyInputText
-              label="Email"
-              v-model="dataToEdit.Email"
-              type-input="email"
-              v-model:isValid="isValidEmail"
-            >
-            </MyInputText>
-          </div>
-        </div>
-
+        <UserInfoEdit v-model="dataToEdit" v-model:isAllValidInfo="isAllValid" />
         <!-- Buttons -->
-        <div class="mb-4 mt-8 flex justify-center">
+        <div class="mb-4 flex justify-center">
           <MyButton @click="$emit('onClose')" color="bg-blue-600"> Close </MyButton>
           <MyButton @click="onSave" color="bg-green-600" :disabled="!isAllValid"> Save </MyButton>
         </div>
-        
-        <ListCorpsByUser :user-id="id" :idCorp="idCorp" class="mb-5"> </ListCorpsByUser>
-        
+
+        <ListCorpsByUser
+          v-if="currenUserId != ''"
+          :user-id="currenUserId"
+          :user="dataToEdit"
+          class="mb-5"
+        >
+        </ListCorpsByUser>
       </div>
     </MyModal>
   </div>
@@ -60,70 +30,87 @@
 <script setup>
 import MyModal from '@/components/MyModal.vue'
 import MyButton from '@/components/MyButton.vue'
-import { computed, ref, toRefs } from 'vue'
-import MyInputText from '@/components/MyInputs/MyInputText.vue'
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { ref, toRefs, watch, computed } from 'vue'
 import { useGeneralStore } from '@/stores/general'
 import { useFirestore } from 'vuefire'
-import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore'
 import ListCorpsByUser from '@/components/ListCorpsByUser.vue'
+import dayjs from 'dayjs'
+import UserInfoEdit from '@/components/UserInfoEdit.vue'
+import { initUser, saveUser } from '@/stores/datadb'
 
-const emit = defineEmits(['onClose', 'onUpdate'])
-const props = defineProps({ showModal: Boolean, id: String, user: Object, idCorp:String })
+const props = defineProps({ showModal: Boolean, id: String, user: Object, idCorp: String })
 
 const db = useFirestore()
 
 const { showModal, id, user, idCorp } = toRefs(props)
-const dataToEdit = ref({})
+const dataToEdit = ref({ id: '' })
 const store = useGeneralStore()
 
-const isValidEmail = ref(true)
+const searchDate = ref(dayjs().format('YYYY-MM-DD'))
+const searchBoxIsClosed = ref(false)
 
-const isErrorName = computed(() => {
-  const formula = dataToEdit.value.Name.length < 2
-  const label = ''
-  return { formula, label }
-})
+const userExistsInCurrentCorp = ref(false)
+const currentCorpName = ref('')
+const currenUserId = ref('')
 
-const isErrorLastName = computed(() => {
-  const formula = dataToEdit.value.LastName.length < 2
-  const label = ''
-  return { formula, label }
-})
-
-const isAllValid = computed(
-  () => !(isErrorName.value.formula || isErrorLastName.value.formula) && isValidEmail.value
+const titleWindow = computed(() =>
+  id.value == '' ? 'New user' : user.value.Nickname + ' ' + user.value.LastName
 )
 
-function initNewUser() {
-  dataToEdit.value = {
-    Name: '',
-    LastName: '',
-    Middle: '',
-    Nickname: '',
-    Email: '',
-    id: '0',
-    Status: store.USER_STATUS_PENDING,
-    Screening: {},
-    CurrentUsersCorporationsId: ''
-  }
+function getCorporation() {
+  getDoc(doc(db, 'Corporations', idCorp.value)).then((res) => {
+    currentCorpName.value = res.data().Short
+  })
 }
 
-function onOpenModal() {
-  initNewUser()
-  if (id.value != '') {
-    dataToEdit.value = JSON.parse(JSON.stringify(user.value))
+watch(
+  () => dataToEdit.value.id,
+  (id) => {
+    if (id != '') {
+      currenUserId.value = id
+      const q = query(
+        collection(db, 'UsersCorporations'),
+        where('UserId', '==', id),
+        where('CorporationId', '==', idCorp.value)
+      )
+      getDocs(q).then((res) => {
+        res.forEach(() => {
+          userExistsInCurrentCorp.value = true
+        })
+      })
+    }
   }
+)
+
+const isAllValid = ref(false)
+
+const sf = ref(false)
+
+function onOpenModal() {
+  currenUserId.value = id.value
+  searchDate.value = ''
+  searchBoxIsClosed.value = false
+  currentCorpName.value = ''
+  userExistsInCurrentCorp.value = false
+  getCorporation()
+  sf.value = false
+  const newUser = JSON.parse(JSON.stringify(user.value))
+  dataToEdit.value = initUser(newUser)
+  sf.value = dataToEdit.value.Branch == 'both'
 }
 
 function onSave() {
-  if (id.value != '') {
-    updateDoc(doc(db, 'Users', id.value), dataToEdit.value)
-    emit('onClose')
-    return
+  dataToEdit.value.Branch = store.loginUser.Branch
+  if (sf.value) {
+    dataToEdit.value.Branch = 'both'
   }
-  addDoc(collection(db, 'Users'), dataToEdit.value)
-  emit('onClose')
+  saveUser(dataToEdit.value).then((res) => {
+    console.log('res: ', res)
+    if (dataToEdit.value.id == '') {
+      dataToEdit.value.id = res.id
+    }
+  })
 }
 </script>
 

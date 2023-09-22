@@ -44,7 +44,7 @@ const router = createRouter({
     {
       path: '/board',
       name: 'Board',
-      component: () => import('../views/UsersViewTabBoard.vue')
+      component: () => import('../views/BoardView.vue')
     },
     {
       path: '/welcome/:id',
@@ -61,7 +61,7 @@ router.beforeEach(async (to) => {
     console.log('Should go to the Welcome Page!', to.query.id)
     return '/welcome/' + to.query.id
   }
-  if (!currentUser && to.name !== 'Login') {
+  if (!currentUser && to.name !== 'Login' && to.name !== 'Welcome') {
     return { name: 'Login' }
   }
 })

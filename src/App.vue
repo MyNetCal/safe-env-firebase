@@ -12,8 +12,14 @@ import { ref, watchEffect } from 'vue'
 import { doc, updateDoc } from 'firebase/firestore'
 
 const storeGeneral = useGeneralStore()
-const { countRequests, loginUser, loginUserCorporationCollection, loginUserId, loginUserCorporation } =
-  storeToRefs(storeGeneral)
+const {
+  countRequests,
+  loginUser,
+  loginUserCorporationCollection,
+  loginUserId,
+  loginUserCorporation,
+  accessLevelName
+} = storeToRefs(storeGeneral)
 
 const db = useFirestore()
 
@@ -26,13 +32,10 @@ getCurrentUser().then((user) => {
 })
 const selUserCorp = ref('')
 watchEffect(() => {
-  console.log('Corp: ',loginUserCorporation.value)
   selUserCorp.value = loginUserCorporation.value || ''
-  // TODO When the sel chages save it
 })
 
 function saveNuewLoginCorp() {
-  console.log('New Corp: ', selUserCorp.value.CorporationId)
   const userDocRef = doc(db, 'Users', loginUserId.value)
   updateDoc(userDocRef, {
     CurrentUsersCorporationsId: selUserCorp.value.id
@@ -48,6 +51,7 @@ function logout() {
       console.log(error)
     })
 }
+
 </script>
 
 <template>
@@ -101,7 +105,12 @@ function logout() {
       <!-- Footer -->
       <div
         class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-300 px-3 text-slate-800 print:hidden"
-      ></div>
+      >
+        <div></div>
+        <div class="flex">
+          {{ accessLevelName }}
+        </div>
+      </div>
     </div>
     <!-- Modals -->
     <div id="body"></div>

@@ -26,7 +26,9 @@ export const useGeneralStore = defineStore('general', () => {
       getUser()
     } else {
       currentUserEmail.value = ''
-      unsubUser()
+      if (unsubUser) {
+        unsubUser()
+      }
     }
   })
 
@@ -61,12 +63,58 @@ export const useGeneralStore = defineStore('general', () => {
   )
   const loginCorporation = useDocument(loginCorporationRef)
 
-  const userDocQuery = computed(() =>
-    query(collection(db, 'Users'), where('Email', '==', currentUserEmail.value))
+  const isUserBoard = computed(
+    () => loginUserCorporation.value?.Role == ROLE_BOARD || loginUserCorporation.value?.Board
   )
-  const currentUserQuery = useCollection(userDocQuery)
 
-  const currentUser = computed(() => currentUserQuery.value[0])
+  const isUserBoardPrelature = computed(
+    () => isUserBoard.value && loginUserCorporation.value?.CorporationName == 'Prelature'
+  )
+
+  const isUserBoardScreening = computed(
+    () =>  isUserBoard.value || loginUserCorporation.value?.Screening
+  )
+
+  const accessLevelName = computed (() => {
+    if (loginUserCorporation.value?.CorporationName == 'Prelature') {
+      if (loginUserCorporation.value?.SEC) {
+        return "Zeus: SEC of the Prealture"
+      }
+      if(loginUserCorporation.value?.Board) {
+        return 'Olympian God: Board in the Prealture'
+      }
+    }
+    if (loginUserCorporation.value?.SEC) {
+      return "Lesser God - Kratos: SEC of the Corporation"
+    }
+    if(loginUserCorporation.value?.Board) {
+      return 'Demigod - Heracles: Board in the Corporation'
+    }
+    if (loginUserCorporation?.Function == FUNCTION_DIRECTOR) {
+      return 'Heracles: Activity Director'
+    }
+    return "just a mortal"
+  })
+  const accessLevel = computed (() => {
+    if (loginUserCorporation.value?.CorporationName == 'Prelature') {
+      if (loginUserCorporation.value?.SEC) {
+        return 5
+      }
+      if(loginUserCorporation.value?.Board) {
+        return 4
+      }
+    }
+    if (loginUserCorporation.value?.SEC) {
+      return 3
+    }
+    if(loginUserCorporation.value?.Board) {
+      return 2
+    }
+    if (loginUserCorporation?.Function == FUNCTION_DIRECTOR) {
+      return 1
+    }
+    return 0
+  })
 
   // const db = useFirestore()
 
@@ -237,12 +285,16 @@ export const useGeneralStore = defineStore('general', () => {
     loginCorporation,
     loginUserId,
     loginUser,
+    isUserBoard,
+    isUserBoardPrelature,
+    isUserBoardScreening,
+    accessLevelName,
+    accessLevel,
     isLoadingModal,
     isUploadingFiles,
     isUploadingFilesPercentage,
     isLoadingApp,
     countListAll,
-    currentUser,
     currentUserEmail,
     countRequests,
     activities,

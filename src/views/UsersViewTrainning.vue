@@ -2,7 +2,9 @@
   <div>
     <MyModal
       :showModal="showModal"
-      title="Trainning "
+      :title="
+        user.UserData?.Nickname + ' ' + user.UserData?.LastName + ' @ ' + user?.CorporationName
+      "
       maxWidth="max-w-4xl"
       @onClose="$emit('onClose')"
       @onOpenModal="onOpenModal()"
@@ -10,24 +12,10 @@
     >
       <div class="relative">
         <div class="m-2 text-center">
-          <h1>Trainning</h1>
-          <!-- Selector: Coorporations -->
-          <div class="flex justify-center">
-            <div class="w-60">
-              <MySelectAuto
-                v-model="currentUserCorp"
-                label="Corporation"
-                :items="allUserCorpsCollection"
-                items-key="id"
-                items-label="CorporationName"
-                @update:model-value="functionTab = 0"
-              >
-              </MySelectAuto>
-            </div>
-          </div>
+          <h1 class="mb-3 text-blue-600">Trainning</h1>
 
           <!-- Switch: Type of Training -->
-          <div>
+          <div class="mb-10">
             <MySwitchBothLabels v-model="isOutgoingTraining">
               <template #left>Initial Training</template>
               <template #right>Ongoing Training</template>
@@ -36,78 +24,17 @@
 
           <!-- Section Tabs -->
           <div v-if="!isLoading" class="">
-            <!-- Tabs -->
-            <div class="tabs mx-auto mb-5 max-w-md">
-              <!-- Tab 0: Current Funcion -->
-              <div
-                class="tab flex place-items-center justify-center"
-                :class="{ 'tab-active': functionTab == 0 }"
-                @click="functionTab = 0"
-              >
-                {{ currentUserCorp.Function }}
-              </div>
-              <!-- Tab 1: Board [Checkbox] -->
-              <div
-                class="tab flex place-items-center justify-center"
-                :class="{ 'tab-active': functionTab == 1 }"
-                @click="functionTab = 1"
-                v-if="currentUserCorp.Board && currentUserCorp.Function != store.FUNCTION_BOARD"
-              >
-                Board
-              </div>
-              <!-- Tab 2: Screening [Checkbox] -->
-              <div
-                class="tab flex place-items-center justify-center"
-                :class="{ 'tab-active': functionTab == 2 }"
-                @click="functionTab = 2"
-                v-if="currentUserCorp.Screening"
-              >
-                {{ store.FUNCTION_SCREENING }}
-              </div>
-            </div>
-
             <!-- Content Tabs -->
             <!-- Content Tab 0: Funcion -->
-            <div v-if="functionTab == 0">
+            <div>
               <UsersViewTrainingList
                 :all-training-files="allTrainingFiles"
                 :training-collection="trainingCollection"
                 :training-completed="userTrainingCompleted"
-                :user-id="currentUserCorp.UserId"
+                :user-id="user.UserId"
+                :user="user"
                 @on-update-file-list="getUserTrainingFilesAll"
               />
-            </div>
-
-            <!-- Content Tab 1: Only if Is Board and f!=Board -->
-            <div v-if="functionTab == 1">
-              <div
-                v-if="
-                  currentUserCorp.Board &&
-                  currentUserCorp.Function != store.FUNCTION_BOARD &&
-                  trainingCollectionBoard?.length > 0
-                "
-              >
-                <UsersViewTrainingList
-                  :all-training-files="allTrainingFiles"
-                  :training-collection="trainingCollectionBoard"
-                  :user-id="currentUserCorp.UserId"
-                  :training-completed="userTrainingCompleted"
-                  @on-update-file-list="getUserTrainingFilesAll"
-                />
-              </div>
-            </div>
-
-            <!-- Content Tab 2: Only if Is Screening  -->
-            <div v-if="functionTab == 2">
-              <div v-if="currentUserCorp.Screening && trainingCollectionScreening?.length > 0">
-                <UsersViewTrainingList
-                  :all-training-files="allTrainingFiles"
-                  :training-collection="trainingCollectionScreening"
-                  :user-id="currentUserCorp.UserId"
-                  :training-completed="userTrainingCompleted"
-                  @on-update-file-list="getUserTrainingFilesAll"
-                />
-              </div>
             </div>
           </div>
 
@@ -115,7 +42,7 @@
         </div>
 
         <!-- Buttons -->
-        <div class="mb-6 mt-10 flex justify-center">
+        <div class="mb-3 mt-10 flex justify-center">
           <MyButton @click="$emit('onClose')" color="bg-blue-600"> Close </MyButton>
         </div>
       </div>
@@ -128,10 +55,9 @@ import MyModal from '@/components/MyModal.vue'
 import MyButton from '@/components/MyButton.vue'
 import { toRefs, computed, ref, watchEffect } from 'vue'
 import { useCollection, useFirebaseStorage, useFirestore } from 'vuefire'
-import { collection, query, where } from 'firebase/firestore'
+import { collection, orderBy, query, where } from 'firebase/firestore'
 import { useGeneralStore } from '@/stores/general'
 import { listAll, ref as storageRef } from 'firebase/storage'
-import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 import UsersViewTrainingList from '@/components/UsersViewTrainingList.vue'
 import MySwitchBothLabels from '@/components/MyInputs/MySwitchBothLabels.vue'
 
@@ -145,70 +71,58 @@ const allTrainingFiles = ref(null)
 
 const isOutgoingTraining = ref(false)
 
-const currentUserCorp = ref({})
-const currentUserId = computed(() => currentUserCorp.value?.UserId || 'xxx')
-const currentCorpId = computed(() => currentUserCorp.value?.CorporationId || 'xxx')
+const currentCorpId = ref('')
+
+const currentTab = computed(() => (isOutgoingTraining.value ? 'Ongoing' : 'Initial'))
 
 const loginCorporationId = computed(() => store.loginCorporationId)
 watchEffect(() => {
   currentCorpId.value = loginCorporationId.value
 })
+watchEffect(() => {
+  currentCorpId.value = user.value?.CorporationId || 'xxx'
+})
 
+const arrayFunctions = computed(() => {
+  const a = []
+  if (user.value?.Screening) {
+    a.push(store.FUNCTION_SCREENING)
+  }
+  if (user.value?.Board) {
+    a.push(store.FUNCTION_BOARD)
+  }
+  if (user.value?.Function != store.FUNCTION_BOARD) {
+    a.push(user.value?.Function || 'yyy')
+  }
 
-const queryAllUserCorpRef = computed(() =>
-  query(collection(db, 'UsersCorporations'), where('UserId', '==', currentUserId.value))
-)
-const allUserCorpsCollection = useCollection(queryAllUserCorpRef)
-
-const currentTab = computed(() => (isOutgoingTraining.value ? 'Ongoing' : 'Initial'))
-const functionTab = ref(0)
+  return a
+})
 
 const trainingCollectionRef = computed(() =>
-  collection(
-    db,
-    `Corporations/${currentCorpId.value}/Training/${currentTab.value} Training/${currentUserCorp.value.Function}`
+  query(
+    collection(db, `Corporations/${currentCorpId.value}/${currentTab.value} Training`),
+    where('Functions', 'array-contains-any', arrayFunctions.value),
+    orderBy('Title')
   )
 )
-const trainingBoardRef = computed(() =>
-  collection(
-    db,
-    `Corporations/${currentCorpId.value}/Training/${currentTab.value} Training/${store.FUNCTION_BOARD}`
-  )
-)
-const trainingScreeningRef = computed(() =>
-  collection(
-    db,
-    `Corporations/${currentCorpId.value}/Training/${currentTab.value} Training/${store.FUNCTION_SCREENING}`
-  )
-)
-const userTrainingCompletedRef = computed(() => collection(db, `Users/${user.value.id}/Training`))
-const { data: trainingCollectionBoard, pending: pendingCollectionBoard } =
-  useCollection(trainingBoardRef)
+
 const { data: trainingCollection, pending: pendingCollectionTraining } =
   useCollection(trainingCollectionRef)
-const { data: trainingCollectionScreening, pending: pendingCollectionScreening } =
-  useCollection(trainingScreeningRef)
-const { data: userTrainingCompleted, pending: pendingCollectionCompleted } =
-  useCollection(userTrainingCompletedRef)
 
-const isLoading = computed(
-  () =>
-    pendingCollectionBoard.value ||
-    pendingCollectionTraining.value ||
-    pendingCollectionScreening.value ||
-    pendingCollectionCompleted.value
-)
+const userTrainingCompleted = computed(() => user.value.UserData.Training || {})
+
+const isLoading = computed(() => pendingCollectionTraining.value)
 
 function getUserTrainingFilesAll() {
   allTrainingFiles.value = {}
-  console.log('Getting Folder from: ', `Users/${currentUserCorp.value.UserId}/Training`)
-  const dirFiles = storageRef(storage, `Users/${currentUserCorp.value.UserId}/Training`)
+  console.log('Getting Folder from: ', `Users/${user.value.UserId}/Training`)
+  const dirFiles = storageRef(storage, `Users/${user.value.UserId}/Training`)
   listAll(dirFiles)
     .then((res) => {
       res.prefixes.forEach((folderRef) => {
         console.log('Name: ', folderRef.name)
         allTrainingFiles.value[folderRef.name] = []
-        const dirSub = storageRef(storage, `Users/${currentUserCorp.value.UserId}/Training/${folderRef.name}`)
+        const dirSub = storageRef(storage, `Users/${user.value.UserId}/Training/${folderRef.name}`)
         listAll(dirSub).then((res2) => {
           res2.items.forEach((f) => allTrainingFiles.value[folderRef.name].push(f.name))
         })
@@ -223,11 +137,8 @@ function getUserTrainingFilesAll() {
       console.log('Error: ', error)
     })
 }
-
-function onOpenModal() {
-  currentUserCorp.value = JSON.parse(JSON.stringify(user.value))
-  getUserTrainingFilesAll()
-}
+getUserTrainingFilesAll()
+function onOpenModal() {}
 </script>
 
 <style scoped>

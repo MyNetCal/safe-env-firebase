@@ -2,62 +2,84 @@
   <div class="flex h-full flex-col">
     <!-- Headers: Title, Corp Selector -->
     <div>
-      <h3 class="m-1 text-blue-800">Personnel</h3>
+      <h1 class="mt-3 text-blue-800">Personnel</h1>
       <!-- Corporation Selector -->
-      <div class="mx-auto mb-1 w-52">
+      <div class="mx-auto w-52" v-if="isUserBoardPrelature">
         <MySelectCorporation v-model="currentCorpId" />
       </div>
     </div>
+
     <!-- List of Users by cards -->
-    <div class="grow mx-auto">
+    <div class="mx-auto mt-3 grow">
       <!-- Users loop -->
-      <template v-for="(p) in personnelFilter" :key="p.id">
-        <!-- Outter Box -->
-        <div class="mb-2 rounded bg-slate-200 shadow">
-          <!-- Header Row -->
-          <div class="flex place-items-center justify-between rounded-t bg-slate-300 p-1 shadow-sm">
-            <!-- Left Header -->
-        
-            <!-- Center Header: Name -->
-            <div class="flex grow place-items-center mr-10">
-              <h3 class="font-semibold">
-                <span
-                  >{{ p.UserRef.Nickname }} {{ p.UserRef.Middle }} {{ p.UserRef.LastName }}</span
-                >
-              </h3>
-              <div class="ml-2">[{{ p.Function }}]</div>
-            </div>
-            <!-- Right Header: Icons -->
-            <div class="flex gap-x-1">
-              <div class="click-icon" @click="editUserInfo(p)">
-                <FontAwesomeIcon icon="pen" />
+      <Transition>
+        <div v-if="personnel.length > 0">
+          <template v-for="p in personnel" :key="p.id">
+            <!-- Outter Box -->
+            <div
+              class="mb-2 rounded text-emerald-900 shadow"
+              :class="[userIsAllSet(p) ? 'bg-emerald-100' : 'bg-stone-100']"
+            >
+              <!-- Header Row -->
+              <div
+                class="flex place-items-center justify-between rounded-t p-1 shadow-sm"
+                :class="[userIsAllSet(p) ? 'bg-emerald-300' : 'bg-stone-300']"
+              >
+                <!-- Left Header -->
+
+                <!-- Center Header: Name -->
+                <div class="flex grow place-items-center">
+                  <h3 class="font-semibold">
+                    <span
+                      >{{ p.UserData.Nickname }} {{ p.UserData.Middle }}
+                      {{ p.UserData.LastName }}</span
+                    >
+                  </h3>
+                </div>
+                <!-- Right Header: Icons -->
+                <div class="flex gap-x-1">
+                  <div class="click-icon" @click="editUserInfo(p)">
+                    <FontAwesomeIcon icon="pen" />
+                  </div>
+                  <div
+                    class="click-icon"
+                    @click="editUsersScreening(p)"
+                    :class="[userHasAllScreening(p) ? 'text-green-700' : 'text-red-700']"
+                  >
+                    <FontAwesomeIcon icon="chalkboard-user" />
+                  </div>
+                  <div
+                    class="click-icon"
+                    @click="editUsersTrainning(p)"
+                    :class="[userHasAllTraining(p) ? 'text-green-700' : 'text-red-700']"
+                  >
+                    <FontAwesomeIcon icon="list-check" />
+                  </div>
+                  <div class="click-icon">
+                    <FontAwesomeIcon icon="check-to-slot" />
+                  </div>
+                </div>
               </div>
-              <div class="click-icon" @click="editUsersScreening(p)">
-                <FontAwesomeIcon icon="chalkboard-user" />
-              </div>
-              <div class="click-icon" @click="editUsersTrainning(p)">
-                <FontAwesomeIcon icon="list-check" />
-              </div>
-              <div class="click-icon">
-                <FontAwesomeIcon icon="check-to-slot" />
+              <!-- Content Row -->
+              <div class="flex justify-between p-1">
+                <div class="mr-12 grow text-left">Role: {{ p.Role }}</div>
+                <div class="mr-4">
+                  Board
+                  <FontAwesomeIcon :icon="p.Board ? ['far', 'check-square'] : ['far', 'square']" />
+                </div>
+                <div>
+                  Screening
+                  <FontAwesomeIcon
+                    :icon="p.Screening ? ['far', 'check-square'] : ['far', 'square']"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-          <!-- Content Row -->
-          <div class="flex justify-between p-1">
-            <div class="w-32 text-left">Role: {{ p.Role }}</div>
-            <div>
-              Board
-              <FontAwesomeIcon :icon="p.Board ? ['far', 'check-square'] : ['far', 'square']" />
-            </div>
-            <div>
-              Screening
-              <FontAwesomeIcon :icon="p.Screening ? ['far', 'check-square'] : ['far', 'square']" />
-            </div>
-          </div>
+          </template>
         </div>
-      </template>
+      </Transition>
     </div>
+
     <!-- Tabs: Titles -->
     <div class="flex justify-center">
       <!-- All Tabs format -->
@@ -107,15 +129,23 @@
     />
     <UsersViewScreening
       :show-modal="showUsersViewScreening"
-      :user-corp="userSelected"
+      :user-corp-id="userSelectedId"
       @onClose="showUsersViewScreening = false"
     />
-    <UsersViewTrainning
-      :show-modal="showUsersViewTrainning"
-      :user="userSelected"
-      @onClose="showUsersViewTrainning = false"
+    <div v-if="showUsersViewTrainning">
+      <UsersViewTrainning
+        :show-modal="showUsersViewTrainning"
+        :user="userSelected"
+        @onClose="showUsersViewTrainning = false"
+      />
+    </div>
+
+    <UserAndCorpEdit
+      :show-modal="showUserCorpEdit"
+      :user-corp="userSelected"
+      @onClose="showUserCorpEdit = false"
     />
-    
+
     <MyFab @click="addNewUser" color="bg-green-600" posY="bottom-14">
       <FontAwesomeIcon icon="user-plus" />
     </MyFab>
@@ -127,16 +157,20 @@
 import { ref, computed, watchEffect } from 'vue'
 import MyFab from '@/components/MyFab.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { useCollection, useFirestore } from 'vuefire'
-import { collection, query, where } from 'firebase/firestore'
+import { useCollection, useDocument, useFirestore } from 'vuefire'
+import { collection, doc, query, where } from 'firebase/firestore'
 import UsersViewAdd from './UsersViewAdd.vue'
 import { useGeneralStore } from '@/stores/general'
 import UsersViewScreening from './UsersViewScreening.vue'
 import UsersViewTrainning from './UsersViewTrainning.vue'
 import MySelectCorporation from '@/components/MySelect/MySelectCorporation.vue'
+import { storeToRefs } from 'pinia'
+import UserAndCorpEdit from '@/components/UserAndCorpEdit.vue'
+import { initUserCorp, getUsersByCorp } from '@/stores/datadb'
 
 const db = useFirestore()
 const store = useGeneralStore()
+const { isUserBoardPrelature, loginCorporation } = storeToRefs(store)
 
 const currentCorpId = ref(store.loginCorporationId || 'xxx')
 
@@ -144,37 +178,108 @@ watchEffect(() => {
   currentCorpId.value = store.loginCorporationId
 })
 
-const queryRef = computed(() =>
-  query(collection(db, 'UsersCorporations'), where('CorporationId', '==', currentCorpId.value))
+const corpDocRef = computed(() => doc(db, 'Corporations', currentCorpId.value))
+const corp = useDocument(corpDocRef)
+
+const initialTrainingColRef = computed(() =>
+  query(
+    collection(db, `Corporations/${currentCorpId.value}/Initial Training`),
+    where('Complete', '==', 0)
+  )
 )
-const personnel = useCollection(queryRef)
+const initialTrainingCol = useCollection(initialTrainingColRef)
+
+const personnel = ref([])
+const currentTab = ref(store.USER_STATUS_PENDING)
+
+getUsersByCorp(
+  personnel,
+  [currentCorpId, currentTab],
+  [
+    ['CorporationId', '==', currentCorpId],
+    ['Status', '==', currentTab]
+  ]
+)
+
 const showUsersViewAdd = ref(false)
 const showUsersViewScreening = ref(false)
 const showUsersViewTrainning = ref(false)
-
-const personnelFilter = computed(() =>
-  personnel.value.filter((el) => el.UserRef?.Status == currentTab.value)
-)
-
-const currentTab = ref(store.USER_STATUS_PENDING)
+const showUserCorpEdit = ref(false)
 
 const id = ref('')
 
-const userSelected = ref({ Corporations: [] })
+const userSelected = ref({})
+const userSelectedId = ref('')
+const totScreeningReq = computed(() => {
+  return {
+    [store.SCREENING_STAFF]: Object.values(
+      corp.value?.Screening?.[store.SCREENING_STAFF] || {}
+    ).reduce((acc, val) => acc + (val ? 1 : 0), 0),
+    [store.SCREENING_JUNIOR_COUNSELOR]: Object.values(
+      corp.value?.Screening?.[store.SCREENING_JUNIOR_COUNSELOR] || {}
+    ).reduce((acc, val) => acc + (val ? 1 : 0), 0),
+    [store.SCREENING_LOW_ACCESS]: Object.values(
+      corp.value?.Screening?.[store.SCREENING_LOW_ACCESS] || {}
+    ).reduce((acc, val) => acc + (val ? 1 : 0), 0)
+  }
+})
+
+function countScreeningReq(screeningReqUser) {
+  if (screeningReqUser) {
+    return Object.values(screeningReqUser).reduce((acc, val) => acc + val, 0)
+  }
+  return 0
+}
+
+function userHasAllScreening(user) {
+  return (
+    countScreeningReq(user.ScreeningReq) >= totScreeningReq.value[store.getScreening(user.Function)]
+  )
+}
+
+function userHasAllTraining(user) {
+  let count = 0
+  let totInitialTrainingReq = initialTrainingCol.value.length
+  initialTrainingCol.value.forEach((el) => {
+    if (user.UserData.Training?.[el.id]) {
+      count++
+    }
+  })
+  return count >= totInitialTrainingReq
+}
+
+function userIsAllSet(user) {
+  return userHasAllScreening(user) && userHasAllTraining(user)
+}
 
 function addNewUser() {
-  id.value = ''
-  showUsersViewAdd.value = true
+  // if is Board Prelature opens 'UserViewAdd'
+  // it rquires 3 props id: idUser, idCorp: idCorp, user: user as userSelected
+  if (isUserBoardPrelature.value) {
+    userSelected.value = { id: '' }
+    id.value = ''
+    showUsersViewAdd.value = true
+    return
+  }
+  // if not opens 'UserCorporationEdid'
+  userSelected.value = initUserCorp({}, loginCorporation.value)
+  showUserCorpEdit.value = true
 }
 
 function editUserInfo(userInfo) {
-  id.value = userInfo.UserRef.id
-  userSelected.value = userInfo.UserRef
-  showUsersViewAdd.value = true
+  if (isUserBoardPrelature.value) {
+    id.value = userInfo.UserData.id
+    userSelected.value = userInfo.UserData
+    showUsersViewAdd.value = true
+    return
+  }
+  userSelected.value = userInfo
+  showUserCorpEdit.value = true
 }
 
 function editUsersScreening(userInfo) {
   userSelected.value = userInfo
+  userSelectedId.value = userInfo.id
   showUsersViewScreening.value = true
 }
 
@@ -189,6 +294,15 @@ function editUsersTrainning(userInfo) {
   height: calc(100vh - 48px);
 }
 .click-icon {
-  @apply rounded bg-slate-300 px-2 py-1 hover:cursor-pointer hover:bg-slate-600 hover:text-slate-200;
+  @apply rounded px-2 py-1 shadow hover:cursor-pointer hover:bg-emerald-800 hover:text-emerald-100;
+}
+.v-enter-active,
+.v-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
 }
 </style>

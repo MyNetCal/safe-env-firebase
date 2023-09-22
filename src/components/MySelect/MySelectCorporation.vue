@@ -2,7 +2,8 @@
 import { computed } from 'vue'
 import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 import { useFirestore, useCollection } from 'vuefire'
-import { collection, orderBy, query } from 'firebase/firestore'
+import { collection, orderBy, query, where } from 'firebase/firestore'
+import { useGeneralStore } from '@/stores/general';
 
 const props = defineProps({
   modelValue: String,
@@ -11,7 +12,12 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue', 'newEntry'])
 const db = useFirestore()
-const items = useCollection(query(collection(db, 'Corporations'), orderBy('Name')))
+const store = useGeneralStore() 
+
+const branch = computed(() => store.loginUser.Branch.charAt(0).toUpperCase() + store.loginUser.Branch.slice(1))
+
+const queryCorp = computed(() => query(collection(db, 'Corporations'), where('Branch', 'in', [branch.value, 'Both']), orderBy('Name')))
+const items = useCollection(queryCorp)
 
 const optionSelected = computed({
   get() {

@@ -34,19 +34,17 @@ import MyModal from '@/components/MyModal.vue'
 import MyButton from '@/components/MyButton.vue'
 import { toRefs, ref } from 'vue'
 import MyInputText from './MyInputs/MyInputText.vue'
-import { useFirestore } from 'vuefire'
-import { deleteDoc, doc, setDoc } from 'firebase/firestore'
+import { deleteUserTraining, saveUserTraining } from '@/stores/datadb'
 
 const emit = defineEmits(['onClose', 'onUpdate'])
 const props = defineProps({
   showModal: Boolean,
   modelValue: {},
   userId: String,
-  trainingId: String
+  trainingId: String,
+  training: Object
 })
 const { showModal, modelValue, userId, trainingId } = toRefs(props)
-
-const db = useFirestore()
 
 const newDate = ref('')
 
@@ -56,26 +54,13 @@ function onOpenModal() {
 }
 
 function onDelete() {
-  console.log(" Let's delete userId: ", userId, '   trainingId: ', trainingId)
-  deleteDoc(doc(db, `Users/${userId.value}/Training`, trainingId.value)).then(() => {
-    emit('onClose')
-  })
+  deleteUserTraining(userId.value, trainingId.value)
+  emit('onClose')
 }
 
 function onSave() {
-  console.log(
-    'Saving  Date: ',
-    modelValue.value,
-    '   userId: ',
-    userId.value,
-    '  TrainingId: ',
-    trainingId.value
-  )
-  const docRef = doc(db, `Users/${userId.value}/Training`, trainingId.value)
-  setDoc(docRef, { date: newDate.value }).then(() => {
-    emit('onClose')
-  })
-  emit('onUpdate')
+  saveUserTraining(userId.value, trainingId.value, newDate.value)
+  emit('onClose')
 }
 </script>
 

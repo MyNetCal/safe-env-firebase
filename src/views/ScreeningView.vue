@@ -49,7 +49,7 @@ function saveChanges(type) {
     <h1>Screening</h1>
 
     <!-- Selector: Corporation -->
-    <div class="mx-auto mt-3 w-60">
+    <div class="mx-auto mt-3 w-60" v-if="store.isUserBoardPrelature">
       <MySelectCorporation v-model="currentCorporationId" />
     </div>
 
