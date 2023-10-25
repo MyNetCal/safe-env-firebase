@@ -127,38 +127,50 @@ function acceptSEC(p) {
       <MySelectCorporation v-model="currentCorpId" />
     </div>
     <div class="mx-auto mt-3 grow">
-      <div v-for="p in personnel" :key="p.id">
-        <div class="mx-auto flex max-w-md justify-between gap-2 p-1 hover:bg-slate-200">
-          <div class="min-w-[150px] grow pr-10 text-left">
-            {{ p.UserData.Nickname }} {{ p.UserData.LastName }}
-          </div>
-          <div>
-            {{ p.SEC ? 'S. E. Coordinator' : p.Board ? 'Board Memeber' : 'Screening Staff ' }}
-          </div>
-          <div
-            class="cursor-pointer px-1 text-slate-500 hover:bg-slate-700 hover:text-slate-200"
-            @click="voteForSEC(p)"
-          >
-            <FontAwesomeIcon class="" icon="check-to-slot" />
-          </div>
+      <Transition>
+        <div v-if="personnel.length > 0">
+          <div v-for="p in personnel" :key="p.id">
+            <div class="mx-auto flex max-w-md justify-between gap-2 p-1 hover:bg-slate-200">
+              <div class="min-w-[150px] grow pr-10 text-left">
+                {{ p.UserData.Nickname }} {{ p.UserData.LastName }}
+              </div>
+              <div>
+                {{ p.SEC ? 'S. E. Coordinator' : p.Board ? 'Board Memeber' : 'Screening Staff ' }}
+              </div>
+              <div
+                class="cursor-pointer px-1 text-slate-500 hover:bg-slate-700 hover:text-slate-200"
+                @click="voteForSEC(p)"
+              >
+                <FontAwesomeIcon class="" icon="check-to-slot" />
+              </div>
 
-          <!-- list of votes -->
-          <div v-if="p.VotedBy?.length" class="flex w-8 gap-1">
-            <div :data-p="p.id" :data-u="n" v-for="n in p.VotedBy" :key="n" ref="itemRefs" class="">
-              <FontAwesomeIcon class="p-x2 text-green-600" icon="check" />
-            </div>
-          </div>
-          <div v-else class="w-8"></div>
-          <div v-if="p.VotedBy?.length == 2 && p.UserId == store.loginUserId">
-            <div
-              class="absolute cursor-pointer rounded bg-green-700 px-2 py-1 text-xs font-semibold text-green-100 shadow hover:bg-green-800"
-              @click="acceptSEC(p)"
-            >
-              ACCEPT
+              <!-- list of votes -->
+              <div v-if="p.VotedBy?.length" class="flex w-8 gap-1">
+                <div
+                  :data-p="p.id"
+                  :data-u="n"
+                  v-for="n in p.VotedBy"
+                  :key="n"
+                  ref="itemRefs"
+                  class=""
+                >
+                  <FontAwesomeIcon class="p-x2 text-green-600" icon="check" />
+                </div>
+              </div>
+              <div v-else class="w-8"></div>
+              <div v-if="p.VotedBy?.length == 2 && p.UserId == store.loginUserId">
+                <div
+                  class="absolute cursor-pointer rounded bg-green-700 px-2 py-1 text-xs font-semibold text-green-100 shadow hover:bg-green-800"
+                  @click="acceptSEC(p)"
+                >
+                  ACCEPT
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </Transition>
+
       <div ref="divuser" v-show="showUser" class="absolute rounded bg-green-300 p-2 shadow"></div>
       <div class="mt-12 max-w-xs text-slate-700">
         Votes needed from board members and selection staff for personnel to be approved
@@ -181,4 +193,14 @@ function acceptSEC(p) {
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.v-enter-active,
+.v-leave-active {
+  transition: opacity 0.5s ease;
+}
+
+.v-enter-from,
+.v-leave-to {
+  opacity: 0;
+}
+</style>

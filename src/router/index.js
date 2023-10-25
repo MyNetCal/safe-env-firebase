@@ -51,6 +51,12 @@ const router = createRouter({
       name: 'Welcome',
       component: () => import('../views/WelcomeView.vue'),
       props: true
+    },
+    {
+      path: '/Sites',
+      name: 'Sites',
+      component: () => import('../views/SitesView.vue'),
+      props: true
     }
   ]
 })

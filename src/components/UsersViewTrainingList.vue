@@ -25,19 +25,15 @@ const { trainingCollection, allTrainingFiles, userId, user } = toRefs(props)
 const storage = useFirebaseStorage()
 
 const openEditDateModal = ref(false)
-const editingDateSt = ref('')
 
 const editingDateTrainingId = ref('')
 
 const trainingCompletedById = computed(() => user.value.UserData.Training || {})
 
-const trainingToEdit = ref({})
+const trainingArray = ref([])
 function editDate(training) {
-  editingDateSt.value = trainingCompletedById.value[training.id]
-    ? trainingCompletedById.value[training.id]
-    : dayjs().format('YYYY-MM-DD')
   editingDateTrainingId.value = training.id // This is the id of the document in Collecection  "Training"
-  trainingToEdit.value = training
+  trainingArray.value = trainingCompletedById.value[training.id] || []
   openEditDateModal.value = true
 }
 
@@ -129,7 +125,7 @@ function openFileDiologAndUpload(id) {
             <div class="date-grid h-full">
               <div class="text-sm">Completed on</div>
               <div v-if="trainingCompletedById[row.idTitle]" class="font-semibold flex place-items-center justify-center">
-                {{ dayjs(trainingCompletedById[row.idTitle]).format('MMM D, YYYY') }}
+                {{ dayjs(trainingCompletedById[row.idTitle][row.idTitle.length -1]?.date).format('MMM D, YYYY') }}
               </div>
               <div v-else><FontAwesomeIcon icon="pen" /></div>
               <div class="text-xs">[{{ row.Complete }} days]</div>
@@ -184,11 +180,10 @@ function openFileDiologAndUpload(id) {
       </template>
     </div>
     <DateEditModal
-      v-model="editingDateSt"
       :user-id="userId"
       :training-id="editingDateTrainingId"
+      :training-array="trainingArray"
       :show-modal="openEditDateModal"
-      :training="trainingToEdit"
       @onClose="openEditDateModal = false"
     >
     </DateEditModal>

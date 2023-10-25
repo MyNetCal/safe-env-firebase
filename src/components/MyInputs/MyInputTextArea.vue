@@ -1,6 +1,6 @@
 <template>
   <!-- Regular Input -->
-  <div class="relative mb-4 pt-0">
+  <div class="relative pt-0">
     <my-info-modal :info="info" :infoTitle="infoTitle" :label="label"><slot></slot> </my-info-modal>
 
     <div class="relative">
@@ -10,7 +10,7 @@
         :rows="rows"
         @input="$emit('update:modelValue', $event.target.value)"
         :placeholder="placeholder"
-        class="mostly-customized-scrollbar relative w-full rounded border-0 bg-white px-1 py-1 text-sm text-sky-900 placeholder-gray-300 shadow outline-none hover:shadow-md focus:outline-none focus:ring-1 focus:ring-blue-300"
+        class="mostly-customized-scrollbar relative w-full rounded border-0 bg-white px-1 py-1 text-sm text-sky-900 placeholder-gray-400 shadow outline-none hover:shadow-md focus:outline-none focus:ring-1 focus:ring-blue-300"
         :class="{ 'ring-1 ring-red-500': isError.formula }"
         v-bind="$attrs"
       ></textarea>
@@ -19,7 +19,7 @@
         class="absolute right-3 -top-1 text-gray-600"
         @click="onClear"
       >
-        <font-awesome-icon icon="times"></font-awesome-icon>
+        <FontAwesomeIcon icon="times"></FontAwesomeIcon>
       </div>
     </div>
 
@@ -30,9 +30,10 @@
 </template>
 
 <script>
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import MyInfoModal from './MyInfoModal.vue'
 export default {
-  components: { MyInfoModal },
+  components: { MyInfoModal, FontAwesomeIcon },
   props: {
     modelValue: String,
     label: { type: String, default: '' },

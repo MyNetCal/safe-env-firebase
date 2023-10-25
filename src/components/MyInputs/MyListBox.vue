@@ -4,11 +4,13 @@
     @update:modelValue="(value) => emit('update:modelValue', value)"
     by="id"
   >
-    <div class="relative">
+    <div class="relative w-fit">
       <ListboxButton
-        class="relative flex w-full place-items-center justify-between truncate rounded border-0 py-1 pl-2 pr-6 text-sm outline-none placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-300"
+        class="relative flex w-full place-items-center justify-between truncate rounded border-0 py-1 pl-2 pr-2 text-sm outline-none placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-300"
+        v-slot="{ open }"
       >
         {{ title ? modelValue[title] : modelValue }}
+        <FontAwesomeIcon :icon="open ? 'caret-down' : 'caret-right'" />
       </ListboxButton>
       <Transition
         enter-active-class="transition duration-100 ease-out"
@@ -31,7 +33,7 @@
             as="div"
             class="p-2 ui-selected:bg-blue-200 ui-active:bg-blue-500 ui-active:text-white ui-not-active:text-black"
           >
-            {{ title ? item[title] : item  }}
+            {{ title ? item[title] : item }}
           </ListboxOption>
         </ListboxOptions>
       </Transition>
@@ -42,9 +44,9 @@
 <script setup>
 import { toRefs } from 'vue'
 import { Listbox, ListboxButton, ListboxOptions, ListboxOption } from '@headlessui/vue'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
-const props = defineProps({ items: Array, modelValue: { default: null }, title: String})
+const props = defineProps({ items: Array, modelValue: { default: null }, title: String })
 const { items, title } = toRefs(props)
 const emit = defineEmits(['update:modelValue'])
-
 </script>

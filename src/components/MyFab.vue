@@ -1,6 +1,6 @@
 <template>
   <button
-    class="shadow-mds hover:shadow-lgs right active:shadow-inner` z-10 mr-1 mb-2 h-14 w-14 rounded-full px-4 py-2 text-xs font-bold uppercase text-white outline-none transition-all duration-100 ease-linear hover:brightness-125 focus:outline-none active:shadow-inner active:brightness-75"
+    class="shadow-md hover:shadow-lgs right active:shadow-inner` z-10 mr-1 mb-2 h-14 w-14 rounded-full px-4 py-2 text-xs font-bold uppercase text-white outline-none transition-all duration-100 ease-linear hover:brightness-125 focus:outline-none active:shadow-inner active:brightness-75"
     :class="[posType, posX, posY, color]"
     type="button"
     @click="emit('onClick')"
@@ -13,7 +13,7 @@ import { toRefs } from 'vue'
 
 const props = defineProps({
   color: { type: String, default: 'bg-blue-600' },
-  posType: { type: String, default: 'fixed' },
+  posType: { type: String, default: 'absolute' },
   posX: { type: String, default: 'right-2' },
   posY: { type: String, default: 'bottom-4' }
 })

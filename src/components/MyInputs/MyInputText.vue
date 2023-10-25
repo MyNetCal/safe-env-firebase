@@ -20,7 +20,7 @@
         @keyup.enter="onKeyEnter"
         :placeholder="placeholder"
         :autocomplete="autocomplete"
-        class="input-ring relative w-full rounded border-0 bg-white px-2 py-2 text-sm outline-none ring-1 placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-300"
+        class="input-ring relative w-full rounded border-0 bg-white px-2 py-2 text-sm outline-none ring-1 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
         :class="{
           'ring-1 ring-red-500 focus:ring-red-300': (isError.formula || !isValid) && !deactivated,
           'cursor-not-allowed bg-gray-100 text-sky-800': deactivated,

@@ -14,21 +14,22 @@
       <!-- Users loop -->
       <Transition>
         <div v-if="personnel.length > 0">
-          <template v-for="p in personnel" :key="p.id">
+          <template v-for="(p, index) in personnel" :key="p.id">
             <!-- Outter Box -->
             <div
               class="mb-2 rounded text-emerald-900 shadow"
               :class="[userIsAllSet(p) ? 'bg-emerald-100' : 'bg-stone-100']"
             >
               <!-- Header Row -->
-              <div
-                class="flex place-items-center justify-between rounded-t p-1 shadow-sm"
-                :class="[userIsAllSet(p) ? 'bg-emerald-300' : 'bg-stone-300']"
-              >
+              <div class="flex place-items-center justify-between gap-5 rounded-t p-1">
                 <!-- Left Header -->
 
                 <!-- Center Header: Name -->
-                <div class="flex grow place-items-center">
+                <div
+                  class="flex min-w-[160px] grow cursor-pointer rounded place-items-center"
+                  :class="[userIsAllSet(p) ? 'bg-emerald-100 hover:bg-emerald-300' : 'bg-stone-100 hover:bg-stone-300']"
+                  @click="editUserInfo(p)"
+                >
                   <h3 class="font-semibold">
                     <span
                       >{{ p.UserData.Nickname }} {{ p.UserData.Middle }}
@@ -38,9 +39,9 @@
                 </div>
                 <!-- Right Header: Icons -->
                 <div class="flex gap-x-1">
-                  <div class="click-icon" @click="editUserInfo(p)">
+                  <!-- <div class="click-icon text-slate-500" @click="editUserInfo(p)">
                     <FontAwesomeIcon icon="pen" />
-                  </div>
+                  </div> -->
                   <div
                     class="click-icon"
                     @click="editUsersScreening(p)"
@@ -55,7 +56,7 @@
                   >
                     <FontAwesomeIcon icon="list-check" />
                   </div>
-                  <div class="click-icon">
+                  <div class="click-icon text-slate-500" @click="openUsersViewVote(index)">
                     <FontAwesomeIcon icon="check-to-slot" />
                   </div>
                 </div>
@@ -63,15 +64,15 @@
               <!-- Content Row -->
               <div class="flex justify-between p-1">
                 <div class="mr-12 grow text-left">Role: {{ p.Role }}</div>
-                <div class="mr-4">
+                <div class="mr-4" v-if="p.Board && p.Role != 'Board'">
                   Board
-                  <FontAwesomeIcon :icon="p.Board ? ['far', 'check-square'] : ['far', 'square']" />
+                  <!-- <FontAwesomeIcon :icon="p.Board ? ['far', 'check-square'] : ['far', 'square']" /> -->
                 </div>
-                <div>
+                <div v-if="p.Screening">
                   Screening
-                  <FontAwesomeIcon
+                  <!-- <FontAwesomeIcon
                     :icon="p.Screening ? ['far', 'check-square'] : ['far', 'square']"
-                  />
+                  /> -->
                 </div>
               </div>
             </div>
@@ -146,6 +147,16 @@
       @onClose="showUserCorpEdit = false"
     />
 
+    <div v-if="showUsersViewVote">
+      <UsersViewVote
+        :show-modal="showUsersViewVote"
+        :user-corp="personnel[indexSelected]"
+        :is-user-all-set="userIsAllSet(personnel[indexSelected])"
+        @onClose="showUsersViewVote = false"
+        @onUpdate="showUsersViewVote = false"
+      />
+    </div>
+
     <MyFab @click="addNewUser" color="bg-green-600" posY="bottom-14">
       <FontAwesomeIcon icon="user-plus" />
     </MyFab>
@@ -167,6 +178,7 @@ import MySelectCorporation from '@/components/MySelect/MySelectCorporation.vue'
 import { storeToRefs } from 'pinia'
 import UserAndCorpEdit from '@/components/UserAndCorpEdit.vue'
 import { initUserCorp, getUsersByCorp } from '@/stores/datadb'
+import UsersViewVote from './UsersViewVote.vue'
 
 const db = useFirestore()
 const store = useGeneralStore()
@@ -239,8 +251,15 @@ function userHasAllScreening(user) {
 
 function userHasAllTraining(user) {
   let count = 0
-  let totInitialTrainingReq = initialTrainingCol.value.length
+  let totInitialTrainingReq = 0
   initialTrainingCol.value.forEach((el) => {
+    if (
+      el.Functions.includes(user.Function) ||
+      (el.Functions.includes(store.FUNCTION_BOARD) && user.Board) ||
+      el.Functions.includes(store.FUNCTION_SCREENING && user.Screening)
+    ) {
+      totInitialTrainingReq++
+    }
     if (user.UserData.Training?.[el.id]) {
       count++
     }
@@ -287,6 +306,14 @@ function editUsersTrainning(userInfo) {
   userSelected.value = userInfo
   showUsersViewTrainning.value = true
 }
+
+const showUsersViewVote = ref(false)
+const indexSelected = ref(0)
+function openUsersViewVote(index) {
+  //userSelected.value = p
+  indexSelected.value = index
+  showUsersViewVote.value = true
+}
 </script>
 
 <style scoped>
@@ -294,7 +321,7 @@ function editUsersTrainning(userInfo) {
   height: calc(100vh - 48px);
 }
 .click-icon {
-  @apply rounded px-2 py-1 shadow hover:cursor-pointer hover:bg-emerald-800 hover:text-emerald-100;
+  @apply rounded px-1.5 py-1 hover:cursor-pointer hover:bg-emerald-800 hover:text-emerald-100;
 }
 .v-enter-active,
 .v-leave-active {

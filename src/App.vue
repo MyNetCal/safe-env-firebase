@@ -10,6 +10,7 @@ import router from './router'
 import MyListBox from './components/MyInputs/MyListBox.vue'
 import { ref, watchEffect } from 'vue'
 import { doc, updateDoc } from 'firebase/firestore'
+import { useMediaQuery } from '@vueuse/core'
 
 const storeGeneral = useGeneralStore()
 const {
@@ -24,6 +25,8 @@ const {
 const db = useFirestore()
 
 const auth = useFirebaseAuth()
+
+const isLargeScreen = useMediaQuery('(min-width: 640px)')
 
 getCurrentUser().then((user) => {
   if (!user) {
@@ -51,7 +54,6 @@ function logout() {
       console.log(error)
     })
 }
-
 </script>
 
 <template>
@@ -66,32 +68,29 @@ function logout() {
       <!-- Header -->
       <div class="app-layout-header flex place-items-center justify-between bg-blue-800 text-white">
         <!-- Header Left -->
-        <div class="ml-1">
-          <div
-            v-if="loginUser"
-            class="flex w-fit cursor-pointer place-items-center px-1 pl-2 hover:bg-blue-500"
-          >
-            <FontAwesomeIcon icon="shop" />
-            <div class="ml-3 w-40">
-              <MyListBox
-                :items="loginUserCorporationCollection"
-                v-model="selUserCorp"
-                title="CorporationName"
-                @update:model-value="saveNuewLoginCorp"
-              />
-            </div>
-          </div>
+        <div class="ml-1 flex grow place-items-center" v-if="loginUser">
+          <FontAwesomeIcon v-if="isLargeScreen" icon="shop" class="ml-3" />
+          <MyListBox
+            :items="loginUserCorporationCollection"
+            v-model="selUserCorp"
+            title="CorporationName"
+            @update:model-value="saveNuewLoginCorp"
+            class="min-w-[120px] cursor-pointer rounded hover:bg-blue-500"
+            :class="[isLargeScreen ? 'ml-2' : 'ml-6']"
+          />
         </div>
         <!-- Header Center -->
-        <div>Safe Environment</div>
+        <div></div>
         <!-- Header Right -->
-        <div class="mr-1 flex w-52 justify-end">
+        <div class="mr-1 flex place-items-center justify-end">
+          <div class="mr-2">{{ loginUser.Nickname }}</div>
+          <FontAwesomeIcon icon="user" class="mr-4" />
           <div
             v-if="loginUser"
             @click="logout"
-            class="flex w-fit cursor-pointer place-items-center px-1 py-1 hover:bg-blue-500"
+            class="flex w-fit cursor-pointer place-items-center rounded px-2 py-1 hover:bg-blue-500"
           >
-            <div class="mr-2">{{ loginUser.Nickname }}</div>
+            <div class="mr-2">Logout</div>
             <FontAwesomeIcon icon="right-from-bracket" />
           </div>
         </div>
@@ -123,26 +122,37 @@ function logout() {
   grid-template-columns: [panel] 2px [main] 1fr [end];
   grid-template-rows: [header] 36px [main] 1fr [footer] 24px [end];
   grid-template-areas:
-    'header header'
+    'sidebar header'
     'sidebar content'
     'footer footer';
   width: 100vw;
   height: 100vh;
 }
+.app-layout-sidebar {
+  grid-area: sidebar;
+  max-height: calc(100vh - 24px);
+}
 @media (min-width: 640px) {
   .app-layout-grid {
     grid-template-columns: [panel] 40px [main] 1fr [end];
+    grid-template-areas:
+      'header header'
+      'sidebar content'
+      'footer footer';
+  }
+  .app-layout-sidebar {
+    grid-area: sidebar;
+    max-height: calc(100vh - 36px - 24px);
   }
 }
 .app-layout-header {
   grid-area: header;
 }
-.app-layout-sidebar {
-  grid-area: sidebar;
-}
+
 .app-layout-content {
   grid-area: content;
   width: calc(100vw - 40px);
+  max-height: calc(100vh - 36px - 24px);
   overflow: hidden;
 }
 .app-layout-footer {

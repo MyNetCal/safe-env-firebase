@@ -90,7 +90,7 @@ export const useGeneralStore = defineStore('general', () => {
     if(loginUserCorporation.value?.Board) {
       return 'Demigod - Heracles: Board in the Corporation'
     }
-    if (loginUserCorporation?.Function == FUNCTION_DIRECTOR) {
+    if (loginUserCorporation.value?.Function == FUNCTION_DIRECTOR) {
       return 'Heracles: Activity Director'
     }
     return "just a mortal"

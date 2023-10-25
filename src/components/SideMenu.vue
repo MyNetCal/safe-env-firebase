@@ -6,8 +6,8 @@
     class="h-full overflow-x-hidden bg-slate-200/90 text-left transition-all backdrop:blur print:hidden"
     :class="[showSidemenu ? 'w-64' : 'w-full']"
   >
-    <div v-if="!showSidemenu && !isLargeScreen" class="fixed top-2 left-2" @click="onClickShowOpen">
-      <font-awesome-icon icon="bars" size="lg" class="text-blue-700" />
+    <div v-if="!showSidemenu && !isLargeScreen" class="fixed top-1 left-2" @click="onClickShowOpen">
+      <font-awesome-icon icon="bars" size="lg" class="text-blue-50" />
     </div>
     <div class="p-2">
       <!-- Title -->
@@ -114,11 +114,11 @@
       </div>
       <!-- Menu: Sponsoring Entities -->
       <div
-        @click="goto('/')"
+        @click="goto('/Sites')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="map-location-dot" />
-        <div class="ml-6 whitespace-nowrap line-through">* Sites</div>
+        <div class="ml-6 whitespace-nowrap">* Sites</div>
       </div>
       <!-- Menu: Participants -->
       <div
@@ -144,29 +144,16 @@
         <FontAwesomeIcon icon="person-burst" />
         <div class="ml-6 whitespace-nowrap line-through">Abuse Report</div>
       </div>
-      <!-- Menu: Logout -->
-      <div
-        @click="onLogout"
-        class="flex cursor-pointer place-items-center rounded p-2 text-slate-700 hover:bg-slate-400"
-      >
-        <FontAwesomeIcon icon="right-from-bracket" />
-        <div class="ml-6 line-through">Logout</div>
-      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watchEffect } from 'vue'
+import { ref } from 'vue'
 import { onClickOutside, useMediaQuery } from '@vueuse/core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import router from '@/router'
-import { useFirebaseAuth } from 'vuefire'
-import { signOut } from 'firebase/auth'
 // import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
-
-const auth = useFirebaseAuth()
-
 
 const sidebar = ref(null)
 const showSidemenu = ref(false)
@@ -194,15 +181,7 @@ function goto(route) {
 function onClickShowOpen() {
   showSidemenu.value = !stateBeforeClicking.value
 }
-function onLogout() {
-  signOut(auth)
-    .then(() => {
-      router.push('/login')
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-}
+
 onClickOutside(sidebar, () => {
   showSidemenu.value = false
 })

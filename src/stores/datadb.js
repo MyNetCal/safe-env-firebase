@@ -10,7 +10,8 @@ import {
   query,
   where,
   or,
-  and
+  and,
+  arrayUnion
 } from 'firebase/firestore'
 import { watch, onUnmounted, ref } from 'vue'
 
@@ -122,7 +123,8 @@ function initUserCorp(user, corp) {
     UserRef: initUser(user),
     UserData: initUser(user),
     SEC: false,
-    id: ''
+    id: '',
+    ApprovedBy: []
   }
 }
 
@@ -203,7 +205,10 @@ function saveUserCorp(userCorp, userId) {
 function saveUserTraining(userId, trainingId, date) {
   const userRef = doc(db, 'Users', userId)
   updateDoc(userRef, {
-    [`Training.${trainingId}`]: date
+    [`Training.${trainingId}`]: arrayUnion({
+      date: date,
+      loadedByUserCorpId: store.loginCurrentUsersCorporationsId
+    })
   })
 }
 
@@ -219,7 +224,7 @@ function deleteUserTraining(userId, trainingId) {
 // **************
 function getUsersByCorp(personnel, triggers, conds) {
   let unsubUserCorp
-  let unsubUser = []
+  let unsubUser = {}
   const count = ref(0)
 
   async function getPersonnel() {
@@ -227,23 +232,22 @@ function getUsersByCorp(personnel, triggers, conds) {
     if (unsubUserCorp) {
       unsubUserCorp()
     }
-    unsubUser.forEach((u) => {
+
+    Object.values(unsubUser).forEach((u) => {
       u()
     })
-    unsubUser = []
+
+    unsubUser = {}
 
     personnel.value = []
 
     let aQuery = []
-    const needsAnd = conds.some((el)=> el.length> 3)
+    const needsAnd = conds.some((el) => el.length > 3)
     conds.forEach((el) =>
       aQuery.push(
         el.length == 3
           ? where(el[0], el[1], el[2].value)
-          : or(
-              where(el[0], el[1], el[2].value),
-              where(el[3], el[4], el[5].value)
-            )
+          : or(where(el[0], el[1], el[2].value), where(el[3], el[4], el[5].value))
       )
     )
     if (needsAnd) {
@@ -252,7 +256,7 @@ function getUsersByCorp(personnel, triggers, conds) {
 
     const q = query(collection(db, 'UsersCorporations'), ...aQuery)
 
-    unsubUserCorp = onSnapshot(q, (querySnapshot) => {
+    unsubUserCorp = onSnapshot(q, { includeMetadataChanges: true }, (querySnapshot) => {
       console.log('Starting onSnapshot. Is from Cache:', querySnapshot.metadata.fromCache)
 
       console.log('Total records: ', querySnapshot.size)
@@ -263,39 +267,37 @@ function getUsersByCorp(personnel, triggers, conds) {
         // The userCoporation has been modified
         if (change.type == 'modified') {
           console.log('The userCoporation has been modified')
-          if (unsubUser[change.newIndex]) {
-            unsubUser[change.newIndex]()
-          }
           const index = personnel.value.findIndex((el) => el.id == change.doc.id)
           if (index >= 0) {
             const data = change.doc.data()
             data.id = change.doc.id
             data.UserData = initUser({})
             personnel.value[index] = data
+            if (unsubUser[data.UserId]) {
+              unsubUser[data.UserId]()
+            }
             const u = onSnapshot(change.doc.data().UserRef, (res) => {
               const index = personnel.value.findIndex((el) => el.UserId == res.id)
-              console.log('Listener for User in ')
+              console.log('*** Listener Changed: ', res.id)
               personnel.value[index].UserData = res.data()
               personnel.value[index].UserData.id = res.data().id
               console.log('All new record attached to Array Index: ', data)
             })
-            unsubUser[change.newIndex] = u
+            unsubUser[data.UserId] = u
           }
         }
 
         if (change.type == 'added') {
-          console.log('The UserCorporation has been added to the Array')
           const data = change.doc.data()
           data.id = change.doc.id
           data.UserData = initUser({})
           personnel.value.push(data)
           const u = onSnapshot(change.doc.data().UserRef, (res) => {
-            console.log('Listener for User Created')
             const index = personnel.value.findIndex((el) => el.UserId == res.id)
+            console.log('*** Listener Added: ', res.id)
             personnel.value[index].UserData = res.data()
             personnel.value[index].UserData.id = res.data().id
             const allLoaded = personnel.value.every((el) => el.UserData.id)
-            console.log(' **** Iss all Personnel Loaded: ', allLoaded)
             if (allLoaded) {
               personnel.value.sort((a, b) => {
                 if (a.UserData.Nickname < b.UserData.Nickname) {
@@ -308,12 +310,15 @@ function getUsersByCorp(personnel, triggers, conds) {
               })
             }
           })
-          unsubUser.push(u)
+          unsubUser[data.UserId] = u
         }
         if (change.type == 'removed') {
+          const data = change.doc.data()
           const index = personnel.value.findIndex((el) => el.id == change.doc.id)
           if (index >= 0) {
             console.log('Lets remove index: ', index)
+            unsubUser[data.UserId]()
+            personnel.value.splice(index, 1)
           }
         }
       })
@@ -335,10 +340,31 @@ function getUsersByCorp(personnel, triggers, conds) {
     if (unsubUserCorp) {
       unsubUserCorp()
     }
-    unsubUser.forEach((el) => {
-      el()
+    Object.values(unsubUser).forEach((u) => {
+      u()
     })
   })
+}
+
+// *************
+// Sites
+// *************
+function initSite(site) {
+  const newSite = JSON.parse(JSON.stringify(site))
+  return {
+    id: '',
+    Name: '',
+    Address: '',
+    Notes: '',
+    CheckList: [], // Array of Objects: { Task: '', Comments: ''}
+    Arquitecture: '',
+    Photos: [],
+    Lodging: '',
+    Bathroom: '',
+    Monitoring: '',
+    Branch: store.loginUser.Branch, // values: men, women, both
+    ...newSite
+  }
 }
 
 export {
@@ -353,5 +379,6 @@ export {
   saveUserCorp,
   saveUserTraining,
   deleteUserTraining,
-  getUsersByCorp
+  getUsersByCorp,
+  initSite
 }

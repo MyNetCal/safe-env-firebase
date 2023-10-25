@@ -35,7 +35,7 @@ function editCorp(corp) {
 
 function addCorporation() {
   corpToEdit.value = initUserCorp(user.value, store.loginCorporation)
-  
+
   idToEdit.value = null
   showEditCorp.value = true
 }
@@ -55,7 +55,7 @@ const yPx = computed(() => y.value + 'px')
         <template v-for="c in corps" :key="c.id">
           <div class="mb-2 rounded bg-slate-200 shadow">
             <div
-              class="flex place-items-center justify-between rounded-t bg-slate-300 p-1 shadow-sm"
+              class="flex place-items-center justify-between rounded-t p-1"
             >
               <div></div>
               <div class="flex grow place-items-center justify-center">
@@ -64,13 +64,13 @@ const yPx = computed(() => y.value + 'px')
               </div>
               <div class="flex gap-x-1">
                 <div
-                  class="rounded bg-slate-400 px-2 py-1 hover:cursor-pointer hover:bg-slate-600 hover:text-slate-200"
+                  class="rounded px-2 py-1 text-slate-600 hover:cursor-pointer hover:bg-slate-600 hover:text-slate-200"
                   @click="editCorp(c)"
                 >
                   <FontAwesomeIcon icon="pen" />
                 </div>
                 <div
-                  class="rounded bg-slate-400 px-2 py-1 hover:cursor-pointer hover:bg-slate-600 hover:text-slate-200"
+                  class="rounded px-2 py-1 text-slate-600 hover:cursor-pointer hover:bg-slate-600 hover:text-slate-200"
                 >
                   <FontAwesomeIcon icon="trash" />
                 </div>
@@ -79,15 +79,15 @@ const yPx = computed(() => y.value + 'px')
 
             <div class="flex justify-between p-1">
               <div class="w-32">Role: {{ c.Role }}</div>
-              <div>
+              <div v-if="c.Board && c.Role != 'Board'">
                 Board
-                <FontAwesomeIcon :icon="c.Board ? ['far', 'check-square'] : ['far', 'square']" />
+                <!-- <FontAwesomeIcon :icon="c.Board ? ['far', 'check-square'] : ['far', 'square']" /> -->
               </div>
-              <div>
+              <div v-if="c.Screening">
                 Screening
-                <FontAwesomeIcon
+                <!-- <FontAwesomeIcon
                   :icon="c.Screening ? ['far', 'check-square'] : ['far', 'square']"
-                />
+                /> -->
               </div>
             </div>
           </div>

@@ -59,8 +59,14 @@
             class="thinsb absolute z-10 w-full overflow-auto rounded-md bg-white py-1 text-left text-base shadow-lg ring-1 ring-blue-300 focus:outline-none sm:text-sm"
             v-bind="$attrs"
           >
+            <div
+              v-if="filteredItems.length === 0 && query !== ''"
+              class="relative cursor-default select-none px-4 py-2 text-gray-700"
+            >
+              Nothing found.
+            </div>
             <ComboboxOption
-              v-if="queryItem"
+              v-if="queryItem && customValues"
               :value="queryItem"
               class="p-2 ui-selected:bg-blue-200 ui-active:bg-blue-500 ui-active:text-white ui-not-active:text-black"
             >
