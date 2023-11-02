@@ -77,30 +77,30 @@
           </div>
         </div>
 
-       <!-- Groups -->
+        <!-- Groups -->
         <div class="mt-3">
           <div class="text-xs text-slate-600">Group Activities</div>
           <div class="flex place-content-center justify-start gap-2">
-              <MyInputText v-model="inputGroup" @onKeyEnter="addGroup" />
-              <MyButton @click="addGroup">New</MyButton>
-            </div>
-            <div class="min-h-[52px] rounded border bg-white p-1">
-              <div class="flex flex-wrap gap-2">
-                <template v-for="group in dataToEdit.ActivityGroups" :key="group">
+            <MyInputText v-model="inputGroup" @onKeyEnter="addGroup" />
+            <MyButton @click="addGroup" class="bg-stone-600" :disabled="inputGroup.length == 0"
+              >Add New Group</MyButton
+            >
+          </div>
+          <div class="min-h-[52px] rounded border bg-white p-1">
+            <div class="flex flex-wrap gap-2">
+              <template v-for="group in dataToEdit.ActivityGroups" :key="group">
+                <div class="flex rounded border bg-stone-200 pl-2 text-sm text-slate-700">
+                  <div class="py-1">{{ group }}</div>
                   <div
-                    class="flex  rounded border pl-2 text-sm bg-stone-200 text-slate-700"
+                    class="ml-2 cursor-pointer rounded p-1 hover:bg-stone-300"
+                    @click="removeFromNewGroups(group)"
                   >
-                    <div class="py-1">{{ group }}</div>
-                    <div
-                      class="ml-2 p-1 cursor-pointer hover:bg-stone-300 rounded"
-                      @click="removeFromNewGroups(group)"
-                    >
-                      <FontAwesomeIcon icon="trash" />
-                    </div>
+                    <FontAwesomeIcon icon="trash" />
                   </div>
-                </template>
-              </div>
+                </div>
+              </template>
             </div>
+          </div>
         </div>
 
         <!-- Buttons -->
@@ -158,15 +158,17 @@ const storage = useFirebaseStorage()
 const inputGroup = ref('')
 
 function addGroup() {
+  if (inputGroup.value == '') {
+    return
+  }
   dataToEdit.value.ActivityGroups.push(inputGroup.value)
   inputGroup.value = ''
 }
 
 function removeFromNewGroups(group) {
-  let index =dataToEdit.value.ActivityGroups.indexOf(group)
+  let index = dataToEdit.value.ActivityGroups.indexOf(group)
   dataToEdit.value.ActivityGroups.splice(index, 1)
 }
-
 
 const percentage = ref(0)
 const isLoading = ref(false)
@@ -341,7 +343,7 @@ function onOpenModal() {
           Consent: true
         }
       },
-      ...JSON.parse(JSON.stringify(rowSelected.value))  
+      ...JSON.parse(JSON.stringify(rowSelected.value))
     }
   }
   getCodeOfConductFile()

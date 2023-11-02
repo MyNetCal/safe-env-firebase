@@ -66,6 +66,9 @@ onUnmounted(() => {
 })
 
 function addGroup() {
+  if (inputGroup.value == '') {
+    return
+  }
   newGroups.value.push(inputGroup.value)
   participant.value.ActivityGroups.push(inputGroup.value)
   inputGroup.value = ''
@@ -211,7 +214,11 @@ function downloadFile(dirFile) {
   <div>
     <MyModal
       :showModal="showModal"
-      :title="'New Participant - ' + corpInfo?.Short"
+      :title="
+        id == ''
+          ? 'New Participant @ ' + corpInfo?.Short
+          : participant?.Name + ' @ ' + corpInfo?.Short
+      "
       @onClose="$emit('onClose')"
       maxWidth="max-w-2xl"
     >
@@ -308,23 +315,26 @@ function downloadFile(dirFile) {
             <div class="text-xs text-slate-600">Group Activities</div>
             <div class="flex place-content-center justify-start gap-2">
               <MyInputText v-model="inputGroup" @onKeyEnter="addGroup" />
-              <MyButton @click="addGroup">New</MyButton>
+              <MyButton @click="addGroup" class="bg-stone-600" :disabled="inputGroup.length == 0"
+                >Add New Group</MyButton
+              >
             </div>
             <div class="min-h-[52px] rounded border bg-white p-1">
               <div class="flex flex-wrap gap-2">
                 <template v-for="group in totGroups" :key="group">
                   <div
-                    class="flex cursor-pointer rounded border px-2 py-1 text-sm"
+                    class="flex cursor-pointer rounded border text-sm"
                     :class="[
                       participant.ActivityGroups.includes(group)
-                        ? 'bg-blue-600 text-blue-50'
-                        : 'bg-stone-200 text-slate-700'
+                        ? 'bg-stone-300 text-stone-800 shadow'
+                        : 'bg-stone-50 text-stone-600'
                     ]"
                     @click="toggleGroup(group)"
                   >
-                    {{ group }}
+                    <div class="px-2 py-1">{{ group }}</div>
+
                     <div
-                      class="ml-2 px-1"
+                      class="rounded px-2 py-1 hover:bg-stone-400"
                       v-if="newGroups.includes(group)"
                       @click="removeFromNewGroups(group)"
                     >
@@ -338,7 +348,7 @@ function downloadFile(dirFile) {
         </div>
 
         <!-- Buttons -->
-        <div class="mt-2 flex justify-center">
+        <div class="my-4 flex justify-center">
           <MyButton @click="$emit('onClose')" color="bg-blue-600"> Close </MyButton>
           <MyButton @click="saveParticipant" color="bg-green-600" :disabled="isInfoMissing">
             Save
