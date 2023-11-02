@@ -13,8 +13,9 @@ import { useFirestore } from 'vuefire'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { useGeneralStore } from '@/stores/general'
 
-defineEmits(['onClose', 'onUpdate'])
+const emits = defineEmits(['onClose', 'onUpdate', 'onChangeTab'])
 const props = defineProps({ showModal: Boolean, site: Object, corp: Object })
+
 const { showModal, site, corp } = toRefs(props)
 
 const db = useFirestore()
@@ -40,6 +41,8 @@ function onSaveGeneralInfo() {
   siteToEdit.value.id = siteRefDB.value.id
   siteToEdit.value.Branch = bothBranches.value ? 'both' : store.loginUser.Branch
   siteToEdit.value.CorpIds = [corp.value.id]
+  siteToEdit.value.CreatedByUser = store.loginUserId
+  siteToEdit.value.CreatedByCorp = corp.value.id
   setDoc(siteRefDB.value, siteToEdit.value)
   updateDoc(doc(db, 'Corporations', corp.value.id), {
     SiteIds: arrayUnion(siteToEdit.value.id)
@@ -63,12 +66,19 @@ function onUpdateDetails(field) {
     [field]: siteToEdit.value[field]
   })
 }
+
+function onReadyToBeApproved() {
+  updateDoc(doc(db, 'Sites', siteToEdit.value.id), {
+    Status: 'Waiting Approval'
+  })
+  emits('onChangeTab', 1)
+}
 </script>
 
 <template>
   <div>
     <MyModal :showModal="showModal" title="Editing Site" @onClose="$emit('onClose')">
-      <div class="modal-height flex flex-col justify-between p-2">
+      <div class="modal-height flex flex-col justify-between p-1">
         <!-- *********** -->
         <!-- Tab Headers -->
         <!-- *********** -->
@@ -144,11 +154,6 @@ function onUpdateDetails(field) {
             <!-- Sections -->
             <div class="mx-auto max-w-md">
               <MyInputTextArea
-                v-model="siteToEdit.Arquitecture"
-                label="Arquitecture"
-                @change="onUpdateDetails('Arquitecture')"
-              />
-              <MyInputTextArea
                 v-model="siteToEdit.Lodging"
                 label="Lodging Arrangements"
                 @change="onUpdateDetails('Lodging')"
@@ -167,7 +172,7 @@ function onUpdateDetails(field) {
           </div>
 
           <!-- Tab: 3. Photos -->
-          <div v-show="tabActive == 2">
+          <div v-show="tabActive == 2" v-if="siteToEdit.id">
             <SitesViewEditPhotos :site="siteToEdit" />
           </div>
 
@@ -178,18 +183,37 @@ function onUpdateDetails(field) {
         </div>
 
         <!-- Buttons -->
-        <div class="mb-2 mt-4 flex justify-around">
-          <MyButton @click="tabActive--" color="bg-slate-600" :disabled="tabActive == 0">
-            <FontAwesomeIcon icon="arrow-left" />
-          </MyButton>
-          <MyButton @click="$emit('onClose')" color="bg-slate-600"> Close </MyButton>
-          <MyButton
-            @click="tabActive++"
-            color="bg-slate-600"
-            :disabled="tabActive == tabTitles.length - 1 || siteToEdit.id == ''"
-          >
-            <FontAwesomeIcon icon="arrow-right" />
-          </MyButton>
+        <div class="pt-2">
+          <div class="text-center text-red-700 mb-2">
+            <!-- Button: OnReadyToBeApproved -->
+            <MyButton
+              @click="onReadyToBeApproved"
+              :disabled="siteToEdit.id == ''"
+              color="bg-orange-600"
+              >Ready to be Approved</MyButton
+            >
+            <div>
+              This Site is being created by <span class="font-semibold">{{ corp.Short }}</span>
+            </div>
+          </div>
+
+          <!-- Navigation Buttons -->
+          <div class="my-1 flex justify-around">
+            <!-- Left -->
+            <MyButton @click="tabActive--" color="bg-slate-600" :disabled="tabActive == 0">
+              <FontAwesomeIcon icon="arrow-left" />
+            </MyButton>
+            <!-- Close -->
+            <MyButton @click="$emit('onClose')" color="bg-slate-600"> Close </MyButton>
+            <!-- Right -->
+            <MyButton
+              @click="tabActive++"
+              color="bg-slate-600"
+              :disabled="tabActive == tabTitles.length - 1 || siteToEdit.id == ''"
+            >
+              <FontAwesomeIcon icon="arrow-right" />
+            </MyButton>
+          </div>
         </div>
       </div>
     </MyModal>

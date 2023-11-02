@@ -4,11 +4,12 @@ import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 import MyModal from '@/components/MyModal.vue'
 import { useGeneralStore } from '@/stores/general'
 import { useCollection, useFirestore } from 'vuefire'
-import { computed, ref } from 'vue'
-import { collection, orderBy, query, where } from 'firebase/firestore'
+import { computed, ref, toRefs } from 'vue'
+import { arrayUnion, collection, doc, orderBy, query, updateDoc, where } from 'firebase/firestore'
 
 defineEmits(['onClose', 'onUpdate'])
-defineProps({ showModal: Boolean })
+const props = defineProps({ showModal: Boolean, corpId: String })
+const { corpId} = toRefs(props)
 
 const db = useFirestore()
 const store = useGeneralStore()
@@ -23,6 +24,15 @@ const querySites = computed(() =>
 
 const siteSelected = ref({})
 const items = useCollection(querySites)
+
+function addSite() {
+  updateDoc(doc(db, 'Corporations', corpId.value), {
+    SiteIds: arrayUnion(siteSelected.value.id)
+  })
+  updateDoc(doc(db, 'Sites', siteSelected.value.id), {
+    CorpIds: arrayUnion(corpId.value)
+  })
+}
 </script>
 
 <template>
@@ -37,7 +47,7 @@ const items = useCollection(querySites)
           itemsLabel="Name"
           v-model="siteSelected"
         ></MySelectAuto>
-        <MyButton v-if="siteSelected.id">Add Site</MyButton>
+        <MyButton v-if="siteSelected.id" @click="addSite">Add Site</MyButton>
       </div>
       <!-- Buttons -->
       <div class="mb-8 flex justify-center">

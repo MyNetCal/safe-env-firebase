@@ -11,6 +11,7 @@ import { firebaseApp } from '@/firebase.js'
 
 import { library } from '@fortawesome/fontawesome-svg-core'
 import { FontAwesomeIcon, FontAwesomeLayers } from '@fortawesome/vue-fontawesome'
+
 import {
   faUserSecret,
   faInfoCircle,
@@ -65,7 +66,9 @@ import {
   faCaretRight,
   faArrowRight,
   faArrowLeft,
-  faMagnifyingGlass
+  faMagnifyingGlass,
+  faChild,
+  faFileArrowUp
 } from '@fortawesome/free-solid-svg-icons'
 import { faWindowClose, faCheckSquare, faSquare } from '@fortawesome/free-regular-svg-icons'
 
@@ -128,7 +131,9 @@ library.add(
   faCaretRight,
   faArrowRight,
   faArrowLeft,
-  faMagnifyingGlass
+  faMagnifyingGlass,
+  faChild,
+  faFileArrowUp
 )
 
 const app = createApp(App)

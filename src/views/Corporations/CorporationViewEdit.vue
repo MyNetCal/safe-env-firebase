@@ -77,12 +77,34 @@
           </div>
         </div>
 
-        <!-- Branch -->
-        <div class="flex"></div>
+       <!-- Groups -->
+        <div class="mt-3">
+          <div class="text-xs text-slate-600">Group Activities</div>
+          <div class="flex place-content-center justify-start gap-2">
+              <MyInputText v-model="inputGroup" @onKeyEnter="addGroup" />
+              <MyButton @click="addGroup">New</MyButton>
+            </div>
+            <div class="min-h-[52px] rounded border bg-white p-1">
+              <div class="flex flex-wrap gap-2">
+                <template v-for="group in dataToEdit.ActivityGroups" :key="group">
+                  <div
+                    class="flex  rounded border pl-2 text-sm bg-stone-200 text-slate-700"
+                  >
+                    <div class="py-1">{{ group }}</div>
+                    <div
+                      class="ml-2 p-1 cursor-pointer hover:bg-stone-300 rounded"
+                      @click="removeFromNewGroups(group)"
+                    >
+                      <FontAwesomeIcon icon="trash" />
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+        </div>
 
         <!-- Buttons -->
         <div class="mb-20 mt-8 flex justify-center">
-          <MyButton @delete="onDelete" color="bg-red-600"> Delete </MyButton>
           <MyButton @click="$emit('onClose')" color="bg-yellow-600"> Close </MyButton>
           <MyButton @click="onSave" color="bg-green-600"> Save </MyButton>
         </div>
@@ -132,6 +154,19 @@ const store = useGeneralStore()
 const activities = computed(() => store.activities)
 const entities = store.entities
 const storage = useFirebaseStorage()
+
+const inputGroup = ref('')
+
+function addGroup() {
+  dataToEdit.value.ActivityGroups.push(inputGroup.value)
+  inputGroup.value = ''
+}
+
+function removeFromNewGroups(group) {
+  let index =dataToEdit.value.ActivityGroups.indexOf(group)
+  dataToEdit.value.ActivityGroups.splice(index, 1)
+}
+
 
 const percentage = ref(0)
 const isLoading = ref(false)
@@ -306,7 +341,7 @@ function onOpenModal() {
           Consent: true
         }
       },
-      ...rowSelected.value
+      ...JSON.parse(JSON.stringify(rowSelected.value))  
     }
   }
   getCodeOfConductFile()
@@ -325,11 +360,6 @@ const isErrorShort = computed(() => {
 })
 
 const isAllValid = computed(() => !isErrorName.value.formula && !isErrorShort.value.formula)
-
-function onDelete() {
-  console.log('Deleteing')
-  emit('onUpdate')
-}
 
 function onSave() {
   if (id.value != '0') {

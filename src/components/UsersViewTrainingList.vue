@@ -125,7 +125,7 @@ function openFileDiologAndUpload(id) {
             <div class="date-grid h-full">
               <div class="text-sm">Completed on</div>
               <div v-if="trainingCompletedById[row.idTitle]" class="font-semibold flex place-items-center justify-center">
-                {{ dayjs(trainingCompletedById[row.idTitle][row.idTitle.length -1]?.date).format('MMM D, YYYY') }}
+                {{ dayjs(trainingCompletedById[row.idTitle].at(-1)?.date).format('MMM D, YYYY') }}
               </div>
               <div v-else><FontAwesomeIcon icon="pen" /></div>
               <div class="text-xs">[{{ row.Complete }} days]</div>

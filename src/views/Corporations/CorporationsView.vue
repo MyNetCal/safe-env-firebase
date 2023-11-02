@@ -37,7 +37,7 @@ import MyTable from '@/components/MyTable.vue'
 import MyFab from '@/components/MyFab.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import MyInputBranch from '@/components/MyInputs/MyInputBranch.vue'
-import CorporationViewEdit from './CorporationViewEdit.vue'
+import CorporationViewEdit from '../Corporations/CorporationViewEdit.vue'
 
 import { useFirestore, useCollection } from 'vuefire'
 import { collection, orderBy, query } from 'firebase/firestore'

@@ -122,19 +122,19 @@
       </div>
       <!-- Menu: Participants -->
       <div
-        @click="goto('/')"
-        class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
+        @click="goto('/participants')"
+        class="flex cursor-pointer place-items-center rounded p-2 pl-2 text-slate-700 hover:bg-slate-400"
       >
-        <FontAwesomeIcon icon="children" />
-        <div class="ml-6 whitespace-nowrap line-through">Participants</div>
+        <FontAwesomeIcon icon="child" size="lg" />
+        <div class="ml-6 whitespace-nowrap">Participants</div>
       </div>
       <!-- Menu: Activities -->
       <div
-        @click="goto('/')"
+        @click="goto('/activities')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-2 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="puzzle-piece" />
-        <div class="ml-6 whitespace-nowrap line-through">Activities</div>
+        <div class="ml-6 whitespace-nowrap">Activities</div>
       </div>
       <!-- Abuse Report -->
       <div

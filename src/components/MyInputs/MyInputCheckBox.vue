@@ -12,6 +12,7 @@
         tabindex="0"
         :value="modelValue"
         @click="onClick"
+        true-value="trueValue"
         placeholder="Regular Input"
         class="flex h-9 w-min place-items-center justify-center rounded border-none bg-white px-2 shadow outline-none hover:shadow-md focus:outline-none focus:ring-0 active:shadow-inner"
         :class="{
@@ -22,7 +23,7 @@
         <font-awesome-icon
           :icon="['far', 'check-square']"
           size="lg"
-          v-if="modelValue"
+          v-if="modelValue == trueValue"
         ></font-awesome-icon>
         <font-awesome-icon :icon="['far', 'square']" size="lg" v-else></font-awesome-icon>
       </div>
@@ -40,7 +41,7 @@ import MyInfoModal from './MyInfoModal.vue'
 export default {
   components: { MyInfoModal },
   props: {
-    modelValue: Boolean,
+    modelValue: {},
     label: String,
     isError: {
       type: Object,
@@ -50,7 +51,9 @@ export default {
     },
     info: { type: Boolean, default: false },
     infoTitle: { type: String, default: '' },
-    disable: { type: Boolean, default: false }
+    disable: { type: Boolean, default: false },
+    trueValue: { default: true },
+    falseValue: { default: false }
   },
   emits: ['update:modelValue'],
   data() {
@@ -59,7 +62,7 @@ export default {
   methods: {
     onClick() {
       if (!this.disable) {
-        this.$emit('update:modelValue', !this.modelValue)
+        this.$emit('update:modelValue', !(this.modelValue == this.trueValue) ? this.trueValue : this.falseValue)
       }
     }
   }

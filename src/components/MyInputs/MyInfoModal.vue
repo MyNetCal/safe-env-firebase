@@ -35,7 +35,7 @@ export default {
     label: { type: String, default: '' },
     info: { type: Boolean, default: false },
     infoTitle: { type: String, default: '' },
-    colorModal: { type: String, default: 'green' } // TODO No working yet...
+    colorModal: { type: String, default: 'green' } // No working yet...
   },
   data() {
     return { showInfo: false, showInfoClick: false }

@@ -2,15 +2,21 @@
   <div>
     <MyModal
       :showModal="showModal"
-      :title="userCorp.Status == store.USER_STATUS_PENDING ? store.USER_STATUS_PENDING : 'APPROVED'"
+      :title="
+        userCorp.Status == store.USER_STATUS_PENDING
+          ? userCorp.UserData.Nickname +
+            ' ' +
+            userCorp.UserData.LastName +
+            ' - ' +
+            store.USER_STATUS_PENDING
+          : userCorp.UserData.Nickname + ' ' + userCorp.UserData.LastName + ' - ' + 'APPROVED'
+      "
       @onClose="$emit('onClose')"
       @onOpenModal="onOpenModal()"
     >
       <div v-if="votesNeededFromCorp && votesNeededFromPrelature" class="text-slate-700">
         <div class="mb-6 text-center">
-          <h2 class="mb-3 mt-1">
-            {{ userCorp.UserData.Nickname }} {{ userCorp.UserData.LastName }}
-          </h2>
+          <h2 class="mb-3 mt-1">Votes</h2>
 
           <!-- Loop -->
           <div class="grid-container mx-auto w-fit text-left">
@@ -75,6 +81,7 @@
 
         <!-- Totals -->
         <div class="mx-auto w-fit">
+          <!-- Total Votes from Corporation -->
           <div class="mb-1">
             <FontAwesomeIcon
               :icon="totVotesOther >= votesNeededFromCorp ? 'check' : 'times'"
@@ -94,7 +101,14 @@
               {{ totVotesOther }} / {{ votesNeededFromCorp }}
             </span>
           </div>
-          <div v-if="userCorp.Entity == store.ENTITY_PRELATURE" class="mb-1">
+
+          <!-- Total Votes from Prelature -->
+          <div
+            v-if="
+              userCorp.Entity == store.ENTITY_PRELATURE && userCorp.CorporationName != 'Prelature'
+            "
+            class="mb-1"
+          >
             <FontAwesomeIcon
               :icon="totVotesPrelature >= votesNeededFromPrelature ? 'check' : 'times'"
               :class="[
@@ -116,14 +130,25 @@
             </span>
             <span class="font-semibold"> </span>
           </div>
+
+          <!-- Vote from SEC Prelature -->
           <div v-if="userCorp.Entity == store.ENTITY_PRELATURE">
             <FontAwesomeIcon
-              :icon="voteFromSFC ? 'check' : 'times'"
-              :class="[voteFromSFC ? 'text-green-700' : 'text-red-700']"
+              :icon="voteFromSFCPrelature ? 'check' : 'times'"
+              :class="[voteFromSFCPrelature ? 'text-green-700' : 'text-red-700']"
               class="w-6"
             />
-
             Vote from the Prelature Safe Environment Coordinator
+          </div>
+
+          <!-- Vote from SEC Corporation -->
+          <div v-if="userCorp.CorporationName != 'Prelature'">
+            <FontAwesomeIcon
+              :icon="voteFromSFCCorporation ? 'check' : 'times'"
+              :class="[voteFromSFCCorporation ? 'text-green-700' : 'text-red-700']"
+              class="w-6"
+            />
+            Vote from {{ userCorp.CorporationName }} Safe Environment Coordinator
           </div>
         </div>
 
@@ -201,25 +226,29 @@ const dataVotesUsers = ref([])
 const dataVotesCorps = ref([])
 const totVotesPrelature = ref(0)
 const totVotesOther = ref(0)
-const voteFromSFC = ref(false)
+const voteFromSFCPrelature = ref(false)
+const voteFromSFCCorporation = ref(false)
 const alreadyVoted = ref(false)
+
 watch(
   () => userCorp.value.ApprovedBy,
   (nv) => {
     if (!nv) {
       totVotesPrelature.value = 0
       totVotesOther.value = 0
-      voteFromSFC.value = false
+      voteFromSFCPrelature.value = false
+      voteFromSFCCorporation.value = false
       alreadyVoted.value = false
       return
     }
     totVotesPrelature.value = 0
     totVotesOther.value = 0
-    voteFromSFC.value = false
+    voteFromSFCPrelature.value = false
+    voteFromSFCCorporation.value = false
     alreadyVoted.value = false
     nv.forEach((el, index) => {
       if (el.isSEC) {
-        voteFromSFC.value = true
+        voteFromSFCPrelature.value = true
       }
       if (el.idUserCorp == store.loginCurrentUsersCorporationsId) {
         alreadyVoted.value = true
@@ -228,9 +257,12 @@ watch(
       getDoc(doc(db, 'Corporations', el.idCorp)).then((d) => {
         dataVotesCorps.value[index] = d.data()
         if (d.data().Short == 'Prelature') {
+          voteFromSFCPrelature.value = voteFromSFCPrelature.value || el.isSEC
           totVotesPrelature.value++
-        } else {
+        }
+        if (d.data().Short != 'Prelature' || userCorp.value.CorporationName == 'Prelature') {
           totVotesOther.value++
+          voteFromSFCCorporation.value = voteFromSFCCorporation.value || el.isSEC
         }
       })
     })
@@ -241,7 +273,7 @@ watch(
 const hasAllVotesNeeded = computed(
   () =>
     totVotesOther.value >= votesNeededFromCorp.value &&
-    ((totVotesPrelature.value >= votesNeededFromPrelature.value && voteFromSFC.value) ||
+    ((totVotesPrelature.value >= votesNeededFromPrelature.value && voteFromSFCPrelature.value) ||
       userCorp.value.Entity == store.ENTITY_PARTY)
 )
 

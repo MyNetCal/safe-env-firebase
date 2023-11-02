@@ -26,8 +26,12 @@
 
                 <!-- Center Header: Name -->
                 <div
-                  class="flex min-w-[160px] grow cursor-pointer rounded place-items-center"
-                  :class="[userIsAllSet(p) ? 'bg-emerald-100 hover:bg-emerald-300' : 'bg-stone-100 hover:bg-stone-300']"
+                  class="flex min-w-[160px] grow cursor-pointer place-items-center rounded"
+                  :class="[
+                    userIsAllSet(p)
+                      ? 'bg-emerald-100 hover:bg-emerald-300'
+                      : 'bg-stone-100 hover:bg-stone-300'
+                  ]"
                   @click="editUserInfo(p)"
                 >
                   <h3 class="font-semibold">
@@ -68,7 +72,7 @@
                   Board
                   <!-- <FontAwesomeIcon :icon="p.Board ? ['far', 'check-square'] : ['far', 'square']" /> -->
                 </div>
-                <div v-if="p.Screening">
+                <div v-if="p.Screening && p.Role != 'Board' && !p.Board">
                   Screening
                   <!-- <FontAwesomeIcon
                     :icon="p.Screening ? ['far', 'check-square'] : ['far', 'square']"
@@ -161,7 +165,6 @@
       <FontAwesomeIcon icon="user-plus" />
     </MyFab>
   </div>
-  <div class="flex h-full justify-between"></div>
 </template>
 
 <script setup>
@@ -170,15 +173,15 @@ import MyFab from '@/components/MyFab.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { useCollection, useDocument, useFirestore } from 'vuefire'
 import { collection, doc, query, where } from 'firebase/firestore'
-import UsersViewAdd from './UsersViewAdd.vue'
+import UsersViewAdd from '../Users/UsersViewAdd.vue'
 import { useGeneralStore } from '@/stores/general'
-import UsersViewScreening from './UsersViewScreening.vue'
-import UsersViewTrainning from './UsersViewTrainning.vue'
+import UsersViewScreening from '../Users/UsersViewScreening.vue'
+import UsersViewTrainning from '../Users/UsersViewTrainning.vue'
 import MySelectCorporation from '@/components/MySelect/MySelectCorporation.vue'
 import { storeToRefs } from 'pinia'
 import UserAndCorpEdit from '@/components/UserAndCorpEdit.vue'
 import { initUserCorp, getUsersByCorp } from '@/stores/datadb'
-import UsersViewVote from './UsersViewVote.vue'
+import UsersViewVote from '../Users/UsersViewVote.vue'
 
 const db = useFirestore()
 const store = useGeneralStore()

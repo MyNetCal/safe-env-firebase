@@ -48,13 +48,13 @@
   }
 
   .tab {
-    @apply bg-slate-200 grow w-16 cursor-pointer rounded-t-md px-5 py-3 border shadow;
+    @apply bg-slate-200 text-slate-600 grow w-16 cursor-pointer rounded-t-md px-5 py-3 border shadow;
   }
   .tab:hover {
     @apply bg-slate-500 text-slate-50;
   }
   .tab-active {
-    @apply bg-slate-700 text-slate-50;
+    @apply bg-slate-600 text-slate-50;
   }
   .tab-active:hover {
     @apply bg-slate-700

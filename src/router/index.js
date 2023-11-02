@@ -14,17 +14,17 @@ const router = createRouter({
     {
       path: '/corporations',
       name: 'corporations',
-      component: () => import('../views/CorporationsView.vue')
+      component: () => import('../views/Corporations/CorporationsView.vue')
     },
     {
       path: '/personnel',
       name: 'personnel',
-      component: () => import('../views/UsersView.vue')
+      component: () => import('../views/Users/UsersView.vue')
     },
     {
       path: '/personnel-edit',
       name: 'personnel-edit',
-      component: () => import('../views/UsersViewAdd.vue')
+      component: () => import('../views/Users/UsersViewAdd.vue')
     },
     {
       path: '/training',
@@ -55,7 +55,19 @@ const router = createRouter({
     {
       path: '/Sites',
       name: 'Sites',
-      component: () => import('../views/SitesView.vue'),
+      component: () => import('../views/Sites/SitesView.vue'),
+      props: true
+    },
+    {
+      path: '/participants',
+      name: 'Participants',
+      component: () => import('../views/Participants/ParticipantsView.vue'),
+      props: true
+    },
+    {
+      path: '/activities',
+      name: 'Activities',
+      component: () => import('../views/Activities/ActivitiesView.vue'),
       props: true
     }
   ]

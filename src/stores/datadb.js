@@ -124,7 +124,8 @@ function initUserCorp(user, corp) {
     UserData: initUser(user),
     SEC: false,
     id: '',
-    ApprovedBy: []
+    ApprovedBy: [],
+    ActivityGroups: []
   }
 }
 
@@ -257,16 +258,12 @@ function getUsersByCorp(personnel, triggers, conds) {
     const q = query(collection(db, 'UsersCorporations'), ...aQuery)
 
     unsubUserCorp = onSnapshot(q, { includeMetadataChanges: true }, (querySnapshot) => {
-      console.log('Starting onSnapshot. Is from Cache:', querySnapshot.metadata.fromCache)
-
-      console.log('Total records: ', querySnapshot.size)
-
+      //console.log('Starting onSnapshot. Is from Cache:', querySnapshot.metadata.fromCache)
+      //console.log('Total records: ', querySnapshot.size)
       count.value = 0
-
       querySnapshot.docChanges().forEach((change) => {
         // The userCoporation has been modified
         if (change.type == 'modified') {
-          console.log('The userCoporation has been modified')
           const index = personnel.value.findIndex((el) => el.id == change.doc.id)
           if (index >= 0) {
             const data = change.doc.data()
@@ -278,7 +275,6 @@ function getUsersByCorp(personnel, triggers, conds) {
             }
             const u = onSnapshot(change.doc.data().UserRef, (res) => {
               const index = personnel.value.findIndex((el) => el.UserId == res.id)
-              console.log('*** Listener Changed: ', res.id)
               personnel.value[index].UserData = res.data()
               personnel.value[index].UserData.id = res.data().id
               console.log('All new record attached to Array Index: ', data)
@@ -294,7 +290,6 @@ function getUsersByCorp(personnel, triggers, conds) {
           personnel.value.push(data)
           const u = onSnapshot(change.doc.data().UserRef, (res) => {
             const index = personnel.value.findIndex((el) => el.UserId == res.id)
-            console.log('*** Listener Added: ', res.id)
             personnel.value[index].UserData = res.data()
             personnel.value[index].UserData.id = res.data().id
             const allLoaded = personnel.value.every((el) => el.UserData.id)
@@ -357,13 +352,38 @@ function initSite(site) {
     Address: '',
     Notes: '',
     CheckList: [], // Array of Objects: { Task: '', Comments: ''}
-    Arquitecture: '',
     Photos: [],
     Lodging: '',
     Bathroom: '',
     Monitoring: '',
     Branch: store.loginUser.Branch, // values: men, women, both
+    ApprovedBy: [],
+    Status: 'In Review', // Status: ['In Review'|'Waiting Approval'|'Approved']
+    CreatedByUser: '',
+    CreatedByCorp: '',
     ...newSite
+  }
+}
+
+// ****************
+// Participants
+// ****************
+function initParticipant(participant = {}) {
+  const newPart = JSON.parse(JSON.stringify(participant))
+  return {
+    id:'',
+    Name: '',
+    LastName: '',
+    Nickname: '',
+    DOB: '',
+    Email: '',
+    Phone: '',
+    Plan: {FileName: '', Description: ''},
+    Consent: {FileName: '', Description: ''},
+    Active: true,
+    ActivityGroups: [],
+    Corps: [],
+    ...newPart
   }
 }
 
@@ -380,5 +400,6 @@ export {
   saveUserTraining,
   deleteUserTraining,
   getUsersByCorp,
-  initSite
+  initSite,
+  initParticipant
 }
