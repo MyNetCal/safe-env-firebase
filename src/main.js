@@ -68,7 +68,12 @@ import {
   faArrowLeft,
   faMagnifyingGlass,
   faChild,
-  faFileArrowUp
+  faFileArrowUp,
+  faFilter,
+  faSpinner,
+  faArrowUpFromBracket,
+  faUpLong,
+  faDownLong
 } from '@fortawesome/free-solid-svg-icons'
 import { faWindowClose, faCheckSquare, faSquare } from '@fortawesome/free-regular-svg-icons'
 
@@ -133,7 +138,12 @@ library.add(
   faArrowLeft,
   faMagnifyingGlass,
   faChild,
-  faFileArrowUp
+  faFileArrowUp,
+  faFilter,
+  faSpinner,
+  faArrowUpFromBracket,
+  faUpLong,
+  faDownLong
 )
 
 const app = createApp(App)

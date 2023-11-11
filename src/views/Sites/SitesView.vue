@@ -23,7 +23,7 @@ const tabActive = ref(0)
 const tabLabels = [
   { label: 'Approved', icon: 'thumbs-up' },
   { label: 'Pending Approval', icon: 'check-to-slot' },
-  { label: 'In Review', icon: 'pen' }
+  { label: 'Draft', icon: 'pen' }
 ]
 
 const siteToEdit = ref({})

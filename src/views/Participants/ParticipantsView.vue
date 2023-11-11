@@ -29,7 +29,7 @@ function editParticipant(id) {
 // Getting list of Participants
 // ****************************
 const particiapntsRef = computed(() =>
-  query(collection(db, 'Participants'), where('Corps', 'array-contains', currentCorpId.value))
+  query(collection(db, 'Participants'), where('CorpId', '==', currentCorpId.value))
 )
 
 const participants = ref([])
@@ -111,14 +111,6 @@ onUnmounted(() => {
       <FontAwesomeLayers>
         <FontAwesomeIcon icon="child" transform="left-2 down-4" size="2xl" />
         <FontAwesomeIcon icon="plus" transform="up-12 right-8" size="lg" />
-      </FontAwesomeLayers>
-    </MyFab>
-
-    <!-- Search Icon -->
-    <MyFab class="!bottom-20 !right-[70px] bg-green-600" disabled>
-      <FontAwesomeLayers>
-        <FontAwesomeIcon icon="magnifying-glass" size="2xl" transform="left-3 down-1" />
-        <FontAwesomeIcon icon="plus" />
       </FontAwesomeLayers>
     </MyFab>
 

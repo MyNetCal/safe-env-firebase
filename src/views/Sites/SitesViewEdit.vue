@@ -184,7 +184,7 @@ function onReadyToBeApproved() {
 
         <!-- Buttons -->
         <div class="pt-2">
-          <div class="text-center text-red-700 mb-2">
+          <div class="mb-2 text-center text-red-700">
             <!-- Button: OnReadyToBeApproved -->
             <MyButton
               @click="onReadyToBeApproved"
@@ -200,19 +200,23 @@ function onReadyToBeApproved() {
           <!-- Navigation Buttons -->
           <div class="my-1 flex justify-around">
             <!-- Left -->
-            <MyButton @click="tabActive--" color="bg-slate-600" :disabled="tabActive == 0">
-              <FontAwesomeIcon icon="arrow-left" />
-            </MyButton>
+            <div v-if="tabActive != 0" class="w-12">
+              <MyButton @click="tabActive--" color="bg-slate-600">
+                <FontAwesomeIcon icon="arrow-left" />
+              </MyButton>
+            </div>
+            <div v-else class="w-12"></div>
+
             <!-- Close -->
             <MyButton @click="$emit('onClose')" color="bg-slate-600"> Close </MyButton>
+
             <!-- Right -->
-            <MyButton
-              @click="tabActive++"
-              color="bg-slate-600"
-              :disabled="tabActive == tabTitles.length - 1 || siteToEdit.id == ''"
-            >
-              <FontAwesomeIcon icon="arrow-right" />
-            </MyButton>
+            <div v-if="tabActive < tabTitles.length - 1 && siteToEdit.id != ''" class="w-12">
+              <MyButton @click="tabActive++" color="bg-slate-600">
+                <FontAwesomeIcon icon="arrow-right" />
+              </MyButton>
+            </div>
+            <div v-else class="w-12"></div>
           </div>
         </div>
       </div>

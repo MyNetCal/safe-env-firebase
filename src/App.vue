@@ -132,6 +132,17 @@ function logout() {
   grid-area: sidebar;
   max-height: calc(100vh - 24px);
 }
+
+.app-layout-header {
+  grid-area: header;
+}
+
+.app-layout-content {
+  grid-area: content;
+  width: calc(100vw - 2px);
+  max-height: calc(100vh - 36px - 24px);
+  overflow: hidden;
+}
 @media (min-width: 640px) {
   .app-layout-grid {
     grid-template-columns: [panel] 40px [main] 1fr [end];
@@ -144,16 +155,12 @@ function logout() {
     grid-area: sidebar;
     max-height: calc(100vh - 36px - 24px);
   }
-}
-.app-layout-header {
-  grid-area: header;
-}
-
-.app-layout-content {
+  .app-layout-content {
   grid-area: content;
   width: calc(100vw - 40px);
   max-height: calc(100vh - 36px - 24px);
   overflow: hidden;
+}
 }
 .app-layout-footer {
   grid-area: footer;

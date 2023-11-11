@@ -7,7 +7,7 @@ import { useCollection, useFirestore } from 'vuefire'
 import { computed, ref, toRefs } from 'vue'
 import { arrayUnion, collection, doc, orderBy, query, updateDoc, where } from 'firebase/firestore'
 
-defineEmits(['onClose', 'onUpdate'])
+const emits = defineEmits(['onClose', 'onUpdate'])
 const props = defineProps({ showModal: Boolean, corpId: String })
 const { corpId} = toRefs(props)
 
@@ -18,6 +18,7 @@ const querySites = computed(() =>
   query(
     collection(db, 'Sites'),
     where('Branch', 'in', [store.loginUser.Branch, 'both']),
+    where('Status', '==', 'Approved'),
     orderBy('Name')
   )
 )
@@ -32,6 +33,7 @@ function addSite() {
   updateDoc(doc(db, 'Sites', siteSelected.value.id), {
     CorpIds: arrayUnion(corpId.value)
   })
+  emits("onClose")
 }
 </script>
 

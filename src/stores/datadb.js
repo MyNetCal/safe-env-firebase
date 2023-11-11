@@ -382,8 +382,29 @@ function initParticipant(participant = {}) {
     Consent: {FileName: '', Description: ''},
     Active: true,
     ActivityGroups: [],
-    Corps: [],
+    CorpId: '',
     ...newPart
+  }
+}
+
+// *******************
+// Activities
+// *******************
+function initActivity(act = {}) {
+  const newAct = JSON.parse(JSON.stringify(act))
+  return {
+    id: '',
+    Starts: '',
+    Ends: '',
+    Title: '',
+    Comments: '',
+    Site: '',
+    Checklist: [],
+    Staff: [],
+    Participants: [],
+    Corporation: '',
+    Status: 'In Progress', // In Progress || Completed
+    ...newAct
   }
 }
 
@@ -401,5 +422,6 @@ export {
   deleteUserTraining,
   getUsersByCorp,
   initSite,
-  initParticipant
+  initParticipant,
+  initActivity
 }

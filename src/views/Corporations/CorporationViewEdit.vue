@@ -2,111 +2,132 @@
   <div>
     <MyModal
       :showModal="showModal"
-      title="Sponsoring Entity"
-      maxWidth="max-w-md"
+      title="Corporation"
+      maxWidth="max-w-2xl"
       @onClose="$emit('onClose')"
       @onOpenModal="onOpenModal()"
     >
       <div class="w-full flex-col">
-        <!-- Red Dot -->
-        <div class="mb-12 mt-5 flex justify-end">
-          <FontAwesomeIcon :color="isAllValid ? 'green' : 'red'" icon="circle" />
-        </div>
-
         <!--Name, Short -->
-        <div class="flex gap-x-2">
-          <MyInputText label="Name" class="grow" v-model="dataToEdit.Name" :isError="isErrorName">
+        <div class="mt-4 flex gap-x-2">
+          <MyInputText
+            label="Full Name"
+            class="grow"
+            v-model="dataToEdit.Name"
+            :isError="isErrorName"
+          >
           </MyInputText>
-          <MyInputText label="Short" v-model="dataToEdit.Short" :isError="isErrorShort">
+          <MyInputText label="Short Name" v-model="dataToEdit.Short" :isError="isErrorShort">
           </MyInputText>
-        </div>
-
-        <div class="flex w-full gap-x-2">
-          <MySelectAuto
-            v-model="activitiesSelected"
-            label="Activities"
-            info
-            infoTitle="List of Activities"
-            :items="activities"
-            items-key="id"
-            items-label="Name"
-            isMultiple
-            >Check all the activities sponsor by this coorporation
-          </MySelectAuto>
-        </div>
-
-        <div class="flex gap-x-2">
-          <div class="grow">
+          <div>
             <MySelectAuto
               v-model="dataToEdit.Entity"
               label="Entity"
               :items="entities"
             ></MySelectAuto>
           </div>
-          <div>
-            <MyInputBranch label="Branch" class="ml-2" v-model="dataToEdit.Branch"></MyInputBranch>
-          </div>
         </div>
 
-        <div class="mt-3 flex place-items-center">
-          <div class="mr-2 w-60">Code of conduct</div>
+        <!-- Activities -->
+        <div class="mt-5">
+          <div class="text-xs text-slate-600">
+            Activities [Check all the activities sponsor by this coorporation]
+          </div>
           <div
-            v-if="codeOfConductFileName"
-            class="cursor-pointer rounded px-2 py-1 hover:bg-slate-300"
-            @click="deleteFile()"
+            class="min-h-[52px] rounded border-0 bg-slate-100 p-1 outline-none ring-1 ring-slate-300 hover:shadow-md hover:ring-slate-400"
           >
-            <FontAwesomeIcon icon="trash" class="text-slate-600" />
-          </div>
-          <FontAwesomeIcon
-            v-else
-            icon="cloud-arrow-up"
-            class="cursor-pointer rounded bg-slate-300 p-2 hover:bg-slate-600 hover:text-slate-50"
-            @click="openFileDiologAndUpload()"
-          />
-
-          <!-- File Icon and Name -->
-          <div class="ml-1 min-h-[28px] w-full rounded border bg-white shadow">
-            <div
-              class="m-1 flex grow cursor-pointer place-items-center rounded bg-blue-200 p-1 text-sm hover:bg-blue-300"
-              @click="downloadFile"
-              v-if="codeOfConductFileName"
-            >
-              <FontAwesomeIcon icon="file-archive" />
-              <div class="ml-2">{{ codeOfConductFileName }}</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Groups -->
-        <div class="mt-3">
-          <div class="text-xs text-slate-600">Group Activities</div>
-          <div class="flex place-content-center justify-start gap-2">
-            <MyInputText v-model="inputGroup" @onKeyEnter="addGroup" />
-            <MyButton @click="addGroup" class="bg-stone-600" :disabled="inputGroup.length == 0"
-              >Add New Group</MyButton
-            >
-          </div>
-          <div class="min-h-[52px] rounded border bg-white p-1">
-            <div class="flex flex-wrap gap-2">
-              <template v-for="group in dataToEdit.ActivityGroups" :key="group">
-                <div class="flex rounded border bg-stone-200 pl-2 text-sm text-slate-700">
-                  <div class="py-1">{{ group }}</div>
-                  <div
-                    class="ml-2 cursor-pointer rounded p-1 hover:bg-stone-300"
-                    @click="removeFromNewGroups(group)"
-                  >
-                    <FontAwesomeIcon icon="trash" />
-                  </div>
+            <div class="flex flex-wrap gap-1">
+              <template v-for="(act, index) in activities" :key="act.id">
+                <div
+                  class="flex w-[158px] cursor-pointer rounded border px-1.5 text-sm"
+                  :class="[
+                    dataToEdit.Activities.includes(act.id)
+                      ? 'bg-orange-300 text-slate-900'
+                      : 'bg-stone-200  text-slate-700'
+                  ]"
+                  @click="toggleActivities(act.id)"
+                >
+                  <div class="py-1">{{ index + 1 }}. {{ act.Name }}</div>
                 </div>
               </template>
             </div>
           </div>
         </div>
 
+        <!-- Code of Conduct -->
+        <div class="mt-5">
+          <div class="text-xs text-slate-600">Code of Conduct Document</div>
+          <div
+            class="flex w-fit place-items-center rounded border-0 bg-slate-200 outline-none ring-1 ring-slate-300 hover:shadow-md hover:ring-slate-400"
+          >
+            <FontAwesomeIcon
+              icon="file-arrow-up"
+              class="cursor-pointer bg-stone-300 px-5 py-2 text-stone-700"
+              size="lg"
+              @click="openFileDiologAndUpload()"
+            />
+            <div v-if="!codeOfConductFileName" class="mx-12 text-sm text-slate-500">
+              No file uploaded
+            </div>
+            <div v-else class="flex place-items-center bg-slate-200 pl-3 text-sm">
+              <div
+                class="cursor-pointer py-2 text-blue-600 underline hover:text-blue-900"
+                @click="downloadFile"
+              >
+                {{ codeOfConductFileName }}
+              </div>
+
+              <FontAwesomeIcon
+                icon="times"
+                class="cursor-pointer px-3 py-2 text-stone-700"
+                size="lg"
+                @click="deleteFile()"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Groups -->
+        <div class="mt-5">
+          <div class="text-xs text-slate-600">Group Activities</div>
+          <div
+            class="relative min-h-[80px] rounded border-0 bg-slate-100 px-1 pb-5 pt-1 outline-none ring-1 ring-slate-300 over:shadow-md hover:ring-slate-400"
+          >
+            <div class="flex flex-wrap gap-1">
+              <template v-for="group in dataToEdit.ActivityGroups" :key="group">
+                <div
+                  class="flex w-[158px] justify-between rounded border bg-amber-300 pl-2 text-sm text-slate-900"
+                >
+                  <div class="py-1">{{ group }}</div>
+                  <div class="cursor-pointer rounded px-2 py-1" @click="removeFromNewGroups(group)">
+                    <FontAwesomeIcon icon="times" />
+                  </div>
+                </div>
+              </template>
+            </div>
+            <div class="absolute -bottom-6 right-0">
+              <div class="flex place-items-center opacity-70">
+                <input
+                  class="relative left-4 rounded border-2 border-amber-600 bg-white p-2 text-sm text-slate-900 hover:shadow-lg focus:outline-amber-700"
+                  v-model="inputGroup"
+                  @keyup.enter="addGroup"
+                />
+                <button
+                  class="hover:shadow-lgs right z-10 h-12 w-12 rounded-full bg-amber-700 px-4 py-2 text-xs font-bold uppercase text-white shadow-md outline-none transition-all duration-100 ease-linear hover:brightness-125 focus:outline-none active:shadow-inner active:brightness-75 disabled:cursor-not-allowed disabled:bg-gray-500/60 disabled:text-slate-200 disabled:shadow-none disabled:brightness-100"
+                  type="button"
+                  @click="addGroup"
+                >
+                  <FontAwesomeIcon icon="plus" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Buttons -->
-        <div class="mb-20 mt-8 flex justify-center">
-          <MyButton @click="$emit('onClose')" color="bg-yellow-600"> Close </MyButton>
-          <MyButton @click="onSave" color="bg-green-600"> Save </MyButton>
+        <div class="mb-6 mt-10 flex justify-center">
+          <MyButton @click="$emit('onClose')" color="bg-stone-600"> Close </MyButton>
+          <MyButton @click="onSave" color="bg-green-600" :disabled="!isAllValid"> Save </MyButton>
         </div>
         <!-- Loading -->
         <div class="absolute top-7 flex w-full place-items-center justify-center" v-if="isLoading">
@@ -131,7 +152,6 @@ import MyButton from '@/components/MyButton.vue'
 import { toRefs, ref, computed } from 'vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import MyInputBranch from '@/components/MyInputs/MyInputBranch.vue'
 import { useGeneralStore } from '@/stores/general'
 import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'
@@ -172,6 +192,12 @@ function removeFromNewGroups(group) {
 
 const percentage = ref(0)
 const isLoading = ref(false)
+
+function toggleActivities(id) {
+  const index = dataToEdit.value.Activities.indexOf(id)
+  index >= 0 ? dataToEdit.value.Activities.splice(index, 1) : dataToEdit.value.Activities.push(id)
+}
+
 function uploadPicture() {
   const data = files.value?.item(0)
   if (data) {
@@ -198,6 +224,7 @@ function uploadPicture() {
 }
 
 const codeOfConductFileName = ref('')
+
 function getCodeOfConductFile() {
   console.log('reading files: ', `Corporations/${dataToEdit.value.id}/Code`)
   const dirFiles = storageRef(storage, `Corporations/${dataToEdit.value.id}/Code`)
@@ -217,6 +244,7 @@ function getCodeOfConductFile() {
 }
 
 const { files, open, onChange } = useFileDialog()
+
 onChange(() => {
   uploadPicture()
 })
@@ -252,26 +280,6 @@ function downloadFile() {
       // Handle any errors
     })
 }
-
-const activitiesSelected = computed({
-  get() {
-    const a = []
-    activities.value.forEach((el) => {
-      if (dataToEdit.value.Activities.find((de) => de == el.id)) {
-        a.push(el)
-      }
-    })
-    return a
-  },
-  set(value) {
-    dataToEdit.value.Activities = []
-    activities.value.forEach((el) => {
-      if (value.find((v) => el.id == v.id)) {
-        dataToEdit.value.Activities.push(el.id)
-      }
-    })
-  }
-})
 
 const dataToEdit = ref({})
 
@@ -350,7 +358,7 @@ function onOpenModal() {
 }
 
 const isErrorName = computed(() => {
-  const formula = dataToEdit.value.Name.length < 2
+  const formula = dataToEdit.value.Name?.length < 2
   const label = 'No Valid'
   return { formula, label }
 })

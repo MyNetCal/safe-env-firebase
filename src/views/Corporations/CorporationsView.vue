@@ -65,19 +65,8 @@ const fieldsTable = [
     label: 'Short Name'
   },
   {
-    key: 'Activities',
-    label: 'Activities',
-    format: (cell) => {
-      return cell
-    }
-  },
-  {
     key: 'Entity',
     label: 'Entity'
-  },
-  {
-    key: 'Branch',
-    label: 'Branch'
   }
 ]
 

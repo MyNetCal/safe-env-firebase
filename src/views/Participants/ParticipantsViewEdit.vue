@@ -46,7 +46,7 @@ if (id.value == '') {
   docRef.value = doc(collection(db, 'Participants'))
   participant.value = initParticipant()
   participant.value.id = docRef.value.id
-  participant.value.Corps.push(corpId.value)
+  participant.value.CorpId = corpId.value
 } else {
   docRef.value = doc(db, 'Participants', id.value)
   unsubParticipant = onSnapshot(docRef.value, (res) => {
@@ -257,98 +257,126 @@ function downloadFile(dirFile) {
             <MyInputCheckBox v-model="participant.Active" label="Active" />
           </div>
 
-          <!-- Special Need Supervision Plan -->
-          <div class="mb-4">
+          <div class="mt-5">
             <MyInputTextArea
               v-model="participant.Plan.Description"
-              label="Special Need Supervision Plan"
+              label="Special Need Supervision Plan Descriptioin"
             />
-            <div class="flex rounded border bg-white shadow">
-              <div class="rounded-l border-r bg-slate-300">
+            <div class="text-xs text-slate-600">Special Need Supervision Plan Document</div>
+            <div
+              class="flex w-fit place-items-center rounded border-0 bg-slate-200 outline-none ring-1 ring-slate-300 hover:shadow-md hover:ring-slate-400"
+            >
+              <FontAwesomeIcon
+                icon="file-arrow-up"
+                class="cursor-pointer bg-stone-300 px-5 py-2 text-stone-700"
+                size="lg"
+                @click="openFileDiologAndUpload('Plan')"
+              />
+              <div v-if="!participant.Plan.FileName" class="mx-12 text-sm text-slate-500">
+                No file uploaded
+              </div>
+              <div v-else class="flex place-items-center bg-slate-200 pl-3 text-sm">
+                <div
+                  class="cursor-pointer py-2 text-blue-600 underline hover:text-blue-900"
+                  @click="downloadFile('Plan')"
+                >
+                  {{ participant.Plan.FileName }}
+                </div>
+
                 <FontAwesomeIcon
-                  icon="file-arrow-up"
-                  class="cursor-pointer rounded px-2 py-1 text-slate-500 hover:bg-slate-600 hover:text-slate-50"
-                  @click="openFileDiologAndUpload('Plan')"
-                />
-                <FontAwesomeIcon
-                  icon="trash"
-                  class="cursor-pointer rounded px-2 py-1 text-slate-500 hover:bg-slate-600 hover:text-slate-50"
+                  icon="times"
+                  class="cursor-pointer px-3 py-2 text-stone-700"
+                  size="lg"
                   @click="deleteFile($event, 'Plan')"
                 />
-              </div>
-              <div
-                class="ml-2 cursor-pointer px-2 py-1 text-sm text-blue-600 hover:text-blue-800"
-                @click="downloadFile('Plan')"
-              >
-                {{ participant.Plan.FileName }}
               </div>
             </div>
           </div>
 
           <!-- Phone call and text permission -->
-          <div class="mb-3">
-            <div class="text-xs text-slate-600">Phone call and text permission</div>
-            <div class="flex rounded border bg-white shadow">
-              <div class="rounded-l border-r bg-slate-300">
+          <div class="mt-5">
+            <div class="text-xs text-slate-600">Phone Call and Text Permission Document</div>
+            <div
+              class="flex w-fit place-items-center rounded border-0 bg-slate-200 outline-none ring-1 ring-slate-300 hover:shadow-md hover:ring-slate-400"
+            >
+              <FontAwesomeIcon
+                icon="file-arrow-up"
+                class="cursor-pointer bg-stone-300 px-5 py-2 text-stone-700"
+                size="lg"
+                @click="openFileDiologAndUpload('Consent')"
+              />
+              <div v-if="!participant.Consent.FileName" class="mx-12 text-sm text-slate-500">
+                No file uploaded
+              </div>
+              <div v-else class="flex place-items-center bg-slate-200 pl-3 text-sm">
+                <div
+                  class="cursor-pointer py-2 text-blue-600 underline hover:text-blue-900"
+                  @click="downloadFile('Consent')"
+                >
+                  {{ participant.Consent.FileName }}
+                </div>
+
                 <FontAwesomeIcon
-                  icon="file-arrow-up"
-                  class="cursor-pointer rounded px-2 py-1 text-slate-500 hover:bg-slate-600 hover:text-slate-50"
-                  @click="openFileDiologAndUpload('Consent')"
-                />
-                <FontAwesomeIcon
-                  icon="trash"
-                  class="cursor-pointer rounded px-2 py-1 text-slate-500 hover:bg-slate-600 hover:text-slate-50"
+                  icon="times"
+                  class="cursor-pointer px-3 py-2 text-stone-700"
+                  size="lg"
                   @click="deleteFile($event, 'Consent')"
                 />
-              </div>
-              <div
-                class="ml-2 cursor-pointer px-2 py-1 text-sm text-blue-600 hover:text-blue-800"
-                @click="downloadFile('Consent')"
-              >
-                {{ participant.Consent.FileName }}
               </div>
             </div>
           </div>
 
           <!-- Groups -->
-          <div class="mb-3">
+          <div class="mt-5">
             <div class="text-xs text-slate-600">Group Activities</div>
-            <div class="flex place-content-center justify-start gap-2">
-              <MyInputText v-model="inputGroup" @onKeyEnter="addGroup" />
-              <MyButton @click="addGroup" class="bg-stone-600" :disabled="inputGroup.length == 0"
-                >Add New Group</MyButton
-              >
-            </div>
-            <div class="min-h-[52px] rounded border bg-white p-1">
-              <div class="flex flex-wrap gap-2">
+
+            <div
+              class="over:shadow-md relative min-h-[80px] rounded border-0 bg-slate-100 px-1 pb-5 pt-1 outline-none ring-1 ring-slate-300 hover:ring-slate-400"
+            >
+              <div class="flex flex-wrap gap-1">
                 <template v-for="group in totGroups" :key="group">
                   <div
-                    class="flex cursor-pointer rounded border text-sm"
+                    class="flex w-[158px] cursor-pointer justify-between rounded border px-1.5 text-sm"
                     :class="[
                       participant.ActivityGroups.includes(group)
-                        ? 'bg-stone-300 text-stone-800 shadow'
-                        : 'bg-stone-50 text-stone-600'
+                        ? 'bg-orange-300 text-slate-900'
+                        : 'bg-stone-200  text-slate-700'
                     ]"
                     @click="toggleGroup(group)"
                   >
-                    <div class="px-2 py-1">{{ group }}</div>
-
+                    <div class="py-1">{{ group }}</div>
                     <div
-                      class="rounded px-2 py-1 hover:bg-stone-400"
+                      class="cursor-pointer rounded px-2 py-1"
                       v-if="newGroups.includes(group)"
                       @click="removeFromNewGroups(group)"
                     >
-                      <FontAwesomeIcon icon="trash" />
+                      <FontAwesomeIcon icon="times" />
                     </div>
                   </div>
                 </template>
+              </div>
+              <div class="absolute -bottom-6 right-0">
+                <div class="flex place-items-center opacity-70">
+                  <input
+                    class="relative left-4 rounded border-2 border-amber-600 bg-white p-2 text-sm text-slate-900 hover:shadow-lg focus:outline-amber-700"
+                    v-model="inputGroup"
+                    @keyup.enter="addGroup"
+                  />
+                  <button
+                    class="hover:shadow-lgs right z-10 h-12 w-12 rounded-full bg-amber-700 px-4 py-2 text-xs font-bold uppercase text-white shadow-md outline-none transition-all duration-100 ease-linear hover:brightness-125 focus:outline-none active:shadow-inner active:brightness-75 disabled:cursor-not-allowed disabled:bg-gray-500/60 disabled:text-slate-200 disabled:shadow-none disabled:brightness-100"
+                    type="button"
+                    @click="addGroup"
+                  >
+                    <FontAwesomeIcon icon="plus" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         <!-- Buttons -->
-        <div class="my-4 flex justify-center">
+        <div class="mb-4 mt-10 flex justify-center">
           <MyButton @click="$emit('onClose')" color="bg-blue-600"> Close </MyButton>
           <MyButton @click="saveParticipant" color="bg-green-600" :disabled="isInfoMissing">
             Save

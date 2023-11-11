@@ -132,7 +132,7 @@ function showOriginalPhoto(photo) {
       <!-- ******* -->
       <!-- Votes Section -->
       <!-- ******** -->
-      <div v-if="site && site.CreatedByCorp == corpId">
+      <div v-if="site && site.CreatedByCorp == corpId && site.Status != 'Approved'">
         <h2 class="p-2 text-center font-semibold text-blue-600">Votes</h2>
 
         <!-- List of Votes -->
@@ -285,8 +285,8 @@ function showOriginalPhoto(photo) {
       <!-- ****** -->
       <div>
         <!-- Buttons -->
-        <div class="relative text-center">
-          <MyButton class="bg-orange-500" @click="moveToReview">Move to 'Review'</MyButton>
+        <div class="relative text-center" v-if="site.CreatedByCorp == corpId">
+          <MyButton class="bg-orange-500" @click="moveToReview">Move to Draft</MyButton>
           <div class="relative -top-2 text-sm text-slate-500">
             By clicking in this button all votes will be deleted
           </div>
