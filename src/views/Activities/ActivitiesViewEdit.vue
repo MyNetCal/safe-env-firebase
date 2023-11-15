@@ -1,7 +1,7 @@
 <script setup>
 import MyModal from '@/components/MyModal.vue'
 import MyButton from '@/components/MyButton.vue'
-import { computed, onUnmounted, ref, toRefs, watch } from 'vue'
+import { computed, nextTick, onUnmounted, ref, toRefs, watch } from 'vue'
 import { FontAwesomeIcon, FontAwesomeLayers } from '@fortawesome/vue-fontawesome'
 import { useFileDialog, useMediaQuery } from '@vueuse/core'
 import MySwitchBothLabels from '@/components/MyInputs/MySwitchBothLabels.vue'
@@ -33,6 +33,7 @@ import {
 } from 'firebase/storage'
 import { useGeneralStore } from '@/stores/general'
 import { useAxios } from '@vueuse/integrations/useAxios'
+import { jsPDF } from 'jspdf'
 
 const emit = defineEmits(['onClose', 'onUpdate'])
 const props = defineProps({ showModal: Boolean, id: String, corpId: String })
@@ -48,6 +49,10 @@ const tabTitles = ['General info', 'Check List', 'Staff', 'Participants']
 const isLargeScreen = useMediaQuery('(min-width: 640px)')
 
 const actToEdit = ref({})
+
+const isOvernightActivity = computed(
+  () => !dayjs(actToEdit.value.Starts).isSame(dayjs(actToEdit.value.Ends), 'day')
+)
 
 const typeActivity = ref(false) // false: Regular | true: One Time
 
@@ -209,21 +214,32 @@ function updateChecklistComments() {
 // *****************
 // Photos: Checklist
 // *****************
+// #region Checklist
 const imageSrc = ref(null)
 const canvas = ref(null)
 const photoSize = ref({ h: 0, w: 0 })
 const photoLoaded = ref(false)
+const selectingFileFor = ref('')
 
-const { files, open, onChange } = useFileDialog({
-  accept: 'image/*' // Set to accept only image files
-})
+const { files, open, onChange } = useFileDialog()
 
 function selectFile() {
+  selectingFileFor.value = 'Checklist'
   open({ multiple: false })
 }
 
 onChange(() => {
-  showPicture()
+  if (selectingFileFor.value == 'CheckList') {
+    showPicture()
+  }
+  if (selectingFileFor.value == 'Participant') {
+    UploadFileParticipantNote()
+  }
+  if (selectingFileFor.value == 'SlipsMissing') {
+    UploadFileMissingSlipsReason()
+  }
+
+  selectingFileFor.value = ''
 })
 
 function showPicture() {
@@ -277,7 +293,6 @@ function savePhotoInfo(filename) {
 }
 
 function uploadPictureToServer() {
-  console.log('Uploading to Server')
   const data = files.value?.item(0)
   //const dataURI = canvas.value.toDataURL("image/jpeg", 1.0)
 
@@ -337,11 +352,12 @@ function deletePhoto(index) {
     })
   })
 }
+// #endregion
 
 // ********************
 // Staff
 // ********************
-
+// #region Staff
 // Staff Group
 const staffGroup = ref([])
 
@@ -411,6 +427,7 @@ watch(
 // All Staff
 const allStaffInput = ref('')
 const allStaff = ref([])
+const allStaffById = ref({})
 
 const StaffNoGroup = computed(() =>
   allStaff.value.filter(
@@ -445,6 +462,11 @@ function getAllStaff() {
             LastName: user.LastName,
             Nickname: user.Nickname
           }
+          allStaffById.value[staff.id] = {
+            Name: user.Name,
+            LastName: user.LastName,
+            Nickname: user.Nickname
+          }
         })
       }
       if (change.type === 'modified') {
@@ -454,6 +476,11 @@ function getAllStaff() {
           const user = userDoc.data()
           allStaff.value[newIndex] = {
             ...allStaff.value[newIndex],
+            Name: user.Name,
+            LastName: user.LastName,
+            Nickname: user.Nickname
+          }
+          allStaffById.value[staff.id] = {
             Name: user.Name,
             LastName: user.LastName,
             Nickname: user.Nickname
@@ -514,11 +541,12 @@ function enterGroupStaff() {
     inputStaffGroup.value = ''
   }
 }
+// #endregion
 
 // *****************
 // Paricipants
 // *****************
-
+// #region Participants
 // Group Participants
 const participantsGroup = ref([])
 
@@ -558,6 +586,7 @@ function getParticipantsGroup() {
 // All participants
 const allParticipants = ref([])
 const inputAllParticipants = ref('')
+const allParticipantsById = ref({})
 
 const participantsNoGroup = computed(() =>
   allParticipants.value.filter(
@@ -578,6 +607,11 @@ function getAllParticipants() {
     res.docChanges().forEach((change) => {
       const { newIndex, oldIndex, doc: participantDoc } = change
       const participant = participantDoc.data()
+      allParticipantsById.value[participant.id] = {
+        Name: participant.Name,
+        Nickname: participant.Nickname,
+        LastName: participant.LastName
+      }
       if (change.type === 'added') {
         allParticipants.value.splice(newIndex, 0, participant)
       }
@@ -637,13 +671,184 @@ function enterGroupParticipants() {
     inputParticipantGroup.value = ''
   }
 }
+// #endregion
+
+// ******************
+// Participants Notes
+// ******************
+// #region Participant Notes
+const ParticipantNoteId = ref('')
+const participantsMissingSlipReason = ref('')
+
+function uploadParticipantNote(id) {
+  selectingFileFor.value = 'Participant'
+  ParticipantNoteId.value = id
+  open({ multiple: false })
+}
+
+function UploadFileParticipantNote() {
+  const data = files.value?.item(0)
+  if (data) {
+    store.isUploadingFiles = true
+    store.isUploadingFilesPercentage = 0
+    const fileRef = storageRef(
+      storage,
+      `Activities/${actToEdit.value.id}/Slips/${ParticipantNoteId.value}`
+    )
+    const uploadTask = uploadBytesResumable(fileRef, data)
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        store.isUploadingFilesPercentage = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+      },
+      (error) => {
+        store.isUploadingFiles = false
+        console.log('ERROR', error)
+      },
+      () => {
+        console.log('DONE')
+        store.isUploadingFiles = false
+        saveSlipInfo()
+      }
+    )
+  }
+}
+
+function saveSlipInfo() {
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    [`Slips.${ParticipantNoteId.value}`]: true
+  })
+}
+
+const participantsMissingSlip = computed(
+  () =>
+    actToEdit.value.Participants?.length -
+    actToEdit.value.Participants?.reduce((acc, p) => acc + (actToEdit.value?.Slips?.[p] ? 1 : 0), 0)
+)
+
+function updateMissingSlipReason() {
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    SlipsMissingReason: participantsMissingSlipReason.value
+  })
+}
+
+function selectFileSlipMissingReason() {
+  selectingFileFor.value = 'SlipsMissing'
+  open({ multiple: false })
+}
+
+function UploadFileMissingSlipsReason() {
+  const data = files.value?.item(0)
+  if (data) {
+    store.isUploadingFiles = true
+    store.isUploadingFilesPercentage = 0
+    const fileRef = storageRef(storage, `Activities/${actToEdit.value.id}/Slips/${data.name}`)
+    const uploadTask = uploadBytesResumable(fileRef, data)
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        store.isUploadingFilesPercentage = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+      },
+      (error) => {
+        store.isUploadingFiles = false
+        console.log('ERROR', error)
+      },
+      () => {
+        console.log('DONE')
+        store.isUploadingFiles = false
+        updateFilenameSlipsMissingReason()
+      }
+    )
+  }
+}
+
+function updateFilenameSlipsMissingReason() {
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    FileSlipsMissingReason: files.value?.item(0).name
+  })
+}
+
+function dleteFileMissingSlipsReason() {
+  deleteObject(
+    storageRef(
+      storage,
+      `Activities/${actToEdit.value.id}/Slips/${actToEdit.value.FileSlipsMissingReason}`
+    )
+  ).then(() => {
+    updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+      FileSlipsMissingReason: null
+    })
+  })
+}
+// #endregion
+
+// ***************
+// PDF
+// ***************
+const seePdf = ref(false)
+
+const pdf = ref(null)
+const pdfURL = ref(null)
+
 const { data: emailData, execute } = useAxios(
-  'https://mynetcalendar.org/email-test.php',
-  { method: 'POST' },
+  'https://mynetcalendar.org/safeenv-email-activity.php',
+  {
+    method: 'GET'
+  },
   { immediate: false }
 )
-function sentEmail() {
-  execute()
+
+const finalComments = ref('')
+const creatingPDF = ref(false)
+const signature = ref('')
+
+async function createPDF() {
+  creatingPDF.value = true
+  await nextTick()
+  const doc = new jsPDF({ format: 'letter', unit: 'px', hotfixes: ['px_scaling'] })
+  doc.html(pdf.value.innerHTML, {
+    callback: function (doc) {
+      const b = doc.output('blob')
+
+      const fileRef = storageRef(storage, `Activities/${actToEdit.value.id}/Test.pdf`)
+      const uploadTask = uploadBytesResumable(fileRef, b)
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          store.isUploadingFilesPercentage = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+        },
+        (error) => {
+          store.isUploadingFiles = false
+          console.log('ERROR', error)
+        },
+        () => {
+          console.log('DONE')
+          store.isUploadingFiles = false
+          getDownloadURL(uploadTask.snapshot.ref).then((url) => {
+            pdfURL.value = url
+            execute({
+              params: {
+                email: corp.value.EmailFiles,
+                subject: 'New Activity from ' + corp.value.Short,
+                link: url,
+                linkText: actToEdit.value.Title + ' @ ' + siteName.value
+              }
+            }).then(() => {
+              console.log(emailData.value)
+            })
+          })
+        }
+      )
+
+      creatingPDF.value = false
+    },
+    x: 0,
+    y: 0,
+    margin: [24, 24, 24, 24],
+    autoPaging: 'text',
+    width: 768, // letter width: 8.5 * 96 = 816; Margins: 2 * 24 = 48; Content width: 816 - 48 = 768
+    windowWidth: 768
+  })
 }
 </script>
 
@@ -831,10 +1036,7 @@ function sentEmail() {
                 <MyInputText typeInput="datetime-local" label="Starts" v-model="actToEdit.Starts" />
                 <MyInputText typeInput="datetime-local" label="Ends" v-model="actToEdit.Ends" />
               </div>
-              <div
-                class="text-red-600"
-                v-if="!dayjs(actToEdit.Starts).isSame(dayjs(actToEdit.Ends), 'day')"
-              >
+              <div class="text-red-600" v-if="isOvernightActivity">
                 This is an overnight activity
               </div>
 
@@ -1064,11 +1266,27 @@ function sentEmail() {
                           <div class="py-1">
                             {{ participant.Nickname }} {{ participant.LastName }}
                           </div>
-                          <div
-                            class="selector-list-icon"
-                            @click.stop="moveParticipant(participant.id, 'down')"
-                          >
-                            <FontAwesomeIcon icon="down-long" />
+                          <div class="flex">
+                            <div
+                              v-if="isOvernightActivity"
+                              class="selector-list-icon"
+                              @click.stop="uploadParticipantNote(participant.id)"
+                            >
+                              <FontAwesomeIcon
+                                icon="file-circle-question"
+                                :class="[
+                                  actToEdit?.Slips?.[participant.id]
+                                    ? 'text-green-800'
+                                    : 'text-red-600'
+                                ]"
+                              />
+                            </div>
+                            <div
+                              class="selector-list-icon"
+                              @click.stop="moveParticipant(participant.id, 'down')"
+                            >
+                              <FontAwesomeIcon icon="down-long" />
+                            </div>
                           </div>
                         </div>
                       </template>
@@ -1113,7 +1331,7 @@ function sentEmail() {
               <!-- **************** -->
               <!-- All Participants -->
               <!-- **************** -->
-              <div class="mt-5 text-xs text-slate-600">One Time Staff</div>
+              <div class="mt-5 text-xs text-slate-600">One Time Participants</div>
               <div class="selector-outter-box">
                 <div class="selector-outter-list">
                   <TransitionGroup name="listup">
@@ -1135,11 +1353,27 @@ function sentEmail() {
                         @click="toggleParticipant(p.item.id)"
                       >
                         <div class="py-1">{{ p.item?.Nickname }} {{ p.item?.LastName }}</div>
-                        <div
-                          class="selector-list-icon"
-                          @click.stop="moveParticipant(p.item.id, 'up')"
-                        >
-                          <FontAwesomeIcon icon="up-long" />
+                        <div class="flex">
+                          <div
+                            v-if="isOvernightActivity"
+                            class="selector-list-icon"
+                            @click.stop="uploadParticipantNote(p.id)"
+                          >
+                            <FontAwesomeIcon
+                              :icon="
+                                actToEdit?.Slips?.[p.item?.id] ? 'file' : 'file-circle-question'
+                              "
+                              :class="[
+                                actToEdit?.Slips?.[p.item?.id] ? 'text-green-800' : 'text-red-600'
+                              ]"
+                            />
+                          </div>
+                          <div
+                            class="selector-list-icon"
+                            @click.stop="moveParticipant(p.item.id, 'up')"
+                          >
+                            <FontAwesomeIcon icon="up-long" />
+                          </div>
                         </div>
                       </div>
                     </template>
@@ -1175,6 +1409,45 @@ function sentEmail() {
                   </div>
                 </div>
               </div>
+
+              <!-- Slips -->
+              <div v-if="isOvernightActivity">
+                <div class="mt-10 text-slate-600">
+                  Important: This is a overnight activity and you need to upload the slip consent
+                  for each participant.
+                  <div v-if="participantsMissingSlip > 0" class="text-red-600">
+                    Missing slips: <span class="font-semibold">{{ participantsMissingSlip }}</span>
+                  </div>
+                  <div v-else class="text-green-600">Good to go!</div>
+                  <div class="my-5 text-sm text-slate-600">
+                    If, for some very extraordinary reason
+                    <span class="font-semibold">NOT</span> every participant has its slip uploaded,
+                    explain:
+                    <MyInputTextArea
+                      v-model="participantsMissingSlipReason"
+                      @change.self="updateMissingSlipReason"
+                    />
+                  </div>
+
+                  <!-- Uplaod File -->
+                  <div v-if="!actToEdit.FileSlipsMissingReason">
+                    Or upload a file with the explanation:
+                    <MyButton @click.self="selectFileSlipMissingReason">Uplaod</MyButton>
+                  </div>
+                  <!-- There is a file -->
+                  <div v-else class="flex place-items-center">
+                    File explaining lack of slips:
+                    <span class="ml-5 text-blue-600 underline">{{
+                      actToEdit.FileSlipsMissingReason
+                    }}</span>
+                    <FontAwesomeIcon
+                      @click="dleteFileMissingSlipsReason"
+                      icon="trash"
+                      class="cursor-pointer rounded px-2 py-2 hover:bg-slate-200"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -1184,8 +1457,15 @@ function sentEmail() {
         <!-- ************ -->
         <!-- Buttons -->
         <div class="mt-2">
-          data: {{ emailData }}
           <!-- Navigation Buttons -->
+          <div class="text-center">
+            <MyButton v-if="actToEdit.id != ''" @click="$emit('onClose')" color="bg-red-500">
+              Delete Activity
+            </MyButton>
+            <MyButton v-if="actToEdit.id != ''" @click="seePdf = true" color="bg-green-600">
+              End Activity
+            </MyButton>
+          </div>
           <div class="my-1 flex justify-between">
             <!-- Left -->
             <div v-if="tabActive != 0" class="w-12">
@@ -1195,15 +1475,10 @@ function sentEmail() {
             </div>
             <div v-else class="w-12"></div>
 
-            <!-- Close -->
+            <!-- Close, Delete, End -->
+
             <div>
-              <MyButton v-if="actToEdit.id != ''" @click="$emit('onClose')" color="bg-red-500">
-                Delete
-              </MyButton>
               <MyButton @click="$emit('onClose')" color="bg-slate-600"> Close </MyButton>
-              <MyButton v-if="actToEdit.id != ''" @click="sentEmail" color="bg-green-600">
-                End
-              </MyButton>
             </div>
 
             <!-- Right -->
@@ -1233,6 +1508,110 @@ function sentEmail() {
         </div>
       </div>
     </MyModal>
+    <div v-if="seePdf" class="absolute inset-0 z-50 justify-between bg-slate-200/95 p-2 text-left">
+      <div class="pdf-height mx-auto max-w-[816px] bg-white p-2">
+        <!-- Actual PDF -->
+        <div ref="pdf">
+          <!-- Corp, Title -->
+          <div class="text-center text-xl font-bold">{{ corp.Name }}</div>
+          <div class="text-center text-lg font-bold">{{ actToEdit.Title }} @ {{ siteName }}</div>
+
+          <!-- Dates -->
+          <div class="mb-5 text-center">
+            {{ dayjs(actToEdit.Starts).format('dddd, MMMM D, YYYY @ h:mm a') }} -
+            {{
+              dayjs(actToEdit.Ends).format(
+                `${
+                  dayjs(actToEdit.Starts).isSame(dayjs(actToEdit.Ends), 'day')
+                    ? 'h:mm a'
+                    : 'dddd, MMMM D @ h:mm a'
+                }`
+              )
+            }}
+          </div>
+
+          <!-- General Comments -->
+          <div class="mb-5">
+            <span class="mb-5 font-bold">General Comments:</span> {{ actToEdit.Comments }}
+          </div>
+
+          <!-- Checklist -->
+          <div class="mb-2 font-bold">Checklist:</div>
+          <table class="mb-5">
+            <template v-for="(el, index) in actToEdit.Checklist" :key="el.Task">
+              <tr class="border-b border-t">
+                <td class="p-2">
+                  <div>{{ index + 1 }}. {{ el.Task }}</div>
+                  <div class="">{{ el.Comments }}</div>
+                </td>
+                <td class="pl-5" :class="[el.Done ? 'text-blue-800' : 'text-red-600']">
+                  {{ el.Done ? 'Yes' : 'No' }}
+                </td>
+              </tr>
+            </template>
+          </table>
+
+          <!-- Comments on the Checklist -->
+          <div class="mb-5">
+            <span class="mb-5 font-bold">Comments on the Checklist: </span
+            >{{ actToEdit.ChecklistComments }}
+          </div>
+
+          <!-- Photos -->
+          <div class="mb-5 font-bold">
+            {{ actToEdit.Photos?.length || 0 }}
+            {{ (actToEdit.Photos?.length || 0) == 1 ? 'photo' : 'photos' }} uploaded
+          </div>
+
+          <!-- Staff -->
+          <div class="mb-5">
+            <div class="font-bold">Staff</div>
+            <template v-for="(p, index) in actToEdit.Staff" :key="index">
+              <div>
+                {{ index + 1 }}. {{ allStaffById[p]?.Nickname }} {{ allStaffById[p].LastName }}
+              </div>
+            </template>
+          </div>
+
+          <!-- Participants -->
+          <div class="mb-5">
+            <div class="font-bold">Participants</div>
+            <template v-for="(p, index) in actToEdit.Participants" :key="index">
+              <div>
+                {{ index + 1 }}. {{ allParticipantsById[p]?.Nickname }}
+                {{ allParticipantsById[p].LastName }}
+              </div>
+            </template>
+          </div>
+
+          <!-- Notes -->
+          <div class="mb-5">
+            <div class="font-bold">Notes:</div>
+            <MyInputTextArea v-model="finalComments" v-if="!creatingPDF" />
+            <div v-if="creatingPDF">{{ finalComments }}</div>
+          </div>
+
+          <!-- Ratio -->
+          <div class="mb-5">
+            <span class="font-bold">Ratio Staff/Participants: </span>{{ actToEdit.Staff.length }}:{{
+              actToEdit.Participants.length
+            }}
+          </div>
+
+          <!-- Signature -->
+          <div class="mb-5">
+            <div v-if="!creatingPDF" class="flex">
+              I, <MyInputText v-model="signature"></MyInputText>, confirm that all the inormation is
+              true
+            </div>
+            <div v-else>I, {{ signature }}, confirm that all information is true</div>
+          </div>
+        </div>
+        <div>Url: {{ pdfURL }}</div>
+        <MyButton @click="createPDF">Accept</MyButton>
+        <MyButton @click="seePdf = false">Close</MyButton>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -1244,6 +1623,10 @@ function sentEmail() {
   max-height: calc(100vh - 250px);
   overflow-y: auto;
 }
+.pdf-height {
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
 .selector-outter-box {
   @apply relative min-h-[80px] rounded border-0 bg-slate-100 px-1 pb-5 pt-1 outline-none ring-1 ring-slate-300 hover:shadow-md hover:ring-slate-400;
 }
@@ -1251,7 +1634,7 @@ function sentEmail() {
   @apply flex flex-wrap gap-1;
 }
 .selector-list {
-  @apply flex w-[158px] cursor-pointer justify-between rounded border pl-1 text-sm shadow hover:shadow-md hover:brightness-90;
+  @apply flex w-[158px] cursor-pointer justify-between rounded border pl-1 text-xs shadow hover:shadow-md hover:brightness-90;
 }
 .selector-list-icon {
   @apply cursor-pointer rounded px-2 py-1 hover:bg-slate-500/20;

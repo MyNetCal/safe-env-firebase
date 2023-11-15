@@ -73,7 +73,9 @@ import {
   faSpinner,
   faArrowUpFromBracket,
   faUpLong,
-  faDownLong
+  faDownLong,
+  faFileCircleCheck,
+  faFileCircleQuestion
 } from '@fortawesome/free-solid-svg-icons'
 import { faWindowClose, faCheckSquare, faSquare } from '@fortawesome/free-regular-svg-icons'
 
@@ -143,7 +145,9 @@ library.add(
   faSpinner,
   faArrowUpFromBracket,
   faUpLong,
-  faDownLong
+  faDownLong,
+  faFileCircleCheck,
+  faFileCircleQuestion
 )
 
 const app = createApp(App)
