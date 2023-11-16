@@ -314,7 +314,7 @@ function showOriginalPhoto(photo) {
 
 <style scoped>
 .modal-height {
-  height: calc(100vh -80px);
+  height: calc(100vh - 80px);
 }
 .disclosure-button {
   @apply flex w-full justify-between rounded-lg bg-purple-100 px-4 py-2 text-left text-sm font-medium text-purple-900 hover:bg-purple-200 focus:outline-none focus-visible:ring focus-visible:ring-purple-500/75;

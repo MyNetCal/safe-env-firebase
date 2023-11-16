@@ -793,14 +793,13 @@ const finalComments = ref('')
 const creatingPDF = ref(false)
 const signature = ref('')
 
-
 async function createPDF() {
   creatingPDF.value = true
   await nextTick()
-  const doc = new jsPDF({ format: 'letter', unit: 'px', hotfixes: ['px_scaling'] })
-  doc.html(pdf.value.innerHTML, {
-    callback: function (doc) {
-      const b = doc.output('blob')
+  const pdfDoc = new jsPDF({ format: 'letter', unit: 'px', hotfixes: ['px_scaling'] })
+  pdfDoc.html(pdf.value.innerHTML, {
+    callback: function (pdfDoc) {
+      const b = pdfDoc.output('blob')
 
       const fileRef = storageRef(storage, `Activities/${actToEdit.value.id}/Test.pdf`)
       const uploadTask = uploadBytesResumable(fileRef, b)
@@ -817,34 +816,25 @@ async function createPDF() {
           console.log('DONE')
           store.isUploadingFiles = false
 
-          // axios
-          //   .post(
-          //     'https://mynetcalendar.org/safeenv-email-activity.php',
-          //     {
-          //       email: corp.value.EmailFiles,
-          //       subject: 'New Activity from ' + corp.value.Short,
-          //       linkText: actToEdit.value.Title + ' @ ' + siteName.value
-          //     },
-          //     { transformRequest: (data) => Qs.stringify(data) }
-          //   )
-          //   .then((res) => {
-          //     console.log(res)
-          //   })
-
           const formData = new FormData()
           formData.append('file', b, 'Activity.pdf')
-          // formData.append('email', corp.value.EmailFiles)
-          // formData.append('subject', actToEdit.value.Title + ' @ ' + siteName.value)
+          formData.append('email', corp.value.EmailFiles)
+          formData.append('subject', actToEdit.value.Title + ' @ ' + siteName.value)
+          formData.append('id', actToEdit.value.id)
           axios
             .post('https://mynetcalendar.org/safeenv-email-activity.php', formData, {
               headers: {
                 'Content-Type': 'multipart/form-data'
               }
             })
-            .then((res) => {
-              console.log(res)
+            .then(() => {
+              console.log('Email Sent')
+              updateDoc( doc(db, 'Activities', actToEdit.value.id), {
+                Status: 'Completed'
+              })
+              emit('onClose')
             })
-            
+
           // getDownloadURL(uploadTask.snapshot.ref).then((url) => {
           //   pdfURL.value = url
           //   execute({
@@ -1605,9 +1595,7 @@ async function createPDF() {
                     {{ allParticipantsById[p]?.Nickname }} {{ allParticipantsById[p].LastName }}
                   </td>
                   <td v-if="isOvernightActivity">
-                    <span v-if="actToEdit.Slips?.[p]">
-                      Yes
-                    </span>
+                    <span v-if="actToEdit.Slips?.[p]"> Yes </span>
                     <span v-else class="text-red-600">Missing</span>
                   </td>
                 </tr>
