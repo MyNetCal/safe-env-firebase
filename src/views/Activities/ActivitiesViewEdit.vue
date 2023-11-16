@@ -32,8 +32,8 @@ import {
   uploadBytesResumable
 } from 'firebase/storage'
 import { useGeneralStore } from '@/stores/general'
-import { useAxios } from '@vueuse/integrations/useAxios'
 import { jsPDF } from 'jspdf'
+import axios from 'axios'
 
 const emit = defineEmits(['onClose', 'onUpdate'])
 const props = defineProps({ showModal: Boolean, id: String, corpId: String })
@@ -788,19 +788,11 @@ function dleteFileMissingSlipsReason() {
 const seePdf = ref(false)
 
 const pdf = ref(null)
-const pdfURL = ref(null)
-
-const { data: emailData, execute } = useAxios(
-  'https://mynetcalendar.org/safeenv-email-activity.php',
-  {
-    method: 'GET'
-  },
-  { immediate: false }
-)
 
 const finalComments = ref('')
 const creatingPDF = ref(false)
 const signature = ref('')
+
 
 async function createPDF() {
   creatingPDF.value = true
@@ -824,23 +816,51 @@ async function createPDF() {
         () => {
           console.log('DONE')
           store.isUploadingFiles = false
-          getDownloadURL(uploadTask.snapshot.ref).then((url) => {
-            pdfURL.value = url
-            execute({
-              params: {
-                email: corp.value.EmailFiles,
-                subject: 'New Activity from ' + corp.value.Short,
-                link: url,
-                linkText: actToEdit.value.Title + ' @ ' + siteName.value
+
+          // axios
+          //   .post(
+          //     'https://mynetcalendar.org/safeenv-email-activity.php',
+          //     {
+          //       email: corp.value.EmailFiles,
+          //       subject: 'New Activity from ' + corp.value.Short,
+          //       linkText: actToEdit.value.Title + ' @ ' + siteName.value
+          //     },
+          //     { transformRequest: (data) => Qs.stringify(data) }
+          //   )
+          //   .then((res) => {
+          //     console.log(res)
+          //   })
+
+          const formData = new FormData()
+          formData.append('file', b, 'Activity.pdf')
+          // formData.append('email', corp.value.EmailFiles)
+          // formData.append('subject', actToEdit.value.Title + ' @ ' + siteName.value)
+          axios
+            .post('https://mynetcalendar.org/safeenv-email-activity.php', formData, {
+              headers: {
+                'Content-Type': 'multipart/form-data'
               }
-            }).then(() => {
-              console.log(emailData.value)
             })
-          })
+            .then((res) => {
+              console.log(res)
+            })
+            
+          // getDownloadURL(uploadTask.snapshot.ref).then((url) => {
+          //   pdfURL.value = url
+          //   execute({
+          //     params: {
+          //       email: corp.value.EmailFiles,
+          //       subject: 'New Activity from ' + corp.value.Short,
+          //       link: url,
+          //       linkText: actToEdit.value.Title + ' @ ' + siteName.value
+          //     }
+          //   }).then(() => {
+          //     console.log('******* file', emailData.value)
+          //   })
+          // })
+          creatingPDF.value = false
         }
       )
-
-      creatingPDF.value = false
     },
     x: 0,
     y: 0,
@@ -1518,16 +1538,17 @@ async function createPDF() {
 
           <!-- Dates -->
           <div class="mb-5 text-center">
-            {{ dayjs(actToEdit.Starts).format('dddd, MMMM D, YYYY @ h:mm a') }} -
-            {{
-              dayjs(actToEdit.Ends).format(
-                `${
-                  dayjs(actToEdit.Starts).isSame(dayjs(actToEdit.Ends), 'day')
-                    ? 'h:mm a'
-                    : 'dddd, MMMM D @ h:mm a'
-                }`
-              )
-            }}
+            <div v-if="!isOvernightActivity">
+              {{ dayjs(actToEdit.Starts).format('dddd, MMMM D, YYYY @ h:mm a') }} -
+              {{ dayjs(actToEdit.Ends).format('h:mm a') }}
+            </div>
+            <div v-else>
+              <div>
+                {{ dayjs(actToEdit.Starts).format('dddd, MMMM D, YYYY @ h:mm a') }} -
+                {{ dayjs(actToEdit.Ends).format('dddd, MMMM D @ h:mm a') }}
+              </div>
+              <div class="text-red-600">This is an overnight activity</div>
+            </div>
           </div>
 
           <!-- General Comments -->
@@ -1576,12 +1597,22 @@ async function createPDF() {
           <!-- Participants -->
           <div class="mb-5">
             <div class="font-bold">Participants</div>
-            <template v-for="(p, index) in actToEdit.Participants" :key="index">
-              <div>
-                {{ index + 1 }}. {{ allParticipantsById[p]?.Nickname }}
-                {{ allParticipantsById[p].LastName }}
-              </div>
-            </template>
+            <table>
+              <template v-for="(p, index) in actToEdit.Participants" :key="index">
+                <tr>
+                  <td class="pr-2">{{ index + 1 }}.</td>
+                  <td class="pr-2">
+                    {{ allParticipantsById[p]?.Nickname }} {{ allParticipantsById[p].LastName }}
+                  </td>
+                  <td v-if="isOvernightActivity">
+                    <span v-if="actToEdit.Slips?.[p]">
+                      Yes
+                    </span>
+                    <span v-else class="text-red-600">Missing</span>
+                  </td>
+                </tr>
+              </template>
+            </table>
           </div>
 
           <!-- Notes -->
@@ -1607,7 +1638,6 @@ async function createPDF() {
             <div v-else>I, {{ signature }}, confirm that all information is true</div>
           </div>
         </div>
-        <div>Url: {{ pdfURL }}</div>
         <MyButton @click="createPDF">Accept</MyButton>
         <MyButton @click="seePdf = false">Close</MyButton>
       </div>
