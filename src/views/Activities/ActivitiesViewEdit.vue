@@ -3,7 +3,7 @@ import MyModal from '@/components/MyModal.vue'
 import MyButton from '@/components/MyButton.vue'
 import { computed, nextTick, onUnmounted, ref, toRefs, watch } from 'vue'
 import { FontAwesomeIcon, FontAwesomeLayers } from '@fortawesome/vue-fontawesome'
-import { useFileDialog, useMediaQuery } from '@vueuse/core'
+import { useFileDialog, useMediaQuery, watchThrottled } from '@vueuse/core'
 import MySwitchBothLabels from '@/components/MyInputs/MySwitchBothLabels.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import { initActivity } from '@/stores/datadb'
@@ -13,6 +13,7 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   onSnapshot,
   query,
   setDoc,
@@ -34,6 +35,7 @@ import {
 import { useGeneralStore } from '@/stores/general'
 import { jsPDF } from 'jspdf'
 import axios from 'axios'
+import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 
 const emit = defineEmits(['onClose', 'onUpdate'])
 const props = defineProps({ showModal: Boolean, id: String, corpId: String })
@@ -43,12 +45,69 @@ const db = useFirestore()
 const store = useGeneralStore()
 const storage = useFirebaseStorage()
 
+const actToEdit = ref({ id: '' })
+
 const tabActive = ref(0)
 const tabTitles = ['General info', 'Check List', 'Staff', 'Participants']
 
-const isLargeScreen = useMediaQuery('(min-width: 640px)')
+const tabHasErrorChecklist = computed(() => {
+  if (actToEdit.value.id == '') {
+    return false
+  }
+  if ((actToEdit.value.Checklist?.length || 0) == 0) {
+    return false
+  }
+  let count = 0
+  actToEdit.value.Checklist.forEach((el) => {
+    if (el.Done) {
+      count++
+    }
+  })
+  return actToEdit.value.Checklist.length > count && actToEdit.value.ChecklistComments == ''
+})
 
-const actToEdit = ref({})
+const tabHasErrorParticipants = computed(() => {
+  if (actToEdit.value.id == '') {
+    return false
+  }
+  if (!isOvernightActivity.value) {
+    return actToEdit.value.Participants?.length == 0
+  }
+  if (actToEdit.value.Participants?.length == 0) {
+    return true
+  }
+  const totParticipants = actToEdit.value.Participants?.length || 0
+  const totSlips = actToEdit.value.Participants?.reduce(
+    (tot, el) => tot + actToEdit.value.Slips?.[el] || 0,
+    0
+  )
+  return totSlips < totParticipants && actToEdit.value.SlipsMissingReason == ''
+})
+
+const tabHasErrorStaff = computed(() => actToEdit.value.Staff?.length == 0)
+
+const allTabsOK = computed(
+  () =>
+    !tabHasErrorChecklist.value &&
+    isValidAllCreateAct.value &&
+    !tabHasErrorParticipants.value &&
+    !tabHasErrorStaff.value
+)
+
+const tabHasErrors = computed(() => [
+  !isValidAllCreateAct.value,
+  tabHasErrorChecklist.value,
+  tabHasErrorStaff.value,
+  tabHasErrorParticipants.value
+])
+const tabDisable = computed(() => [
+  false,
+  actToEdit.value.id == '',
+  actToEdit.value.id == '',
+  actToEdit.value.id == ''
+])
+
+const isLargeScreen = useMediaQuery('(min-width: 640px)')
 
 const isOvernightActivity = computed(
   () => !dayjs(actToEdit.value.Starts).isSame(dayjs(actToEdit.value.Ends), 'day')
@@ -96,6 +155,7 @@ function subAct(id) {
   console.log('Getting act: ', id)
   unsubAct.value = onSnapshot(doc(db, 'Activities', id), (res) => {
     actToEdit.value = res.data()
+    actToEdit.value.SlipsURL = {}
     getDoc(doc(db, 'Sites', actToEdit.value.Site)).then((site) => {
       siteName.value = site.data().Name
     })
@@ -111,6 +171,18 @@ function subAct(id) {
           })
       }
     })
+    for (const [key, value] of Object.entries(actToEdit.value.Slips || {})) {
+      if (value) {
+        const imgRef = storageRef(storage, `Activities/${actToEdit.value.id}/Slips/${key}`)
+        getDownloadURL(imgRef)
+          .then((url) => {
+            actToEdit.value.SlipsURL[key] = url
+          })
+          .catch((error) => {
+            console.log(error)
+          })
+      }
+    }
   })
 }
 
@@ -188,7 +260,48 @@ function onCreateActivity() {
   emit('onUpdate')
 }
 
+const isValidTitle = computed(() => actToEdit.value.Title?.length > 1)
+
+const isValidSite = computed(() => actToEdit.value.Site != '')
+
+const isValidStarts = computed(
+  () =>
+    dayjs(actToEdit.value.Starts).isValid() &&
+    dayjs(actToEdit.value.Starts).isAfter(dayjs().subtract(1, 'y')) &&
+    dayjs(actToEdit.value.Starts).isBefore(dayjs().add(1, 'y'))
+)
+
+function onInputStarts() {
+  console.log('Updating end time')
+  if (isValidStarts.value) {
+    actToEdit.value.Ends = actToEdit.value.Starts
+  }
+}
+
+const isValidEnds = computed(
+  () =>
+    dayjs(actToEdit.value.Ends).isValid() &&
+    dayjs(actToEdit.value.Ends).isAfter(dayjs().subtract(1, 'y')) &&
+    dayjs(actToEdit.value.Ends).isBefore(dayjs().add(1, 'y')) &&
+    dayjs(actToEdit.value.Ends).isAfter(dayjs(actToEdit.value.Starts))
+)
+
+const actDuration = computed(() => {
+  const h = dayjs(actToEdit.value.Ends).diff(dayjs(actToEdit.value.Starts), 'h')
+  const m = dayjs(actToEdit.value.Ends).diff(dayjs(actToEdit.value.Starts), 'm') - h * 60
+  const d = m < 10 ? '0' : ''
+  return `${h}:${d}${m}`
+})
+
+const isValidAllCreateAct = computed(
+  () => isValidStarts.value && isValidEnds.value && isValidTitle.value && isValidSite.value
+)
+
 function onUpdateInfo() {
+  console.log('Updatein info')
+  if (actToEdit.value.id == '') {
+    return
+  }
   updateDoc(doc(db, 'Activities', actToEdit.value.id), {
     Comments: actToEdit.value.Comments,
     Starts: actToEdit.value.Starts,
@@ -360,7 +473,6 @@ function deletePhoto(index) {
 // #region Staff
 // Staff Group
 const staffGroup = ref([])
-
 const inputStaffGroup = ref('')
 
 const staffGroupRef = computed(() =>
@@ -443,6 +555,45 @@ const allStaffRef = computed(() =>
   )
 )
 
+const allStaffNotSelected = ref([])
+
+const allStaffNotSelectedRef = computed(() =>
+  query(
+    collection(db, 'UsersCorporations'),
+    where('Status', '==', 'Approved'),
+    where('CorporationId', '==', corpId.value),
+    where('id', 'not-in', actToEdit.value.Staff)
+  )
+)
+
+function getAllStaffNotSelected() {
+  const queryRef =
+    (actToEdit.value.Staff?.length || 0) == 0 ? allStaffRef.value : allStaffNotSelectedRef.value
+  getDocs(queryRef).then((res) => {
+    allStaffNotSelected.value = []
+    res.forEach((d) => {
+      getDoc(doc(db, 'Users', d.data().UserId)).then((user) => {
+        allStaffNotSelected.value.push({
+          id: d.data().id,
+          Name: user.data().Nickname + ' ' + user.data().LastName
+        })
+      })
+    })
+  })
+}
+
+const staffToAdd = ref({})
+
+watchThrottled(
+  () => actToEdit.value.Staff,
+  () => {
+    getAllStaffNotSelected()
+  },
+  { immediate: true, throttle: 1000 }
+)
+
+getAllStaffNotSelected()
+
 function getAllStaff() {
   allStaff.value = []
   if (unsubAllStaff) {
@@ -453,7 +604,12 @@ function getAllStaff() {
       const { newIndex, oldIndex, doc: staffDoc } = change
       const staff = staffDoc.data()
       if (change.type === 'added') {
-        allStaff.value.splice(newIndex, 0, { UserCorpId: staff.id, UserId: staff.UserId })
+        allStaff.value.splice(newIndex, 0, {
+          UserCorpId: staff.id,
+          UserId: staff.UserId,
+          Role: staff.Role,
+          Function: staff.Function
+        })
         getDoc(doc(db, 'Users', staffDoc.data().UserId)).then((userDoc) => {
           const user = userDoc.data()
           allStaff.value[newIndex] = {
@@ -462,16 +618,17 @@ function getAllStaff() {
             LastName: user.LastName,
             Nickname: user.Nickname
           }
-          allStaffById.value[staff.id] = {
-            Name: user.Name,
-            LastName: user.LastName,
-            Nickname: user.Nickname
-          }
+          allStaffById.value[staff.id] = { ...allStaff.value[newIndex] }
         })
       }
       if (change.type === 'modified') {
         allStaff.value.splice(oldIndex, 1)
-        allStaff.value.splice(newIndex, 0, { UserCorpId: staff.id, UserId: staff.UserId })
+        allStaff.value.splice(newIndex, 0, {
+          UserCorpId: staff.id,
+          UserId: staff.UserId,
+          Role: staff.Role,
+          Function: staff.Function
+        })
         getDoc(doc(db, 'Users', staffDoc.data().UserId)).then((userDoc) => {
           const user = userDoc.data()
           allStaff.value[newIndex] = {
@@ -480,11 +637,7 @@ function getAllStaff() {
             LastName: user.LastName,
             Nickname: user.Nickname
           }
-          allStaffById.value[staff.id] = {
-            Name: user.Name,
-            LastName: user.LastName,
-            Nickname: user.Nickname
-          }
+          allStaffById.value[staff.id] = { ...allStaff.value[newIndex] }
         })
       }
       if (change.type === 'removed') {
@@ -533,7 +686,7 @@ function enterInputStaff() {
 }
 
 function enterGroupStaff() {
-  if (allGroupFilter.value.length > 0 && inputStaffGroup.value.length > 2) {
+  if (allGroupFilter.value.length > 0 && inputStaffGroup.value.length > 0) {
     moveStaff(allGroupFilter.value[0].item.UserCorpId, 'up')
     updateDoc(doc(db, 'Activities', actToEdit.value.id), {
       Staff: arrayUnion(allGroupFilter.value[0].item.UserCorpId)
@@ -541,6 +694,27 @@ function enterGroupStaff() {
     inputStaffGroup.value = ''
   }
 }
+
+function AddStaff() {
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    Staff: arrayUnion(staffToAdd.value.id)
+  })
+  staffToAdd.value = {}
+}
+
+function removeStaff(p) {
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    Staff: arrayRemove(p)
+  })
+  staffToAdd.value = {}
+}
+
+function updateStaffViewPreference() {
+  updateDoc(doc(db, 'Users', store.loginUserId), {
+    'Settings.ActiviyStaffTabByList': !store.loginUser.Settings?.ActiviyStaffTabByList
+  })
+}
+
 // #endregion
 
 // *****************
@@ -549,8 +723,47 @@ function enterGroupStaff() {
 // #region Participants
 // Group Participants
 const participantsGroup = ref([])
-
 const inputParticipantGroup = ref('')
+
+const allParticipantsNotSelected = ref([])
+
+const participantToAdd = ref({})
+
+const allParticipantsNotSelectedRef = computed(() =>
+  query(
+    collection(db, 'Participants'),
+    where('CorpId', '==', corpId.value),
+    where('id', 'not-in', actToEdit.value.Participants)
+  )
+)
+
+const allParticipantsRef = computed(() =>
+  query(collection(db, 'Participants'), where('CorpId', '==', corpId.value))
+)
+
+function getAllParticipantsNotSelected() {
+  const queryRef =
+    (actToEdit.value.Participants?.length || 0) == 0
+      ? allParticipantsRef.value
+      : allParticipantsNotSelectedRef.value
+  getDocs(queryRef).then((res) => {
+    allParticipantsNotSelected.value = []
+    res.forEach((d) => {
+      allParticipantsNotSelected.value.push({
+        id: d.data().id,
+        Name: d.data().Nickname + ' ' + d.data().LastName
+      })
+    })
+  })
+}
+
+watch(
+  () => actToEdit.value.Participants,
+  () => {
+    getAllParticipantsNotSelected()
+  },
+  { immediate: true }
+)
 
 const participantsGroupRef = computed(() =>
   query(
@@ -583,6 +796,26 @@ function getParticipantsGroup() {
   })
 }
 
+function AddParticipant() {
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    Participants: arrayUnion(participantToAdd.value.id)
+  })
+  participantToAdd.value = {}
+}
+
+function removeParticipant(p) {
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    Participants: arrayRemove(p)
+  })
+  staffToAdd.value = {}
+}
+
+function updateParticipantsViewPreference() {
+  updateDoc(doc(db, 'Users', store.loginUserId), {
+    'Settings.ActiviyParticipantsTabByList': !store.loginUser.Settings?.ActiviyParticipantsTabByList
+  })
+}
+
 // All participants
 const allParticipants = ref([])
 const inputAllParticipants = ref('')
@@ -592,10 +825,6 @@ const participantsNoGroup = computed(() =>
   allParticipants.value.filter(
     (participant) => participantsGroup.value.findIndex((group) => group.id == participant.id) == -1
   )
-)
-
-const allParticipantsRef = computed(() =>
-  query(collection(db, 'Participants'), where('CorpId', '==', corpId.value))
 )
 
 function getAllParticipants() {
@@ -663,7 +892,7 @@ function enterInputParticipants() {
 }
 
 function enterGroupParticipants() {
-  if (groupParticipantsFilter.value.length > 0 && inputParticipantGroup.value.length > 2) {
+  if (groupParticipantsFilter.value.length > 0 && inputParticipantGroup.value.length > 0) {
     moveParticipant(groupParticipantsFilter.value[0].item.id, 'up')
     updateDoc(doc(db, 'Activities', actToEdit.value.id), {
       Participants: arrayUnion(groupParticipantsFilter.value[0].item.id)
@@ -678,7 +907,6 @@ function enterGroupParticipants() {
 // ******************
 // #region Participant Notes
 const ParticipantNoteId = ref('')
-const participantsMissingSlipReason = ref('')
 
 function uploadParticipantNote(id) {
   selectingFileFor.value = 'Participant'
@@ -720,6 +948,19 @@ function saveSlipInfo() {
   })
 }
 
+function deleteSlip(id) {
+  deleteObject(storageRef(storage, actToEdit.value.SlipsURL[id]))
+    .then(() => {
+      delete actToEdit.value.Slips[id]
+      updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+        Slips: actToEdit.value.Slips
+      })
+    })
+    .catch((error) => {
+      console.log('Dleteting slip: ', error);
+    })
+}
+
 const participantsMissingSlip = computed(
   () =>
     actToEdit.value.Participants?.length -
@@ -728,7 +969,7 @@ const participantsMissingSlip = computed(
 
 function updateMissingSlipReason() {
   updateDoc(doc(db, 'Activities', actToEdit.value.id), {
-    SlipsMissingReason: participantsMissingSlipReason.value
+    SlipsMissingReason: actToEdit.value.SlipsMissingReason
   })
 }
 
@@ -788,51 +1029,107 @@ function dleteFileMissingSlipsReason() {
 const seePdf = ref(false)
 
 const pdf = ref(null)
+store.isUploadingFiles = false // *********test: it ahould be false
+const creatingPDF = ref(false) // *********test: it ahould be false
+const statusCreatingPdf = ref('Creating PDF File...')
+const emailSent = ref(false)
 
-const finalComments = ref('')
-const creatingPDF = ref(false)
-const signature = ref('')
+function updateFinalComments() {
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    FinalComments: actToEdit.value.FinalComments
+  })
+}
+
+function updateSignature() {
+  console.log('Updating signature;')
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    Signature: actToEdit.value.Signature
+  })
+}
+
+function closingMessage() {
+  creatingPDF.value = false
+  if (emailSent.value) {
+    emit('onClose')
+  }
+}
 
 async function createPDF() {
+  // changing signature and totes input to text to create pdf
+  statusCreatingPdf.value = 'Creating PDF File'
   creatingPDF.value = true
   await nextTick()
+
+  // calling pdf to be created
   const pdfDoc = new jsPDF({ format: 'letter', unit: 'px', hotfixes: ['px_scaling'] })
   pdfDoc.html(pdf.value.innerHTML, {
     callback: function (pdfDoc) {
+      // The pdf has been created
+      seePdf.value = false
+
       const b = pdfDoc.output('blob')
 
-      const fileRef = storageRef(storage, `Activities/${actToEdit.value.id}/Test.pdf`)
+      // Saving pdf
+      // FileRef
+      const fileRef = storageRef(
+        storage,
+        `Activities/${actToEdit.value.id}/Activity-${actToEdit.value.id}.pdf`
+      )
+
+      // Uploading File to the Server
+      statusCreatingPdf.value = 'Uploading File to the Server'
+      store.isUploadingFiles = true
+      store.isUploadingFilesPercentage = 0
       const uploadTask = uploadBytesResumable(fileRef, b)
       uploadTask.on(
         'state_changed',
         (snapshot) => {
+          // progress uploading the file
           store.isUploadingFilesPercentage = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
         },
         (error) => {
+          statusCreatingPdf.value = 'Error Uploading File: ' + error
+          // error uploading the file
           store.isUploadingFiles = false
           console.log('ERROR', error)
         },
         () => {
+          // the file has been uploaded
           console.log('DONE')
           store.isUploadingFiles = false
 
+          // preparing email
+          statusCreatingPdf.value = 'Sending Email'
           const formData = new FormData()
           formData.append('file', b, 'Activity.pdf')
           formData.append('email', corp.value.EmailFiles)
           formData.append('subject', actToEdit.value.Title + ' @ ' + siteName.value)
           formData.append('id', actToEdit.value.id)
+
+          // Sending info to the email script
+          emailSent.value = false
           axios
             .post('https://mynetcalendar.org/safeenv-email-activity.php', formData, {
               headers: {
                 'Content-Type': 'multipart/form-data'
               }
             })
-            .then(() => {
-              console.log('Email Sent')
-              updateDoc( doc(db, 'Activities', actToEdit.value.id), {
-                Status: 'Completed'
-              })
-              emit('onClose')
+            .then((res) => {
+              // email script done
+              console.log('Email result: ', res.data)
+              if (res.data.success) {
+                // success email sent
+                console.log('Email Sent')
+                emailSent.value = true
+                statusCreatingPdf.value = 'Email has been Sent'
+                updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+                  Status: 'Completed'
+                })
+              } else {
+                // error sending email
+                console.log('Error! ', res.data.message)
+                statusCreatingPdf.value = 'Error Sending Email: ' + res.data.message
+              }
             })
 
           // getDownloadURL(uploadTask.snapshot.ref).then((url) => {
@@ -848,7 +1145,6 @@ async function createPDF() {
           //     console.log('******* file', emailData.value)
           //   })
           // })
-          creatingPDF.value = false
         }
       )
     },
@@ -879,7 +1175,7 @@ async function createPDF() {
               <div
                 class="group relative flex grow cursor-pointer place-items-center"
                 @click="tabActive = index"
-                :class="{ 'pointer-events-none': actToEdit.id == '' && index > 0 }"
+                :class="{ 'pointer-events-none': tabDisable[index] }"
               >
                 <!-- Left Line -->
                 <div
@@ -888,18 +1184,33 @@ async function createPDF() {
                   :class="{ 'border border-slate-300': index != 0 }"
                 ></div>
                 <!-- Number & Title -->
-                <div class="">
+                <div class="border-green-500 text-green-700">
                   <!-- Number -->
                   <div
-                    :class="{ 'bg-blue-600 text-blue-50': tabActive == index }"
-                    class="mx-auto flex h-8 w-8 place-items-center justify-center rounded-full border border-blue-300 shadow group-hover:bg-blue-300"
+                    :class="{
+                      'border-green-700 bg-green-600 text-green-50 shadow-md hover:bg-green-700':
+                        tabActive == index && !tabHasErrors[index] && !tabDisable[index],
+                      'border-slate-300 text-slate-400': tabDisable[index],
+                      'border-red-300 bg-red-600 text-red-50 shadow-md hover:bg-red-700':
+                        tabActive == index && tabHasErrors[index] && !tabDisable[index],
+                      'border-red-300 bg-red-50 text-red-600 hover:bg-red-100':
+                        tabActive != index && tabHasErrors[index] && !tabDisable[index],
+                      'border-green-500 bg-green-50':
+                        tabActive != index && !tabHasErrors[index] && !tabDisable[index]
+                    }"
+                    class="mx-auto flex h-8 w-8 place-items-center justify-center rounded-full border"
                   >
                     {{ index + 1 }}
                   </div>
                   <!-- Title -->
                   <div
-                    class="text-xs font-semibold uppercase group-hover:text-blue-600"
-                    :class="[tabActive == index ? 'text-blue-600' : 'text-slate-600']"
+                    class="text-xs font-semibold uppercase"
+                    :class="{
+                      'text-green-800':
+                        tabActive == index && !tabHasErrors[index] && !tabDisable[index],
+                      'text-slate-400': tabDisable[index],
+                      'text-red-600': tabHasErrors[index] && !tabDisable[index]
+                    }"
                   >
                     {{ tabTitle }}
                   </div>
@@ -935,7 +1246,11 @@ async function createPDF() {
                 <!-- One Time Activity -->
                 <div v-if="typeActivity" class="mt-5">
                   <div class="w-fit">
-                    <MyInputText label="Title Activity" v-model="actToEdit.Title" />
+                    <MyInputText
+                      label="Title Activity"
+                      v-model="actToEdit.Title"
+                      :isValid="isValidTitle"
+                    />
                   </div>
                 </div>
 
@@ -943,12 +1258,17 @@ async function createPDF() {
                 <div v-else class="mt-5">
                   <div class="text-xs text-slate-600">Title Activity</div>
                   <div
-                    class="over:shadow-md relative min-h-[80px] rounded border-0 bg-slate-100 px-1 pb-5 pt-1 outline-none ring-1 ring-slate-300 hover:ring-slate-400"
+                    class="selector-outter-box"
+                    :class="[
+                      isValidTitle
+                        ? 'ring-slate-300 hover:ring-slate-400'
+                        : '!hover:ring-red-400 !ring-red-300'
+                    ]"
                   >
-                    <div class="flex flex-wrap gap-1">
+                    <div class="selector-outter-list">
                       <template v-for="group in groups" :key="group">
                         <div
-                          class="flex w-[148px] cursor-pointer justify-between rounded border px-1.5"
+                          class="selector-list"
                           :class="[
                             actToEdit.Title == group
                               ? 'bg-orange-300 text-slate-900'
@@ -959,7 +1279,7 @@ async function createPDF() {
                         >
                           <div class="py-1">{{ group }}</div>
                           <div
-                            class="cursor-pointer rounded py-1 pl-0.5"
+                            class="selector-list-icon"
                             v-if="group == newGroup"
                             @click="deleteNewGroup"
                           >
@@ -968,21 +1288,15 @@ async function createPDF() {
                         </div>
                       </template>
                     </div>
-                    <div class="absolute -bottom-6 right-0">
-                      <div class="flex place-items-center opacity-70">
-                        <input
-                          class="relative left-4 rounded border-2 border-amber-600 bg-white p-2 text-sm text-slate-900 hover:shadow-lg focus:outline-amber-700"
-                          v-model="inputGroup"
-                          @keyup.enter="addNewGroup"
-                        />
-                        <button
-                          class="hover:shadow-lgs right z-10 h-12 w-12 rounded-full bg-amber-700 px-4 py-2 text-xs font-bold uppercase text-white shadow-md outline-none transition-all duration-100 ease-linear hover:brightness-125 focus:outline-none active:shadow-inner active:brightness-75 disabled:cursor-not-allowed disabled:bg-gray-500/60 disabled:text-slate-200 disabled:shadow-none disabled:brightness-100"
-                          type="button"
-                          @click="addNewGroup"
-                        >
-                          <FontAwesomeIcon icon="plus" size="xl" />
-                        </button>
-                      </div>
+                    <div class="selector-outter-input">
+                      <input
+                        class="selector-input"
+                        v-model="inputGroup"
+                        @keyup.enter="addNewGroup"
+                      />
+                      <button class="selector-fab" type="button" @click="addNewGroup">
+                        <FontAwesomeIcon icon="plus" size="xl" />
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -991,12 +1305,17 @@ async function createPDF() {
                 <div class="mt-5">
                   <div class="text-xs text-slate-600">Site</div>
                   <div
-                    class="over:shadow-md relative min-h-[80px] rounded border-0 bg-slate-100 px-1 pb-5 pt-1 outline-none ring-1 ring-slate-300 hover:ring-slate-400"
+                    class="selector-outter-box"
+                    :class="[
+                      isValidSite
+                        ? 'ring-slate-300 hover:ring-slate-400'
+                        : '!hover:ring-red-400 !ring-red-300'
+                    ]"
                   >
-                    <div class="flex flex-wrap gap-1">
+                    <div class="selector-outter-list">
                       <template v-for="site in results" :key="site.id">
                         <div
-                          class="flex w-[158px] cursor-pointer justify-between rounded border px-1.5 text-sm"
+                          class="selector-list"
                           :class="[
                             actToEdit.Site == site.item.id
                               ? 'bg-orange-300 text-slate-900'
@@ -1008,33 +1327,27 @@ async function createPDF() {
                         </div>
                       </template>
                     </div>
-                    <div class="absolute -bottom-6 right-0">
-                      <div class="flex place-items-center opacity-70">
-                        <input
-                          class="absolute right-8 rounded border-2 border-amber-600 bg-white/50 p-2 text-sm text-slate-900 hover:shadow-lg focus:outline-amber-700"
-                          v-model="filterSitesInput"
-                          @keyup.enter="filterSites"
-                        />
-                        <FontAwesomeIcon
-                          icon="times"
-                          class="absolute right-11 cursor-pointer px-2 py-2 text-amber-700"
-                          @click="filterSitesInput = ''"
-                          size="lg"
-                        />
-                        <button
-                          class="hover:shadow-lgs right z-10 h-12 w-12 rounded-full bg-amber-700 px-4 py-2 text-xs font-bold uppercase text-white shadow-md outline-none transition-all duration-100 ease-linear hover:brightness-125 focus:outline-none active:shadow-inner active:brightness-75 disabled:cursor-not-allowed disabled:bg-gray-500/60 disabled:text-slate-200 disabled:shadow-none disabled:brightness-100"
-                          type="button"
-                          @click="filterSites"
-                        >
-                          <FontAwesomeIcon icon="filter" size="xl" />
-                        </button>
-                        <div
-                          v-if="results?.[0] && filterSitesInput.length > 2"
-                          class="absolute -bottom-1.5 -left-[138px] rounded border border-amber-600 bg-amber-100 bg-white/90 px-2 text-xs"
-                          @click="filterSites"
-                        >
-                          {{ results?.[0]?.item?.Name }}
-                        </div>
+                    <div class="selector-outter-input">
+                      <input
+                        class="selector-input"
+                        v-model="filterSitesInput"
+                        @keyup.enter="filterSites"
+                      />
+                      <FontAwesomeIcon
+                        icon="times"
+                        class="selector-input-icon"
+                        @click="filterSitesInput = ''"
+                        size="lg"
+                      />
+                      <button class="selector-fab" type="button" @click="filterSites">
+                        <FontAwesomeIcon icon="filter" size="xl" />
+                      </button>
+                      <div
+                        v-if="results?.[0] && filterSitesInput.length > 2"
+                        class="selector-option"
+                        @click="filterSites"
+                      >
+                        {{ results?.[0]?.item?.Name }}
                       </div>
                     </div>
                   </div>
@@ -1043,36 +1356,65 @@ async function createPDF() {
 
               <!-- Starts, Ends -->
               <div class="mt-5 flex flex-wrap gap-1">
-                <MyInputText typeInput="datetime-local" label="Starts" v-model="actToEdit.Starts" />
-                <MyInputText typeInput="datetime-local" label="Ends" v-model="actToEdit.Ends" />
+                <MyInputText
+                  typeInput="datetime-local"
+                  label="Starts"
+                  v-model="actToEdit.Starts"
+                  :isValid="isValidStarts"
+                  @onChange="onInputStarts"
+                  @onBlur="onUpdateInfo"
+                />
+                <MyInputText
+                  typeInput="datetime-local"
+                  label="Ends"
+                  v-model="actToEdit.Ends"
+                  :isValid="isValidEnds"
+                  @onBlur="onUpdateInfo"
+                />
               </div>
-              <div class="text-red-600" v-if="isOvernightActivity">
+              <div
+                class="text-sm text-red-600"
+                v-if="isValidStarts && isValidEnds && isOvernightActivity"
+              >
                 This is an overnight activity
+              </div>
+              <div
+                class="text-sm text-slate-500"
+                v-if="isValidStarts && isValidEnds && !isOvernightActivity"
+              >
+                This is a {{ actDuration }} hrs. long activity
               </div>
 
               <!-- Comments -->
               <div class="mt-5">
-                <MyInputTextArea v-model="actToEdit.Comments" label="Comments" />
+                <MyInputTextArea
+                  v-model="actToEdit.Comments"
+                  label="Comments"
+                  @change="onUpdateInfo"
+                />
               </div>
 
               <!-- Save activity -->
               <div class="relative mx-auto mt-5 text-center">
                 <div v-if="actToEdit.id == ''">
-                  <MyButton @click="onCreateActivity" color="bg-green-600">
+                  <MyButton
+                    @click="onCreateActivity"
+                    color="bg-green-600"
+                    :disabled="!isValidAllCreateAct"
+                  >
                     Create New Activity
                   </MyButton>
                   <div class="relative -top-2 text-sm text-slate-500">
                     You will be unable to edit Title & Site after creating the activity
                   </div>
                 </div>
-                <MyButton v-else @click="onUpdateInfo" color="bg-green-600"> Update Info </MyButton>
               </div>
             </div>
           </div>
 
           <!-- Tab: 2. Check List -->
           <div v-show="tabActive == 1">
-            <div class="mx-auto mt-5 w-fit">
+            <div class="mx-auto mt-5 w-fit" v-if="actToEdit.Checklist?.length > 0">
               <template v-for="(el, index) in actToEdit.Checklist" :key="el.Task">
                 <div class="mb-2 flex place-content-center">
                   <div class="grow pr-4">
@@ -1084,9 +1426,11 @@ async function createPDF() {
                   </div>
                 </div>
               </template>
+              <div :class="{ 'text-red-600': tabHasErrorChecklist }">
+                If not all items are checked explain:
+              </div>
               <MyInputTextArea
                 v-model="actToEdit.ChecklistComments"
-                label="If not all items are checked explain:"
                 @change.self="updateChecklistComments"
               />
               <div class="mt-5">
@@ -1116,11 +1460,20 @@ async function createPDF() {
                 </template>
               </div>
             </div>
+            <div v-else class="mx-autoo mt-10 text-center">No checklist for this site</div>
           </div>
 
           <!-- Tab: 3. Staff -->
           <div v-show="tabActive == 2">
-            <div class="">
+            <div class="text-right">
+              <FontAwesomeIcon
+                :icon="store.loginUser.Settings?.ActiviyStaffTabByList ? 'table-list' : 'list'"
+                class="cursor-pointer rounded bg-blue-300 p-2 text-blue-700 shadow-md hover:contrast-75"
+                @click="updateStaffViewPreference"
+              />
+            </div>
+
+            <div class="" v-if="!store.loginUser.Settings?.ActiviyStaffTabByList">
               <!-- Group Staff -->
               <div v-if="!typeActivity">
                 <div class="text-xs text-slate-600">Usual Staff for {{ actToEdit.Title }}</div>
@@ -1199,9 +1552,9 @@ async function createPDF() {
                           {
                             'outline outline-red-500':
                               (p.item.UserCorpId == allGroupFilter?.[0]?.item?.UserCorpId &&
-                                inputStaffGroup.length > 2) ||
+                                inputStaffGroup.length > 0) ||
                               (p.item.UserCorpId == allStaffFilter?.[0]?.item?.UserCorpId &&
-                                allStaffInput.length > 2)
+                                allStaffInput.length > 0)
                           }
                         ]"
                         @click="toggleStaff(p.item.UserCorpId)"
@@ -1248,11 +1601,54 @@ async function createPDF() {
                 </div>
               </div>
             </div>
+            <div v-else class="text-slate-700">
+              <div class="w-fit">
+                <MySelectAuto
+                  v-model="staffToAdd"
+                  :items="allStaffNotSelected"
+                  itemsKey="id"
+                  itemsLabel="Name"
+                  isFussy
+                  @update:modelValue="AddStaff"
+                />
+              </div>
+              <div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th colspan="2"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="(p, index) in actToEdit.Staff" :key="p">
+                      <td class="px-2">
+                        {{ index + 1 }}. {{ allStaffById[p]?.Nickname }}
+                        {{ allStaffById[p]?.LastName }}
+                      </td>
+                      <td class="px-2">{{ allStaffById[p]?.Role }}</td>
+                      <td class="cursor-pointer px-2 py-1 text-slate-600" @click="removeStaff(p)">
+                        <FontAwesomeIcon icon="times" />
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
 
           <!-- Tab: 4. Participants -->
           <div v-show="tabActive == 3">
-            <div class="">
+            <div class="text-right">
+              <FontAwesomeIcon
+                :icon="
+                  store.loginUser.Settings?.ActiviyParticipantsTabByList ? 'table-list' : 'list'
+                "
+                class="cursor-pointer rounded bg-blue-300 p-2 text-blue-700 shadow-md hover:contrast-75"
+                @click="updateParticipantsViewPreference"
+              />
+            </div>
+
+            <div v-if="!store.loginUser.Settings?.ActiviyParticipantsTabByList" class="">
               <!-- ****************** -->
               <!-- Group Participants -->
               <!-- ****************** -->
@@ -1355,9 +1751,9 @@ async function createPDF() {
                           {
                             'outline outline-red-500':
                               (p.item.id == groupParticipantsFilter?.[0]?.item?.id &&
-                                inputParticipantGroup.length > 2) ||
+                                inputParticipantGroup.length > 0) ||
                               (p.item.id == allParticipantsFilter?.[0]?.item?.id &&
-                                inputAllParticipants.length > 2)
+                                inputAllParticipants.length > 0)
                           }
                         ]"
                         @click="toggleParticipant(p.item.id)"
@@ -1367,7 +1763,7 @@ async function createPDF() {
                           <div
                             v-if="isOvernightActivity"
                             class="selector-list-icon"
-                            @click.stop="uploadParticipantNote(p.id)"
+                            @click.stop="uploadParticipantNote(p.item.id)"
                           >
                             <FontAwesomeIcon
                               :icon="
@@ -1434,7 +1830,101 @@ async function createPDF() {
                     <span class="font-semibold">NOT</span> every participant has its slip uploaded,
                     explain:
                     <MyInputTextArea
-                      v-model="participantsMissingSlipReason"
+                      v-model="actToEdit.SlipsMissingReason"
+                      @change.self="updateMissingSlipReason"
+                    />
+                  </div>
+
+                  <!-- Uplaod File -->
+                  <div v-if="!actToEdit.FileSlipsMissingReason">
+                    Or upload a file with the explanation:
+                    <MyButton @click.self="selectFileSlipMissingReason">Uplaod</MyButton>
+                  </div>
+                  <!-- There is a file -->
+                  <div v-else class="flex place-items-center">
+                    File explaining lack of slips:
+                    <span class="ml-5 text-blue-600 underline">{{
+                      actToEdit.FileSlipsMissingReason
+                    }}</span>
+                    <FontAwesomeIcon
+                      @click="dleteFileMissingSlipsReason"
+                      icon="trash"
+                      class="cursor-pointer rounded px-2 py-2 hover:bg-slate-200"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-slate-700">
+              <div class="w-fit">
+                <MySelectAuto
+                  v-model="participantToAdd"
+                  :items="allParticipantsNotSelected"
+                  itemsKey="id"
+                  itemsLabel="Name"
+                  isFussy
+                  @update:modelValue="AddParticipant"
+                />
+              </div>
+              <table class="">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th></th>
+                    <th colspan="2" v-if="isOvernightActivity" class="text-center">Slips</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(p, index) in actToEdit.Participants" :key="p">
+                    <td class="pr-2">{{ index + 1 }}.</td>
+                    <td class="px-2">
+                      {{ allParticipantsById[p]?.Nickname }}
+                      {{ allParticipantsById[p]?.LastName }}
+                    </td>
+                    <td v-if="isOvernightActivity">
+                      <span v-if="actToEdit?.SlipsURL?.[p]"
+                        ><a :href="actToEdit?.SlipsURL?.[p]" target="_blank">Slip</a></span
+                      >
+                      <span v-else class="text-red-600">Missing </span>
+                    </td>
+                    <td v-if="isOvernightActivity">
+                      <FontAwesomeIcon
+                        v-if="actToEdit?.SlipsURL?.[p]"
+                        icon="trash"
+                        class="cursor-pointer rounded px-2 py-1 hover:bg-slate-200"
+                        @click="deleteSlip(p)"
+                      />
+                      <FontAwesomeIcon
+                        v-else
+                        icon="up-long"
+                        class="cursor-pointer rounded px-2 py-1 hover:bg-slate-200"
+                        @click="uploadParticipantNote(p)"
+                      />
+                    </td>
+                    <td
+                      class="cursor-pointer px-2 py-1 text-slate-600"
+                      @click="removeParticipant(p)"
+                    >
+                      <FontAwesomeIcon icon="times" />
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <!-- Slips -->
+              <div v-if="isOvernightActivity">
+                <div class="mt-10 text-slate-600">
+                  Important: This is a overnight activity and you need to upload the slip consent
+                  for each participant.
+                  <div v-if="participantsMissingSlip > 0" class="text-red-600">
+                    Missing slips: <span class="font-semibold">{{ participantsMissingSlip }}</span>
+                  </div>
+                  <div v-else class="text-green-600">Good to go!</div>
+                  <div class="my-5 text-sm text-slate-600">
+                    If, for some very extraordinary reason
+                    <span class="font-semibold">NOT</span> every participant has its slip uploaded,
+                    explain:
+                    <MyInputTextArea
+                      v-model="actToEdit.SlipsMissingReason"
                       @change.self="updateMissingSlipReason"
                     />
                   </div>
@@ -1472,8 +1962,13 @@ async function createPDF() {
             <MyButton v-if="actToEdit.id != ''" @click="$emit('onClose')" color="bg-red-500">
               Delete Activity
             </MyButton>
-            <MyButton v-if="actToEdit.id != ''" @click="seePdf = true" color="bg-green-600">
-              End Activity
+            <MyButton
+              v-if="actToEdit.id != ''"
+              @click="seePdf = true"
+              color="bg-green-600"
+              :disabled="!allTabsOK"
+            >
+              Preview PDF
             </MyButton>
           </div>
           <div class="my-1 flex justify-between">
@@ -1504,7 +1999,7 @@ async function createPDF() {
         <!-- Loading -->
         <div
           class="absolute left-0 right-0 top-7 mx-auto flex place-items-center justify-center"
-          v-if="store.isUploadingFiles"
+          v-if="store.isUploadingFiles && !creatingPDF"
         >
           <div class="flex place-items-center rounded-lg bg-white px-2 py-1 shadow-lg">
             <div>Loading</div>
@@ -1513,6 +2008,30 @@ async function createPDF() {
                 class="absolute left-0 h-3 rounded-full bg-orange-400"
                 :style="{ width: store.isUploadingFilesPercentage + '%' }"
               ></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Creating pdf -->
+        <div v-if="creatingPDF" class="absolute inset-0 flex place-items-center bg-slate-600/70">
+          <!-- Window wiht creating pdf status -->
+          <div class="m-2 h-28 w-full rounded bg-slate-50 p-4 text-slate-600">
+            <!-- Status: loading file -->
+            <div class="flex place-items-center justify-center" v-if="store.isUploadingFiles">
+              <div class="flex place-items-center rounded-lg bg-white px-2 py-1 shadow-lg">
+                <div>Loading PDF File</div>
+                <div class="relative ml-3 h-3 w-60 rounded-full bg-slate-300">
+                  <div
+                    class="absolute left-0 h-3 rounded-full bg-orange-400"
+                    :style="{ width: store.isUploadingFilesPercentage + '%' }"
+                  ></div>
+                </div>
+              </div>
+            </div>
+            <!-- other status -->
+            <div v-else class="text-center">
+              <div>{{ statusCreatingPdf }}</div>
+              <MyButton class="mt-5" @click="closingMessage">Close</MyButton>
             </div>
           </div>
         </div>
@@ -1571,7 +2090,8 @@ async function createPDF() {
           <!-- Photos -->
           <div class="mb-5 font-bold">
             {{ actToEdit.Photos?.length || 0 }}
-            {{ (actToEdit.Photos?.length || 0) == 1 ? 'photo' : 'photos' }} uploaded
+            {{ (actToEdit.Photos?.length || 0) == 1 ? 'photo' : 'photos' }} uploaded in the
+            checklist section
           </div>
 
           <!-- Staff -->
@@ -1579,7 +2099,7 @@ async function createPDF() {
             <div class="font-bold">Staff</div>
             <template v-for="(p, index) in actToEdit.Staff" :key="index">
               <div>
-                {{ index + 1 }}. {{ allStaffById[p]?.Nickname }} {{ allStaffById[p].LastName }}
+                {{ index + 1 }}. {{ allStaffById[p]?.Nickname }} {{ allStaffById[p]?.LastName }}
               </div>
             </template>
           </div>
@@ -1592,7 +2112,7 @@ async function createPDF() {
                 <tr>
                   <td class="pr-2">{{ index + 1 }}.</td>
                   <td class="pr-2">
-                    {{ allParticipantsById[p]?.Nickname }} {{ allParticipantsById[p].LastName }}
+                    {{ allParticipantsById[p]?.Nickname }} {{ allParticipantsById[p]?.LastName }}
                   </td>
                   <td v-if="isOvernightActivity">
                     <span v-if="actToEdit.Slips?.[p]"> Yes </span>
@@ -1601,13 +2121,27 @@ async function createPDF() {
                 </tr>
               </template>
             </table>
+            <div v-if="isOvernightActivity" class="mt-3">
+              <div>
+                <span class="font-bold">Notes on Participants Slips:</span>
+                {{ actToEdit.SlipsMissingReason }}
+              </div>
+
+              <div v-if="actToEdit.FileSlipsMissingReason" class="mt-3 font-bold">
+                A file was uploaded about slips
+              </div>
+            </div>
           </div>
 
           <!-- Notes -->
           <div class="mb-5">
-            <div class="font-bold">Notes:</div>
-            <MyInputTextArea v-model="finalComments" v-if="!creatingPDF" />
-            <div v-if="creatingPDF">{{ finalComments }}</div>
+            <div class="font-bold">Final Comments:</div>
+            <MyInputTextArea
+              v-model="actToEdit.FinalComments"
+              v-if="!creatingPDF"
+              @change.self="updateFinalComments"
+            />
+            <div v-if="creatingPDF">{{ actToEdit.FinalComments }}</div>
           </div>
 
           <!-- Ratio -->
@@ -1619,15 +2153,18 @@ async function createPDF() {
 
           <!-- Signature -->
           <div class="mb-5">
-            <div v-if="!creatingPDF" class="flex">
-              I, <MyInputText v-model="signature"></MyInputText>, confirm that all the inormation is
-              true
+            <div v-if="!creatingPDF" class="flex gap-2">
+              I,
+              <MyInputText v-model="actToEdit.Signature" @change="updateSignature"></MyInputText>,
+              confirm that all the inormation is accurate
             </div>
-            <div v-else>I, {{ signature }}, confirm that all information is true</div>
+            <div v-else>I, {{ actToEdit.Signature }}, confirm that all information is accurate</div>
           </div>
         </div>
-        <MyButton @click="createPDF">Accept</MyButton>
-        <MyButton @click="seePdf = false">Close</MyButton>
+        <div class="text-center">
+          <MyButton @click="seePdf = false">Close</MyButton>
+          <MyButton @click="createPDF" class="bg-green-600">End Activity & Email PDF</MyButton>
+        </div>
       </div>
     </div>
   </div>

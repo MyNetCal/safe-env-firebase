@@ -4,8 +4,7 @@ import { useGeneralStore } from './stores/general'
 import { storeToRefs } from 'pinia'
 import SideMenu from './components/SideMenu.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { getCurrentUser, useFirebaseAuth, useFirestore } from 'vuefire'
-import { signOut } from 'firebase/auth'
+import { getCurrentUser, useFirestore } from 'vuefire'
 import router from './router'
 import MyListBox from './components/MyInputs/MyListBox.vue'
 import { ref, watchEffect } from 'vue'
@@ -23,8 +22,6 @@ const {
 } = storeToRefs(storeGeneral)
 
 const db = useFirestore()
-
-const auth = useFirebaseAuth()
 
 const isLargeScreen = useMediaQuery('(min-width: 640px)')
 
@@ -45,15 +42,6 @@ function saveNuewLoginCorp() {
   })
 }
 
-function logout() {
-  signOut(auth)
-    .then(() => {
-      router.push('/login')
-    })
-    .catch((error) => {
-      console.log(error)
-    })
-}
 </script>
 
 <template>
@@ -85,14 +73,7 @@ function logout() {
         <div class="mr-1 flex place-items-center justify-end">
           <div class="mr-2">{{ loginUser.Nickname }}</div>
           <FontAwesomeIcon icon="user" class="mr-4" />
-          <div
-            v-if="loginUser"
-            @click="logout"
-            class="flex w-fit cursor-pointer place-items-center rounded px-2 py-1 hover:bg-blue-500"
-          >
-            <div class="mr-2">Logout</div>
-            <FontAwesomeIcon icon="right-from-bracket" />
-          </div>
+
         </div>
       </div>
       <!-- Side Menu -->
@@ -105,7 +86,7 @@ function logout() {
       <div
         class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-300 px-3 text-slate-800 print:hidden"
       >
-        <div>v.3.0</div>
+        <div>v.3.1</div>
         <div class="flex">
           {{ accessLevelName }}
         </div>

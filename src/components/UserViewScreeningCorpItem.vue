@@ -27,7 +27,7 @@ import {
   uploadBytesResumable
 } from 'firebase/storage'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
-import { doc, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, updateDoc } from 'firebase/firestore'
 
 const props = defineProps({ item: String, user: Object })
 // item= [Application, Interview, Reference, Background, Code, Consent]
@@ -37,6 +37,8 @@ const { item, user } = toRefs(props)
 const store = useGeneralStore()
 const storage = useFirebaseStorage()
 const db = useFirestore()
+
+const corps = ref({})
 
 function screeningChecked() {
   updateDoc(doc(db, 'UsersCorporations', user.value.id), {
@@ -62,11 +64,25 @@ function getUserScreeningFiles(dirInit, newDir, acc) {
         getUserScreeningFiles(pathDir, folderRef.name, acc)
       })
       res.items.forEach((itemRef) => {
-        acc.push({
-          name: itemRef.name,
-          by: newDir == '' ? user.value.CorporationName : newDir,
-          path: itemRef.fullPath
-        })
+        const by = newDir == '' ? user.value.CorporationId : newDir
+        if (!corps.value[by]) {
+          getDoc(doc(db, 'Corporations', by)).then((d) => {
+            corps.value[by] = d.data()
+            acc.push({
+              name: itemRef.name,
+              by: by,
+              path: itemRef.fullPath,
+              byName: d.data().Short
+            })
+          })
+        } else {
+          acc.push({
+            name: itemRef.name,
+            by: by,
+            path: itemRef.fullPath,
+            byName: corps.value[by].Short
+          })
+        }
       })
     })
     .catch((error) => {
@@ -77,7 +93,7 @@ function getUserScreeningFiles(dirInit, newDir, acc) {
 
 const dirInit = computed(() => {
   return item.value == 'Code' || item.value == 'Consent'
-    ? `Users/${user.value.UserId}/Screening/${item.value}/${user.value.CorporationName}`
+    ? `Users/${user.value.UserId}/Screening/${item.value}/${user.value.CorporationId}`
     : `Users/${user.value.UserId}/Screening/${item.value}`
 })
 
@@ -104,7 +120,7 @@ function uploadFile() {
     store.isUploadingFilesPercentage = 0
     const fileRef = storageRef(
       storage,
-      `Users/${user.value.UserId}/Screening/${item.value}/${user.value.CorporationName}/${data.name}`
+      `Users/${user.value.UserId}/Screening/${item.value}/${user.value.CorporationId}/${data.name}`
     )
     const uploadTask = uploadBytesResumable(fileRef, data)
     uploadTask.on(
@@ -200,15 +216,15 @@ function deleteFile(e, f) {
             <!-- File Icon and Name -->
             <div
               class="m-1 flex grow cursor-pointer place-items-center rounded pl-1 text-left text-xs hover:bg-blue-300"
-              :class="[f.by != user.CorporationName ? 'bg-orange-200' : 'bg-green-100']"
+              :class="[f.by != user.CorporationId ? 'bg-orange-200' : 'bg-green-100']"
               @click="downloadFile(f)"
             >
               <div class="py-1">
                 {{ n + 1 }}. {{ f.name }}
-                <span v-if="f.by != user.CorporationName">[{{ f.by }}]</span>
+                <span v-if="f.by != user.CorporationId">[{{ f.byName }}]</span>
               </div>
               <div
-                v-if="f.by == user.CorporationName"
+                v-if="f.by == user.CorporationId"
                 class="mr-1 cursor-pointer rounded px-2 py-1 hover:bg-slate-300"
                 @click="deleteFile($event, f)"
               >

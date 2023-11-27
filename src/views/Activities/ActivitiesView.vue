@@ -6,15 +6,20 @@ import ActivitiesViewEdit from './ActivitiesViewEdit.vue'
 import MyFab from '@/components/MyFab.vue'
 import { FontAwesomeIcon, FontAwesomeLayers } from '@fortawesome/vue-fontawesome'
 import { collection, doc, getDoc, onSnapshot, query, where } from '@firebase/firestore'
-import { useFirestore } from 'vuefire'
+import { useFirebaseStorage, useFirestore } from 'vuefire'
 import dayjs from 'dayjs'
+import { getDownloadURL, ref as storageRef } from 'firebase/storage'
+import ActivitiesViewPDF from './ActivitiesViewPDF.vue'
 
 const store = useGeneralStore()
 const db = useFirestore()
+const storage = useFirebaseStorage()
 
 const currentCorpId = ref(store.loginCorporationId)
 
 const showActivitiesViewEdit = ref(false)
+const showActivityPDF = ref(false)
+
 const editingActivityId = ref(null)
 
 const tabActive = ref(0)
@@ -92,9 +97,18 @@ onUnmounted(() => {
 })
 
 function editActivitiy(id) {
-  console.log('Editing Activity')
   editingActivityId.value = id
-  showActivitiesViewEdit.value = true
+  tabActive.value == 0 ? (showActivitiesViewEdit.value = true) : (showActivityPDF.value = true)
+}
+
+function downloadActivityPDF(id) {
+  getDownloadURL(storageRef(storage, `Activities/${id}/Activity-${id}.pdf`))
+    .then((url) => {
+      window.open(url, '_blank')
+    })
+    .catch((error) => {
+      console.log('Error: ', error)
+    })
 }
 </script>
 
@@ -115,14 +129,14 @@ function editActivitiy(id) {
     <!-- ******* -->
     <!-- Content -->
     <!-- ******* -->
-    <div class="grow p-2">
-      <table v-if="activities?.length > 0" class="mx-auto mt-5">
+    <div class="grow overflow-auto p-2">
+      <table v-if="activities?.length > 0" class="mx-auto mt-5 text-sm md:text-base">
         <thead>
           <tr class="text-left">
             <th class="pr-4">Title</th>
             <th class="pr-4">Site</th>
             <th class="pr-4">Starts</th>
-            <th>Overnight</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -131,8 +145,12 @@ function editActivitiy(id) {
               <td class="py-2 pr-4">{{ act.Title }}</td>
               <td class="py-2 pr-4 text-left">{{ act.SiteInfo?.Name }}</td>
               <td class="py-2 pr-4">{{ dayjs(act.Starts).format('MMM D @ h:mm a') }}</td>
-              <td class="py-2">
-                {{ dayjs(act.Starts).isSame(dayjs(act.Ends), 'day') ? 'No' : 'Yes' }}
+              <td
+                v-if="tabActive == 1"
+                @click.stop="downloadActivityPDF(act.id)"
+                class="cursor-pointer px-3 hover:bg-slate-300"
+              >
+                <FontAwesomeIcon icon="file-pdf" size="lg" class="text-blue-700" />
               </td>
             </tr>
           </template>
@@ -159,10 +177,9 @@ function editActivitiy(id) {
 
     <MyFab @click="editActivitiy(null)">
       <FontAwesomeLayers>
-        <FontAwesomeIcon icon="puzzle-piece" size="lg" transform="left-2 down-2"/>
+        <FontAwesomeIcon icon="puzzle-piece" size="lg" transform="left-2 down-2" />
         <FontAwesomeIcon icon="plus" transform="up-10 right-10" />
       </FontAwesomeLayers>
-      
     </MyFab>
 
     <ActivitiesViewEdit
@@ -171,6 +188,13 @@ function editActivitiy(id) {
       :id="editingActivityId"
       :corpId="currentCorpId"
       @onClose="showActivitiesViewEdit = false"
+    />
+
+    <ActivitiesViewPDF
+      v-if="showActivityPDF"
+      :showModal="showActivityPDF"
+      :id="editingActivityId"
+      @onClose="showActivityPDF = false"
     />
   </div>
 </template>

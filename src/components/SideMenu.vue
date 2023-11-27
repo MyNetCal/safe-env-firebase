@@ -24,7 +24,7 @@
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="home" />
-        <div class="ml-6 whitespace-nowrap line-through">My Status</div>
+        <div class="ml-6 whitespace-nowrap">My Status</div>
       </div>
       <!-- Menu: Users 
       <Disclosure v-slot="{ open, close }">
@@ -138,11 +138,19 @@
       </div>
       <!-- Abuse Report -->
       <div
-        @click="goto('/')"
+        @click="goto('/incident')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-2 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="person-burst" />
-        <div class="ml-6 whitespace-nowrap line-through">Abuse Report</div>
+        <div class="ml-6 whitespace-nowrap">Incident Report</div>
+      </div>
+      <!-- Log out -->
+      <div
+        @click="logout"
+        class="flex cursor-pointer place-items-center rounded p-2 pl-2 text-slate-700 hover:bg-slate-400"
+      >
+        <FontAwesomeIcon icon="right-from-bracket" />
+        <div class="ml-6 whitespace-nowrap">Logout</div>
       </div>
     </div>
   </div>
@@ -153,11 +161,14 @@ import { ref } from 'vue'
 import { onClickOutside, useMediaQuery } from '@vueuse/core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import router from '@/router'
+import { signOut } from '@firebase/auth';
+import { useFirebaseAuth } from 'vuefire';
 // import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
 
 const sidebar = ref(null)
 const showSidemenu = ref(false)
 const stateBeforeClicking = ref(false)
+const auth = useFirebaseAuth()
 
 const isLargeScreen = useMediaQuery('(min-width: 640px)')
 
@@ -185,6 +196,16 @@ function onClickShowOpen() {
 onClickOutside(sidebar, () => {
   showSidemenu.value = false
 })
+
+function logout() {
+  signOut(auth)
+    .then(() => {
+      router.push('/login')
+    })
+    .catch((error) => {
+      console.log(error)
+    })
+}
 
 /* const allPanels = ref([]);
 function onClickDisclosureButton(close, name) {

@@ -36,6 +36,8 @@ export const useGeneralStore = defineStore('general', () => {
   const loginUserId = ref('xxx')
   const loginCurrentUsersCorporationsId = ref('xxx')
 
+  const corpsLoaded = ref([])
+
   function getUser() {
     const q = query(collection(db, 'Users'), where('Email', '==', currentUserEmail.value))
     unsubUser = onSnapshot(q, (res) => {
@@ -329,6 +331,7 @@ export const useGeneralStore = defineStore('general', () => {
     SCREENING_REQ,
     SCREENING_REQ_TITLES,
     getFunction,
-    getScreening
+    getScreening,
+    corpsLoaded
   }
 })

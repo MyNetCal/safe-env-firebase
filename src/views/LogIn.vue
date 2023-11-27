@@ -1,8 +1,9 @@
 <template>
   <div
-    class="back-login absolute inset-0 z-10 flex h-full place-items-center content-center justify-center bg-cover bg-right"
+    class="absolute inset-0 z-10 flex h-full place-items-center content-center justify-center"
     :class="[orientation == 'portrait-primary' ? 'back-login-phone' : 'back-login']"
   >
+    <div class="overlay"></div>
     <div class="w-80 rounded-lg border bg-white/80 backdrop-blur">
       <div class="w-full rounded-t-lg bg-gray-100/90 py-1">
         <h3>Safe Environment</h3>
@@ -72,7 +73,7 @@ function signInWithEmail() {
   signInWithEmailAndPassword(auth, user.value, password.value)
     .then(() => {
       router.push('/')
-      console.log('Succesful!!!!!!!');
+      console.log('Succesful!!!!!!!')
       // Signed in
       //user.value = userCredential.user
       // ...
@@ -106,10 +107,74 @@ function signInWithEmail() {
 </script>
 
 <style scoped>
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: #202a2f60; /* Adjust the opacity to darken/lighten */
+}
 .back-login {
-  background-image: url('@/assets/mentoring.jpg');
+  background-image: url('@/assets/login-img/mentoring-landscape-1280.jpg');
+  background-size: cover;
+  background-position: top right;
 }
 .back-login-phone {
-  background-image: url('@/assets/mentoring-landscape.jpg');
+  background-image: url('@/assets/login-img/mentoring-portrait-1024.jpg');
+  background-size: cover;
+  background-position: top right;
+}
+
+@media (max-width: 1024px) {
+  .back-login {
+    background-image: url('@/assets/login-img/mentoring-landscape-1024.jpg');
+    background-size: cover;
+    background-position: top right;
+  }
+  .back-login-phone {
+    background-image: url('@/assets/login-img/mentoring-portrait-1024.jpg');
+    background-size: cover;
+    background-position: top right;
+  }
+}
+
+@media (max-width: 768px) {
+  .back-login {
+    background-image: url('@/assets/login-img/mentoring-landscape-768.jpg');
+    background-size: cover;
+    background-position: top right;
+  }
+  .back-login-phone {
+    background-image: url('@/assets/login-img/mentoring-portrait-768.jpg');
+    background-size: cover;
+    background-position: top right;
+  }
+}
+
+@media (max-width: 640px) {
+  .back-login {
+    background-image: url('@/assets/login-img/mentoring-landscape-640.jpg');
+    background-size: cover;
+    background-position: top right;
+  }
+  .back-login-phone {
+    background-image: url('@/assets/login-img/mentoring-portrait-640.jpg');
+    background-size: cover;
+    background-position: top right;
+  }
+}
+
+@media (max-width: 420px) {
+  .back-login {
+    background-image: url('@/assets/login-img/mentoring-landscape-640.jpg');
+    background-size: cover;
+    background-position: top right;
+  }
+  .back-login-phone {
+    background-image: url('@/assets/login-img/mentoring-portrait-420.jpg');
+    background-size: cover;
+    background-position: top right;
+  }
 }
 </style>

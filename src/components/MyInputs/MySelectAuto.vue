@@ -60,7 +60,7 @@
             v-bind="$attrs"
           >
             <div
-              v-if="filteredItems.length === 0 && query !== ''"
+              v-if="filteredItems.length === 0"
               class="relative cursor-default select-none px-4 py-2 text-gray-700"
             >
               Nothing found.
@@ -108,6 +108,7 @@ import {
 } from '@headlessui/vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import MyInfoModal from './MyInfoModal.vue'
+import { useFuse } from '@vueuse/integrations/useFuse'
 
 const props = defineProps({
   modelValue: {},
@@ -124,24 +125,35 @@ const props = defineProps({
     }
   },
   isMultiple: { type: Boolean, default: false },
-  customValues: { type: Boolean, default: false }
+  customValues: { type: Boolean, default: false },
+  isFussy: { type: Boolean, default: false }
 })
-const { items, itemsLabel, itemsKey, label } = toRefs(props)
+const { items, itemsLabel, itemsKey, label, isFussy } = toRefs(props)
 const emit = defineEmits(['update:modelValue'])
 
 const query = ref('')
+
+const { results } = useFuse(query, items, {
+  fuseOptions: {
+    keys: [itemsLabel.value || '']
+  },
+  matchAllWhenSearchEmpty: true
+})
 
 const queryItem = computed(() => {
   return query.value === '' ? null : { [itemsKey.value]: null, [itemsLabel.value]: query.value }
 })
 
-const filteredItems = computed(() =>
-  query.value === ''
+const filteredItems = computed(() => {
+  if (isFussy.value) {
+    return results.value.map((el) => el.item)
+  }
+  return query.value === ''
     ? items.value
     : items.value.filter((item) => {
         return itemsLabel.value
           ? item[itemsLabel.value].toLowerCase().includes(query.value.toLowerCase())
           : item.toLowerCase().includes(query.value.toLowerCase())
       })
-)
+})
 </script>

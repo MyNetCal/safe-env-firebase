@@ -75,7 +75,10 @@ import {
   faUpLong,
   faDownLong,
   faFileCircleCheck,
-  faFileCircleQuestion
+  faFileCircleQuestion,
+  faFilePdf,
+  faList,
+  faTableList
 } from '@fortawesome/free-solid-svg-icons'
 import { faWindowClose, faCheckSquare, faSquare } from '@fortawesome/free-regular-svg-icons'
 
@@ -147,7 +150,10 @@ library.add(
   faUpLong,
   faDownLong,
   faFileCircleCheck,
-  faFileCircleQuestion
+  faFileCircleQuestion,
+  faFilePdf,
+  faList,
+  faTableList
 )
 
 const app = createApp(App)

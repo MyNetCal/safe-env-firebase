@@ -400,9 +400,14 @@ function initActivity(act = {}) {
     Comments: '',
     Site: '',
     Checklist: [],
+    ChecklistComments: '',
+    Repeats: true,
     Staff: [],
     Participants: [],
+    FileSlipsMissingReason: '',
     Corporation: '',
+    Slips: {},
+    SlipsMissingReason: '',
     Status: 'In Progress', // In Progress || Completed
     ...newAct
   }

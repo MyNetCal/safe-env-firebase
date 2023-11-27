@@ -44,16 +44,16 @@ function getUserScreeningFiles(dirInit, newDir) {
 
 const dirInit = ref(`Users/${user.value.id}/Screening/${item.value}`)
 const noSharingFiles = computed(() => item.value == 'Code' || item.value == 'Consent')
-dirInit.value = noSharingFiles.value ? dirInit.value + '/' + corporation.value.Short : dirInit.value
+dirInit.value = noSharingFiles.value ? dirInit.value + '/' + corporation.value.id : dirInit.value
 
 allFiles.value = []
 getUserScreeningFiles(dirInit.value, '')
 
 watch(
-  () => corporation.value.Short,
+  () => corporation.value.id,
   () => {
     dirInit.value = noSharingFiles.value
-      ? `Users/${user.value.id}/Screening/${item.value}` + '/' + corporation.value.Short
+      ? `Users/${user.value.id}/Screening/${item.value}` + '/' + corporation.value.id
       : `Users/${user.value.id}/Screening/${item.value}`
     allFiles.value = []
     getUserScreeningFiles(dirInit.value, '')
@@ -72,7 +72,7 @@ function uploadFile() {
     store.isUploadingFilesPercentage = 0
     const fileRef = storageRef(
       storage,
-      `Users/${user.value.id}/Screening/${item.value}/${corporation.value.Short}/${data.name}`
+      `Users/${user.value.id}/Screening/${item.value}/${corporation.value.id}/${data.name}`
     )
     const uploadTask = uploadBytesResumable(fileRef, data)
     uploadTask.on(
@@ -165,15 +165,15 @@ function deleteFile(e, f) {
               <!-- File Icon and Name -->
               <div
                 class="m-1 flex grow cursor-pointer place-items-center rounded pl-1 text-left text-xs hover:bg-blue-300"
-                :class="[f.by != corporation.Short ? 'bg-orange-200' : 'bg-green-100']"
+                :class="[f.by != corporation.id ? 'bg-orange-200' : 'bg-green-100']"
                 @click="downloadFile(f)"
               >
                 <div class="py-1">
                   {{ n + 1 }}. {{ f.name }}
-                  <span v-if="f.by != corporation.Short">[{{ f.by }}]</span>
+                  <span v-if="f.by != corporation.id">[{{ f.by }}]</span>
                 </div>
                 <div
-                  v-if="f.by == corporation.Short"
+                  v-if="f.by == corporation.id"
                   class="mr-1 cursor-pointer rounded px-2 py-1 hover:bg-slate-300"
                   @click="deleteFile($event, f)"
                 >

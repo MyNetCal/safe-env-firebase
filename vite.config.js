@@ -15,7 +15,7 @@ export default defineConfig({
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
         name: 'Safe Environment',
-        short_name: 'Pres',
+        short_name: 'SafeEnv',
         description: 'Opus Dei - Praesidium',
         theme_color: '#ffffff',
         icons: [

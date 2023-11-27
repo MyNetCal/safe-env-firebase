@@ -133,6 +133,7 @@
       @onClose="showUsersViewAdd = false"
     />
     <UsersViewScreening
+    v-if="showUsersViewScreening"
       :show-modal="showUsersViewScreening"
       :user-corp-id="userSelectedId"
       @onClose="showUsersViewScreening = false"
