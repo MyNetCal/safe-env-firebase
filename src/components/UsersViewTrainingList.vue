@@ -9,20 +9,22 @@ import {
   ref as storageRef,
   uploadBytesResumable
 } from 'firebase/storage'
-import { useFirebaseStorage } from 'vuefire'
+import { useFirebaseStorage, useFirestore } from 'vuefire'
 import dayjs from 'dayjs'
+import TrainingInputDate from './TrainingInputDate.vue'
+import { doc, updateDoc } from 'firebase/firestore'
+
 
 const props = defineProps({
   trainingCollection: Array,
-  allTrainingFiles: Object,
   userId: String,
   user: Object
 })
-const emit = defineEmits(['onUpdateFileList'])
 
-const { trainingCollection, allTrainingFiles, userId, user } = toRefs(props)
+const { trainingCollection, userId, user } = toRefs(props)
 
 const storage = useFirebaseStorage()
+const db = useFirestore()
 
 const openEditDateModal = ref(false)
 
@@ -30,15 +32,20 @@ const editingDateTrainingId = ref('')
 
 const trainingCompletedById = computed(() => user.value.UserData.Training || {})
 
+const trainingToEdit = ref({})
+const showEditingTraining = ref(false)
+
 const trainingArray = ref([])
 function editDate(training) {
-  editingDateTrainingId.value = training.id // This is the id of the document in Collecection  "Training"
-  trainingArray.value = trainingCompletedById.value[training.id] || []
-  openEditDateModal.value = true
+  // editingDateTrainingId.value = training.id // This is the id of the document in Collecection  "Training"
+  // trainingArray.value = trainingCompletedById.value[training.id] || []
+  // openEditDateModal.value = true
+  trainingToEdit.value = training
+  showEditingTraining.value = true
 }
 
-function downloadFile(idReq, name) {
-  getDownloadURL(storageRef(storage, `Users/${userId.value}/Training/${idReq}/${name}`))
+function downloadFile(f) {
+  getDownloadURL(storageRef(storage, `Users/${userId.value}/Training/${f.uuid}`))
     .then((url) => {
       // `url` is the download URL for 'images/stars.jpg'
       window.open(url, '_blank')
@@ -50,12 +57,18 @@ function downloadFile(idReq, name) {
     })
 }
 
-function deleteFile(e, idReq, name) {
+function deleteFile(e, trainingId, indexFile, f) {
   e.stopPropagation()
-  deleteObject(storageRef(storage, `Users/${userId.value}/Training/${idReq}/${name}`))
+  deleteObject(storageRef(storage, `Users/${userId.value}/Training/${f.uuid}`))
     .then(() => {
       console.log('File Deleted')
-      emit('onUpdateFileList')
+      const userRef = doc(db, 'Users', userId.value)
+      user.value.UserData.Training[trainingId].at(-1).files.splice(indexFile, 1)
+      console.log('Updating to: ', user.value.UserData.Training[trainingId]);
+      updateDoc(userRef, {
+        [`Training.${trainingId}`]: user.value.UserData.Training[trainingId]
+      })
+    
     })
     .catch((error) => {
       console.log('Error: ', error)
@@ -85,7 +98,7 @@ function uploadPicture() {
         console.log('Uploaded Success')
         isLoading.value = false
         reset()
-        emit('onUpdateFileList')
+       
       }
     )
   }
@@ -118,13 +131,16 @@ function openFileDiologAndUpload(id) {
               trainingCompletedById[row.idTitle]
                 ? 'bg-green-700'
                 : row.Complete == 0
-                ? 'bg-red-700'
-                : 'bg-sky-700'
+                  ? 'bg-red-700'
+                  : 'bg-sky-700'
             ]"
           >
             <div class="date-grid h-full">
               <div class="text-sm">Completed on</div>
-              <div v-if="trainingCompletedById[row.idTitle]" class="font-semibold flex place-items-center justify-center">
+              <div
+                v-if="trainingCompletedById[row.idTitle]"
+                class="flex place-items-center justify-center font-semibold"
+              >
                 {{ dayjs(trainingCompletedById[row.idTitle].at(-1)?.date).format('MMM D, YYYY') }}
               </div>
               <div v-else><FontAwesomeIcon icon="pen" /></div>
@@ -136,7 +152,7 @@ function openFileDiologAndUpload(id) {
           <div class="w-full rounded-r bg-slate-200 text-left text-slate-800">
             <!-- Title -->
             <div class="rounded-tr bg-slate-300 p-1">
-              <div class="font-semibold flex justify-between place-items-start">
+              <div class="flex place-items-start justify-between font-semibold">
                 {{ row.Title }}
                 <!-- Upload Icon -->
                 <FontAwesomeIcon
@@ -149,24 +165,24 @@ function openFileDiologAndUpload(id) {
             </div>
 
             <!-- File Section -->
-            <div class="flex">
+            <div>
               <!-- List of Files uploaded -->
-              <div>
+              <div class="flex flex-wrap">
                 <!-- For Loop -->
                 <div
-                  v-for="(f, n) in allTrainingFiles?.[row.id]"
-                  :key="f"
-                  class="flex place-items-center"
+                  v-for="f,index in user?.UserData?.Training?.[row.id]?.at(-1)?.files"
+                  :key="f.uuid"
+                  class="place-items-center"
                 >
                   <!-- File Icon and Name -->
                   <div
-                    class="m-1 flex grow cursor-pointer place-items-center rounded bg-white pl-1 text-left text-xs hover:bg-blue-300"
-                    @click="downloadFile(row.id, f)"
+                    class="m-1 flex cursor-pointer place-items-center rounded bg-white pl-1 text-left text-xs hover:bg-blue-300"
+                    @click="downloadFile(f)"
                   >
-                    <div class="">{{ n + 1 }}. {{ f }}</div>
+                    <div class="">{{ f.name }}</div>
                     <div
                       class="mr-1 cursor-pointer rounded px-2 py-1 hover:bg-slate-300"
-                      @click="deleteFile($event, row.id, f)"
+                      @click="deleteFile($event, row.id, index, f)"
                     >
                       <!-- Trash Icon -->
                       <FontAwesomeIcon icon="trash" class="text-slate-600" />
@@ -187,6 +203,13 @@ function openFileDiologAndUpload(id) {
       @onClose="openEditDateModal = false"
     >
     </DateEditModal>
+    <!-- Training Modal -->
+    <TrainingInputDate
+      v-if="showEditingTraining"
+      v-model="showEditingTraining"
+      :training="trainingToEdit"
+      :user="user.UserData"
+    />
     <!-- Loading -->
     <div class="absolute top-7 flex w-full place-items-center justify-center" v-if="isLoading">
       <div class="flex place-items-center rounded-lg bg-white px-2 py-1 shadow-lg">

@@ -54,7 +54,7 @@ function saveNuewLoginCorp() {
         </div>
       </div>
       <!-- Header -->
-      <div class="app-layout-header flex place-items-center justify-between bg-blue-800 text-white">
+      <div class="app-layout-header flex place-items-center justify-between bg-sky-700 text-white">
         <!-- Header Left -->
         <div class="ml-1 flex grow place-items-center" v-if="loginUser">
           <FontAwesomeIcon v-if="isLargeScreen" icon="shop" class="ml-3" />
@@ -86,7 +86,7 @@ function saveNuewLoginCorp() {
       <div
         class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-300 px-3 text-slate-800 print:hidden"
       >
-        <div>v.3.1</div>
+        <div>v.3.3</div>
         <div class="flex">
           {{ accessLevelName }}
         </div>

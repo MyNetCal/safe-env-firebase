@@ -28,12 +28,9 @@
             <!-- Content Tab 0: Funcion -->
             <div>
               <UsersViewTrainingList
-                :all-training-files="allTrainingFiles"
                 :training-collection="trainingCollection"
-                :training-completed="userTrainingCompleted"
                 :user-id="user.UserId"
                 :user="user"
-                @on-update-file-list="getUserTrainingFilesAll"
               />
             </div>
           </div>
@@ -54,10 +51,9 @@
 import MyModal from '@/components/MyModal.vue'
 import MyButton from '@/components/MyButton.vue'
 import { toRefs, computed, ref, watchEffect } from 'vue'
-import { useCollection, useFirebaseStorage, useFirestore } from 'vuefire'
+import { useCollection, useFirestore } from 'vuefire'
 import { collection, orderBy, query, where } from 'firebase/firestore'
 import { useGeneralStore } from '@/stores/general'
-import { listAll, ref as storageRef } from 'firebase/storage'
 import UsersViewTrainingList from '@/components/UsersViewTrainingList.vue'
 import MySwitchBothLabels from '@/components/MyInputs/MySwitchBothLabels.vue'
 
@@ -65,9 +61,6 @@ const props = defineProps({ showModal: Boolean, user: Object })
 const { showModal, user } = toRefs(props)
 const store = useGeneralStore()
 const db = useFirestore()
-
-const storage = useFirebaseStorage()
-const allTrainingFiles = ref(null)
 
 const isOutgoingTraining = ref(false)
 
@@ -109,35 +102,8 @@ const trainingCollectionRef = computed(() =>
 const { data: trainingCollection, pending: pendingCollectionTraining } =
   useCollection(trainingCollectionRef)
 
-const userTrainingCompleted = computed(() => user.value.UserData.Training || {})
-
 const isLoading = computed(() => pendingCollectionTraining.value)
 
-function getUserTrainingFilesAll() {
-  allTrainingFiles.value = {}
-  console.log('Getting Folder from: ', `Users/${user.value.UserId}/Training`)
-  const dirFiles = storageRef(storage, `Users/${user.value.UserId}/Training`)
-  listAll(dirFiles)
-    .then((res) => {
-      res.prefixes.forEach((folderRef) => {
-        console.log('Name: ', folderRef.name)
-        allTrainingFiles.value[folderRef.name] = []
-        const dirSub = storageRef(storage, `Users/${user.value.UserId}/Training/${folderRef.name}`)
-        listAll(dirSub).then((res2) => {
-          res2.items.forEach((f) => allTrainingFiles.value[folderRef.name].push(f.name))
-        })
-      })
-      res.items.forEach((itemRef) => {
-        console.log('File Item: ', itemRef)
-        console.log('Name: ', itemRef.name)
-      })
-    })
-    .catch((error) => {
-      // Uh-oh, an error occurred!
-      console.log('Error: ', error)
-    })
-}
-getUserTrainingFilesAll()
 function onOpenModal() {}
 </script>
 

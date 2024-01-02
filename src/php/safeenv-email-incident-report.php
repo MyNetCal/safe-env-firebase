@@ -11,13 +11,14 @@ require '/home/customer/www/mynetcalendar.org/public_html/vendor/autoload.php';
 
 $mail = new PHPMailer(true);
 // $mail->SMTPDebug = 1;          
-$email = $_POST['email'];
+$email1 = $_POST['email1'];
+$email2 = $_POST['email2'];
 //$subject = $_POST['subject'];
 // $attachment = $_POST['attachment'];    
 // $link = $_POST['link'];
 // $linkText = $_POST['linkText'];
 $content = $_POST['content'];
-//$id = $_POST['id'];
+$idFile = $_POST['idFile'];
 $result = [];
 
 try {
@@ -39,11 +40,12 @@ try {
     $mail->clearAddresses();
     //    $mail->addAddress("2103177915@tmomail.net");
     //    $mail->addAddress("3039296084@vtext.com");
-    $mail->addAddress($email);
+    $mail->addAddress($email1);
+    $mail->addAddress($email2);
     // $mail->addAttachment($attachment);     
     // $mail -> addStringAttachment($attachment, 'Activity.pdf')
     $file = $_FILES['file']['tmp_name'];
-    // $mail->addAttachment($file, "Activity-$id.pdf");
+    $mail->addAttachment($file, "$idFile.pdf");
     $mail->send();
     $result['success'] = true;
     $result['message'] = "Email sent";

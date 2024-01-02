@@ -5,15 +5,31 @@ import { getUsersByCorp } from '@/stores/datadb'
 import { storeToRefs } from 'pinia'
 import MySelectCorporation from '@/components/MySelect/MySelectCorporation.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
-import { arrayRemove, arrayUnion, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore'
-import { useFirestore } from 'vuefire'
+import {
+  arrayRemove,
+  arrayUnion,
+  collection,
+  doc,
+  getDoc,
+  onSnapshot,
+  orderBy,
+  query,
+  updateDoc
+} from 'firebase/firestore'
+import { useFirebaseStorage, useFirestore } from 'vuefire'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { useElementHover, useElementBounding } from '@vueuse/core'
+import dayjs from 'dayjs'
+import localizedFormat from 'dayjs/plugin/localizedFormat'
+import { ref as storageRef, getDownloadURL } from '@firebase/storage'
 
 const store = useGeneralStore()
 const db = useFirestore()
+const storage = useFirebaseStorage()
 
 const { isUserBoardPrelature } = storeToRefs(store)
+
+dayjs.extend(localizedFormat)
 
 const currentCorpId = ref(store.loginCorporationId || 'xxx')
 const currentCorpData = ref({})
@@ -28,6 +44,9 @@ const emailFiles = ref('')
 const itemRefs = ref([])
 const divuser = ref()
 const showUser = ref(false)
+
+const reportsList = ref([])
+let unsubReportsList = null
 
 watch(
   () => itemRefs.value.length,
@@ -114,6 +133,40 @@ function acceptSEC(p) {
     updateDoc(doc(db, 'UsersCorporations', p.id), { SEC: true })
   }
 }
+
+function getReportsList() {
+  reportsList.value = []
+  const q = query(collection(db, 'IncidentReports'), orderBy('Date', 'desc'))
+
+  if (unsubReportsList) {
+    unsubReportsList()
+  }
+
+  unsubReportsList = onSnapshot(q, (res) => {
+    res.docChanges().forEach((change) => {
+      const { newIndex, oldIndex, doc: tDoc } = change
+      const t = tDoc.data()
+      t.id = tDoc.id
+      if (change.type === 'added') {
+        reportsList.value.splice(newIndex, 0, t)
+      }
+      if (change.type === 'modified') {
+        reportsList.value.splice(oldIndex, 1)
+        reportsList.value.splice(newIndex, 0, t)
+      }
+      if (change.type === 'removed') {
+        reportsList.value.splice(oldIndex, 1)
+      }
+    })
+  })
+}
+getReportsList()
+
+function getUrlReport(id) {
+  getDownloadURL(storageRef(storage, `IncidentReports/${id}.pdf`)).then((url) => {
+    window.open(url, '_blank')
+  })
+}
 </script>
 
 <template>
@@ -126,6 +179,8 @@ function acceptSEC(p) {
     <div class="mx-auto mt-5 w-52" v-if="isUserBoardPrelature">
       <MySelectCorporation v-model="currentCorpId" />
     </div>
+
+    <!-- List of Board members -->
     <div class="mx-auto mt-3 grow">
       <Transition>
         <div v-if="personnel.length > 0">
@@ -171,8 +226,11 @@ function acceptSEC(p) {
         </div>
       </Transition>
 
+      <!-- Use to show votes labels -->
       <div ref="divuser" v-show="showUser" class="absolute rounded bg-green-300 p-2 shadow"></div>
-      <div class="mt-12 max-w-xs text-slate-700">
+
+      <!-- Voters needed -->
+      <div class="mx-auto mt-12 max-w-xs text-slate-700">
         Votes needed from board members and selection staff for personnel to be approved
       </div>
       <MyInputText
@@ -181,14 +239,43 @@ function acceptSEC(p) {
         type-input="number"
         @on-change="saveVotesNeeded"
       ></MyInputText>
-      <div class="mt-12 max-w-xs text-slate-700">All reportes and files will be emailed to</div>
+
+      <!-- Email address -->
+      <div class="mx-auto mt-12 max-w-xs text-slate-700">
+        All reportes and files will be emailed to
+      </div>
       <MyInputText
         class="mx-auto mt-1 w-80"
         v-model="emailFiles"
         type-input="email"
         @on-change="savesEmailFiles"
       ></MyInputText>
-      <div></div>
+
+      <!-- List of reports -->
+      <div class="mt-10" v-if="store.accessLevel == 5">
+        <div>List of Reports</div>
+        <table class="mt-5">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Corporation</th>
+              <th>By</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="r in reportsList"
+              :key="r.id"
+              @click="getUrlReport(r.id)"
+              class="cursor-pointer hover:bg-slate-200 m-2"
+            >
+              <td class="p-3 py-1">{{ dayjs(r.Date).format('LL') }}</td>
+              <td class="pr-3 py-1">{{ r.Corporation }}</td>
+              <td class="pr-3 py-1">{{ r.UserName }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 </template>

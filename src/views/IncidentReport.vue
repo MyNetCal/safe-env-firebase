@@ -6,9 +6,15 @@ import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 import { useGeneralStore } from '@/stores/general'
 import axios from 'axios'
 import dayjs from 'dayjs'
-import { ref } from 'vue'
+import jsPDF from 'jspdf'
+import { computed, ref } from 'vue'
+import { ref as storageRef, uploadBytesResumable } from 'firebase/storage'
+import { useFirebaseStorage, useFirestore } from 'vuefire'
+import { doc, setDoc } from 'firebase/firestore'
 
 const store = useGeneralStore()
+const storage = useFirebaseStorage()
+const db = useFirestore()
 
 const typesIncident = ref([
   '(1) General Policy Violation',
@@ -21,7 +27,7 @@ const typesIncident = ref([
   '(8) Other'
 ])
 const date = ref(dayjs().format('YYYY-MM-DD'))
-const time = ref('12:00')
+const time = ref(dayjs().format('HH:mm'))
 const typeIncident = ref('')
 const location = ref('')
 const other = ref('')
@@ -30,12 +36,22 @@ const witness = ref('')
 const description = ref('')
 const response = ref('')
 
-function sentEmail() {
-  const formData = new FormData()
-  formData.append('email', store.loginCorporation.EmailFiles)
-  formData.append(
-    'content',
-    `
+function resetForm() {
+  time.value = ref(dayjs().format('HH:mm'))
+  typeIncident.value = ''
+  location.value = ''
+  other.value = ''
+  staffName.value = ''
+  witness.value = ''
+  description.value = ''
+  response.value = ''
+  statusCreatingPdf.value = ''
+}
+
+const pdfContent = computed(
+  () => `
+    <p style='font-weight: 700'>Incident Report</p>
+    <p></p>
     <p><span style='font-weight: 700'>Date: </span>${dayjs(date.value).format('MMMM D, YYYY')} @ ${
       time.value
     }</p>
@@ -50,7 +66,68 @@ function sentEmail() {
       store.loginUser.LastName
     } from ${store.loginCorporation.Name} </p>
         `
-  )
+)
+
+const statusCreatingPdf = ref('')
+const b = ref()
+let idFile = ''
+const successEmail = ref(false)
+const errorEmail = ref(false)
+
+function createPDF() {
+  successEmail.value = false
+  errorEmail.value = false
+  statusCreatingPdf.value = 'Creating PDF...'
+  const pdfDoc = new jsPDF({ format: 'letter', unit: 'px', hotfixes: ['px_scaling'] })
+  pdfDoc.html(pdfContent.value, {
+    callback: function (pdfDoc) {
+      // The pdf has been created
+      b.value = pdfDoc.output('blob')
+      idFile = self.crypto.randomUUID()
+      const fileRef = storageRef(storage, `IncidentReports/${idFile}.pdf`)
+
+      // Uploading File to the Server
+      statusCreatingPdf.value = 'Saving Report Info...'
+      store.isUploadingFiles = true
+      store.isUploadingFilesPercentage = 0
+      const uploadTask = uploadBytesResumable(fileRef, b.value)
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          // progress uploading the file
+          store.isUploadingFilesPercentage = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+        },
+        (error) => {
+          statusCreatingPdf.value = 'Error Uploading File: ' + error
+          // error uploading the file
+          store.isUploadingFiles = false
+          console.log('ERROR', error)
+          errorEmail.value.true
+        },
+        () => {
+          // the file has been uploaded
+          sentEmail()
+          console.log('DONE')
+          store.isUploadingFiles = false
+        }
+      )
+    },
+    x: 0,
+    y: 0,
+    margin: [24, 24, 24, 24],
+    autoPaging: 'text',
+    width: 768, // letter width: 8.5 * 96 = 816; Margins: 2 * 24 = 48; Content width: 816 - 48 = 768
+    windowWidth: 768
+  })
+}
+
+function sentEmail() {
+  const formData = new FormData()
+  formData.append('email1', store.loginCorporation.EmailFiles)
+  formData.append('email2', store.loginUser.Email)
+  formData.append('content', pdfContent.value)
+  formData.append('idFile', idFile)
+  formData.append('file', b.value, `${idFile}.pdf`)
   axios
     .post('https://mynetcalendar.org/safeenv-email-incident-report.php', formData, {
       headers: {
@@ -59,6 +136,19 @@ function sentEmail() {
     })
     .then((res) => {
       console.log('Email REsult: ', res.data)
+      if (res.data.success) {
+        successEmail.value = true
+        statusCreatingPdf.value = 'Email has been Sent'
+        setDoc(doc(db, 'IncidentReports', idFile), {
+          Date: dayjs().toISOString(),
+          Corporation: store.loginCorporation.Name,
+          UserId: store.loginUserId,
+          UserName: store.loginUser.Nickname + ' ' + store.loginUser.LastName
+        })
+      } else {
+        statusCreatingPdf.value = 'Error sending email: ' + res.data.message
+        errorEmail.value = true
+      }
     })
 }
 </script>
@@ -74,6 +164,7 @@ function sentEmail() {
         ><a href="tel:+646-742-2741">646-742-2741</a>
       </span>
     </div>
+
     <!-- Form -->
     <div class="mx-auto mt-5 max-w-xl text-left">
       <div class="mb-3 flex flex-wrap gap-2">
@@ -96,7 +187,36 @@ function sentEmail() {
         v-model="response"
       />
       <div class="text-center">
-        <MyButton class="" @click="sentEmail">Submitt</MyButton>
+        <MyButton class="" @click="createPDF">Submitt</MyButton>
+      </div>
+    </div>
+
+    <!-- Creating pdf -->
+    <div
+      v-if="statusCreatingPdf != ''"
+      class="absolute inset-0 z-20 flex place-items-center bg-slate-600/70"
+    >
+      <!-- Window wiht creating pdf status -->
+      <div class="m-2 w-full rounded bg-slate-50 p-4 text-slate-600">
+        <div class="text-center">
+          <div>{{ statusCreatingPdf }}</div>
+          <div v-if="successEmail">
+            <div class="mt-2">
+              You should promptly received a copy of the email sent with the Incident Report
+              information
+            </div>
+            <div class="mt-2">
+              Also, You should recive a reply from the Safe Environment Coordinator shortly. In case
+              you don't get a reply in the next couple of hours please call to
+              <a href="tel:+646-742-2741">646-742-2741</a> without further delay
+            </div>
+          </div>
+          <div v-if="errorEmail" class="mt-2 text-red-700">
+            <div>Sorry, your email couldn't be sent. Please call to
+              <a href="tel:+646-742-2741">646-742-2741</a> without further delay</div>
+          </div>
+          <MyButton class="mt-5" @click="resetForm">Close</MyButton>
+        </div>
       </div>
     </div>
   </div>

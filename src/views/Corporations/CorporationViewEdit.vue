@@ -28,6 +28,13 @@
           </div>
         </div>
 
+        <!-- Code of Conduct -->
+        <div class="mt-3 text-center">
+          <MyButton class="bg-green-600" @click="openCodeEditor"
+            >{{ dataToEdit.id == '' ? 'Upload' : 'Update' }} Code Of Conduct</MyButton
+          >
+        </div>
+
         <!-- Activities -->
         <div class="mt-5">
           <div class="text-xs text-slate-600">
@@ -54,44 +61,11 @@
           </div>
         </div>
 
-        <!-- Code of Conduct -->
-        <div class="mt-5">
-          <div class="text-xs text-slate-600">Code of Conduct Document</div>
-          <div
-            class="flex w-fit place-items-center rounded border-0 bg-slate-200 outline-none ring-1 ring-slate-300 hover:shadow-md hover:ring-slate-400"
-          >
-            <FontAwesomeIcon
-              icon="file-arrow-up"
-              class="cursor-pointer bg-stone-300 px-5 py-2 text-stone-700"
-              size="lg"
-              @click="openFileDiologAndUpload()"
-            />
-            <div v-if="!codeOfConductFileName" class="mx-12 text-sm text-slate-500">
-              No file uploaded
-            </div>
-            <div v-else class="flex place-items-center bg-slate-200 pl-3 text-sm">
-              <div
-                class="cursor-pointer py-2 text-blue-600 underline hover:text-blue-900"
-                @click="downloadFile"
-              >
-                {{ codeOfConductFileName }}
-              </div>
-
-              <FontAwesomeIcon
-                icon="times"
-                class="cursor-pointer px-3 py-2 text-stone-700"
-                size="lg"
-                @click="deleteFile()"
-              />
-            </div>
-          </div>
-        </div>
-
         <!-- Groups -->
         <div class="mt-5">
           <div class="text-xs text-slate-600">Group Activities</div>
           <div
-            class="relative min-h-[80px] rounded border-0 bg-slate-100 px-1 pb-5 pt-1 outline-none ring-1 ring-slate-300 over:shadow-md hover:ring-slate-400"
+            class="over:shadow-md relative min-h-[80px] rounded border-0 bg-slate-100 px-1 pb-5 pt-1 outline-none ring-1 ring-slate-300 hover:ring-slate-400"
           >
             <div class="flex flex-wrap gap-1">
               <template v-for="group in dataToEdit.ActivityGroups" :key="group">
@@ -143,6 +117,28 @@
         </div>
       </div>
     </MyModal>
+    <div
+      v-if="codeEditing"
+      class="absolute inset-0 z-50 justify-between bg-slate-200/95 p-2 text-left"
+    >
+      <div class="pdf-height mx-auto max-w-[816px] bg-white p-2 text-stone-600">
+        <textarea
+          v-model="dataToEdit.Code"
+          class="code-input thinsb relative w-full resize-none rounded border-0 bg-white px-1 py-1 placeholder-gray-400 shadow outline-none hover:shadow-md focus:outline-none focus:ring-1 focus:ring-blue-300"
+        ></textarea>
+        <div class="mt-6 px-2">
+          I, __________________________________, have read the Code of Conduct and agree to abide by
+          it in connection with all Activities involving Minors
+        </div>
+      </div>
+      <div class="mt-5 text-center">
+        <MyButton class="bg-red-600" @click="closingCodeEditor">Cancel</MyButton>
+        <MyButton class="bg-green-700" @click="updatingCode">{{ dataToEdit.id == '' ? 'Save' : 'Update *' }}</MyButton>
+      </div>
+      <div class="text-center text-xs text-slate-500" v-if="dataToEdit.id != ''">
+        * Updating the Code of Conduct will require all personnel to sign it again
+      </div>
+    </div>
   </div>
 </template>
 
@@ -155,15 +151,8 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { useGeneralStore } from '@/stores/general'
 import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'
-import { useFirebaseStorage, useFirestore } from 'vuefire'
-import { useFileDialog } from '@vueuse/core'
-import {
-  deleteObject,
-  getDownloadURL,
-  listAll,
-  ref as storageRef,
-  uploadBytesResumable
-} from 'firebase/storage'
+import { useFirestore } from 'vuefire'
+import dayjs from 'dayjs'
 
 const emit = defineEmits(['onClose', 'onUpdate'])
 const props = defineProps({ showModal: Boolean, id: String, branch: String, rowSelected: Object })
@@ -173,7 +162,8 @@ const db = useFirestore()
 const store = useGeneralStore()
 const activities = computed(() => store.activities)
 const entities = store.entities
-const storage = useFirebaseStorage()
+
+const codeEditing = ref(false)
 
 const inputGroup = ref('')
 
@@ -196,89 +186,6 @@ const isLoading = ref(false)
 function toggleActivities(id) {
   const index = dataToEdit.value.Activities.indexOf(id)
   index >= 0 ? dataToEdit.value.Activities.splice(index, 1) : dataToEdit.value.Activities.push(id)
-}
-
-function uploadPicture() {
-  const data = files.value?.item(0)
-  if (data) {
-    isLoading.value = true
-    percentage.value = 0
-    const fileRef = storageRef(storage, `Corporations/${dataToEdit.value.id}/Code/${data.name}`)
-    const uploadTask = uploadBytesResumable(fileRef, data)
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        percentage.value = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-      },
-      (error) => {
-        isLoading.value = false
-        console.log('ERROR', error)
-      },
-      () => {
-        console.log('DONE')
-        isLoading.value = false
-        getCodeOfConductFile()
-      }
-    )
-  }
-}
-
-const codeOfConductFileName = ref('')
-
-function getCodeOfConductFile() {
-  console.log('reading files: ', `Corporations/${dataToEdit.value.id}/Code`)
-  const dirFiles = storageRef(storage, `Corporations/${dataToEdit.value.id}/Code`)
-  listAll(dirFiles)
-    .then((res) => {
-      codeOfConductFileName.value = ''
-      res.items.forEach((itemRef) => {
-        console.log('File Item: ', itemRef)
-        console.log('Name: ', itemRef.name)
-        codeOfConductFileName.value = itemRef.name
-      })
-    })
-    .catch((error) => {
-      // Uh-oh, an error occurred!
-      console.log('Error: ', error)
-    })
-}
-
-const { files, open, onChange } = useFileDialog()
-
-onChange(() => {
-  uploadPicture()
-})
-
-function openFileDiologAndUpload() {
-  open({ multiple: false })
-}
-
-function deleteFile() {
-  deleteObject(
-    storageRef(storage, `Corporations/${dataToEdit.value.id}/Code/${codeOfConductFileName.value}`)
-  )
-    .then(() => {
-      console.log('File Deleted')
-      getCodeOfConductFile()
-    })
-    .catch((error) => {
-      console.log('Error: ', error)
-    })
-}
-
-function downloadFile() {
-  getDownloadURL(
-    storageRef(storage, `Corporations/${dataToEdit.value.id}/Code/${codeOfConductFileName.value}`)
-  )
-    .then((url) => {
-      // `url` is the download URL for 'images/stars.jpg'
-      window.open(url, '_blank')
-      // This can be downloaded directly:
-    })
-    .catch((error) => {
-      console.log('Error: ', error)
-      // Handle any errors
-    })
 }
 
 const dataToEdit = ref({})
@@ -354,7 +261,32 @@ function onOpenModal() {
       ...JSON.parse(JSON.stringify(rowSelected.value))
     }
   }
-  getCodeOfConductFile()
+}
+
+const oldCode = ref('')
+const oldCodeDate = ref('')
+function openCodeEditor() {
+  oldCode.value = dataToEdit.value.Code
+  oldCodeDate.value = dataToEdit.value.CodeDate
+  codeEditing.value = true
+}
+
+function closingCodeEditor() {
+  dataToEdit.value.Code = oldCode.value
+  dataToEdit.value.CodeDate = oldCodeDate.value
+  codeEditing.value = false
+}
+
+function updatingCode() {
+  dataToEdit.value.CodeDate = dayjs().toISOString()
+  if (dataToEdit.value.id != '') {
+    const docRef = doc(db, 'Corporations', id.value)
+    updateDoc(docRef, {
+      Code: dataToEdit.value.Code,
+      CodeDate: dataToEdit.value.CodeDate
+    }).then(() => console.log('Updated code only: ', dataToEdit.value))
+  }
+  codeEditing.value = false
 }
 
 const isErrorName = computed(() => {
@@ -364,7 +296,7 @@ const isErrorName = computed(() => {
 })
 
 const isErrorShort = computed(() => {
-  const formula = dataToEdit.value.Short.length < 2
+  const formula = dataToEdit.value.Short?.length < 2
   const label = 'No Valid'
   return { formula, label }
 })
@@ -384,4 +316,12 @@ function onSave() {
 }
 </script>
 
-<style scoped></style>
+<style scoped>
+.pdf-height {
+  max-height: calc(100vh - 80px);
+  overflow-y: auto;
+}
+.code-input {
+  height: calc(100vh - 200px);
+}
+</style>

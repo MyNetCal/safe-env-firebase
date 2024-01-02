@@ -337,7 +337,7 @@ const selectingFileFor = ref('')
 const { files, open, onChange } = useFileDialog()
 
 function selectFile() {
-  selectingFileFor.value = 'Checklist'
+  selectingFileFor.value = 'CheckList'
   open({ multiple: false })
 }
 
