@@ -120,7 +120,7 @@ function emailAppLink() {
         idUser: userToEdit.value.id
       }
     },
-    to: 'casedu@gmail.com'
+    to: userToEdit.value.Email
   }).then((res) => {
     const idEmail = res.id
     if (unsub) {
