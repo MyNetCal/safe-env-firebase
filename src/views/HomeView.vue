@@ -273,7 +273,7 @@ function sentEmailCode(url, stop1, stop2, idFile) {
         file_link: url
       }
     },
-    to: 'casedu@gmail.com'
+    to: [loginUser.value.Email, store.loginCorporation.EmailFiles]
   }).then((res) => {
     const idEmail = res.id
 
@@ -446,7 +446,7 @@ function sentEmailConsent(url, stop1, stop2) {
         file_link: url
       }
     },
-    to: 'casedu@gmail.com'
+    to: [loginUser.value.Email, store.loginCorporation.EmailFiles]
   }).then((res) => {
     const idEmail = res.id
 
