@@ -103,7 +103,7 @@ const entities = computed(() => {
           ></MySelectAuto>
         </div>
       </div>
-      <div class="mb-4 flex gap-x-2">
+      <div class="mb-1 flex gap-x-2">
         <MySelectAuto
           label="Entity"
           :items="entities"

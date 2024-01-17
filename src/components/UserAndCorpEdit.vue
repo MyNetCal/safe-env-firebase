@@ -43,10 +43,10 @@ function onSave() {
       <div>
         <div>
           <UserInfoEdit v-model="userToEdit" v-model:isAllValidInfo="isAllValid" />
-          <UserCorporationEdit v-model="userCorpToEdit" />
+          <UserCorporationEdit v-model="userCorpToEdit" class="mt-5" />
         </div>
         <!-- Buttons -->
-        <div class="mb-6 mt-10 flex justify-center">
+        <div class="mb-4 mt-3 flex justify-center">
           <MyButton @click="$emit('onClose')" color="bg-blue-600"> Close </MyButton>
           <MyButton @click="onSave" color="bg-green-600" :disabled="!isAllValid"> Save </MyButton>
         </div>

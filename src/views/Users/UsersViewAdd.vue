@@ -10,7 +10,7 @@
       <div class="content">
         <UserInfoEdit v-model="dataToEdit" v-model:isAllValidInfo="isAllValid" />
         <!-- Buttons -->
-        <div class="mb-4 flex justify-center">
+        <div class="mb-4 flex justify-center mt-2">
           <MyButton @click="$emit('onClose')" color="bg-blue-600"> Close </MyButton>
           <MyButton @click="onSave" color="bg-green-600" :disabled="!isAllValid"> Save </MyButton>
         </div>
@@ -19,9 +19,11 @@
           v-if="currenUserId != ''"
           :user-id="currenUserId"
           :user="dataToEdit"
-          class="mb-5"
+          class="mb-3"
         >
         </ListCorpsByUser>
+
+       
       </div>
     </MyModal>
   </div>

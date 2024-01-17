@@ -35,6 +35,7 @@
                   @click="editUserInfo(p)"
                 >
                   <h3 class="font-semibold">
+                    <span v-if="!p.UserData.LastLogin" class="text-orange-600 font-bold mr-1">&bull;</span>
                     <span
                       >{{ p.UserData.Nickname }} {{ p.UserData.Middle }}
                       {{ p.UserData.LastName }}</span

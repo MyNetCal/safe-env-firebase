@@ -20,11 +20,11 @@ const password = ref('')
 
 const { orientation } = useScreenOrientation()
 
-const userCorpRef = doc(db, 'UsersCorporations', id.value)
-const userCorp = useDocument(userCorpRef)
+const userRef = doc(db, 'Users', id.value)
+const user = useDocument(userRef)
 
 watchEffect(() => {
-  userEmail.value = userCorp.value?.UserRef?.Email || ''
+  userEmail.value = user.value?.Email || ''
 })
 
 const loginFailed = ref(false)
@@ -47,6 +47,10 @@ function createNewUser() {
     .catch((error) => {
       //const errorCode = error.code
       isErrorLabel.value = error.message
+      const errorCode = error.code
+      const errorMessage = error.message
+      
+      console.log( 'Error: ', error,  '  ==>  Error Code: ', errorCode, '     Message: ', errorMessage)
     })
 }
 </script>
@@ -60,8 +64,7 @@ function createNewUser() {
       <div class="w-full rounded-t-lg bg-gray-300/90 py-1 shadow">
         <h3>Welcome to SafeEnv App</h3>
       </div>
-      <h2 class="mt-2">{{ userCorp?.UserRef?.Name }} {{ userCorp?.UserRef?.LastName }}</h2>
-      <h2>{{ userCorp?.CorporationName }}</h2>
+      <h2 class="mt-2">{{ user?.Name }} {{ user?.LastName }}</h2>
       <form class="mx-2 my-2">
         <div class="text-left">
           <MyInputText
@@ -89,9 +92,9 @@ function createNewUser() {
 
 <style scoped>
 .back-login {
-  background-image: url('@/assets/mentoring.jpg');
+  background-image: url('@/assets/login-img/mentoring-landscape-1280.jpg');
 }
 .back-login-phone {
-  background-image: url('@/assets/mentoring-landscape.jpg');
+  background-image: url('@/assets/login-img/mentoring-portrait-1024.jpg');
 }
 </style>

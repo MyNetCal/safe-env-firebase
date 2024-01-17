@@ -94,7 +94,7 @@ const yPx = computed(() => y.value + 'px')
         </template>
       </div>
     </template>
-    <div class="my-8 text-center" v-if="isUserBoardPrelature">
+    <div class="mt-5 text-center" v-if="isUserBoardPrelature">
       <MyButton @click="addCorporation" color="bg-blue-600"> Add Corporation </MyButton>
     </div>
     <ListCorpsByUserEdit
@@ -108,6 +108,6 @@ const yPx = computed(() => y.value + 'px')
 
 <style scoped>
 .listBox {
-  height: calc(100vh - v-bind('yPx') - 130px);
+  max-height: calc(100vh - v-bind('yPx') - 180px);
 }
 </style>

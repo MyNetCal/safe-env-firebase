@@ -1,9 +1,15 @@
 <script setup>
+/* 
+Flags for screening:
+- ScreeningReqCodeUptoDate [edited after pdf created]
+- ScreeningReqConsentLoaded [edited by Function]
+
+ */
 import { useGeneralStore } from '@/stores/general'
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from '@firebase/storage'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
 import { computed, nextTick, onUnmounted, ref, toRefs, watch } from 'vue'
-import { useScroll } from '@vueuse/core'
+import { useScroll, useTimeoutFn } from '@vueuse/core'
 import MyButton from '@/components/MyButton.vue'
 import jsPDF from 'jspdf'
 import dayjs from 'dayjs'
@@ -16,10 +22,13 @@ import {
   collection,
   where,
   query,
-  onSnapshot
+  onSnapshot,
+  addDoc,
+  setDoc
 } from 'firebase/firestore'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import TrainingInputDate from '@/components/TrainingInputDate.vue'
+import MyMessage from '@/components/MyMessage.vue'
 
 const store = useGeneralStore()
 const storage = useFirebaseStorage()
@@ -84,18 +93,12 @@ let idFile = ''
 const statusCreatingPdf = ref('')
 const errorEmail = ref(false)
 
-const validCode = computed(() =>
-  store.loginUserCorporation?.ScreeningReq?.Code?.length > 0
-    ? store.loginUserCorporation?.ScreeningReq?.Code?.at(-1).CodeDate ==
-      store.loginCorporation?.CodeDate
-    : false
-)
+const validCode = computed(() => store.loginUserCorporation?.ScreeningReqCodeUptoDate || false)
 
-const validConsent = computed(
-  () => store.loginUserCorporation?.ScreeningReq?.Consent?.FileName?.length > 0
-)
+const validConsent = computed(() => store.loginUserCorporation?.ScreeningReqConsentLoaded || false)
 
-function onSigningCode() {
+// eslint-disable-next-line no-unused-vars
+function onSigningCode2() {
   codeEditing.value = false
   const pdfContent = `
     <p style="margin-bottom: 12px; text-align: justify;">
@@ -165,7 +168,146 @@ function onSigningCode() {
 }
 
 const seeSignature = ref(false)
-async function onSigningConsent() {
+
+let unsubEmail = null
+let unsubConsentPdf = null
+const message = ref('Creating PDF...')
+const emailPending = ref(false)
+const showMessage = ref(false)
+
+// Unsubscribe listeners
+onUnmounted(() => {
+  if (unsubConsentPdf) {
+    unsubConsentPdf()
+  }
+  if (unsubEmail) {
+    unsubEmail()
+  }
+})
+
+/************** 
+Code of Conduct: Generate PDF And email it
+ **************/
+// #region
+
+async function onSigningCode() {
+  codeEditing.value = false
+  emailPending.value = true
+  message.value = 'Creating PDF...'
+  showMessage.value = true
+  idFile = self.crypto.randomUUID()
+
+  // Timers
+  const { stop: stop1 } = useTimeoutFn(() => {
+    message.value = "It's taking longer than expected..."
+  }, 30000)
+  const { stop: stop2 } = useTimeoutFn(() => {
+    message.value = "Sorry, the email couldn't be delivered."
+    emailPending.value = false
+  }, 60000)
+
+  await setDoc(doc(db, 'temp', idFile), {
+    idFile: idFile,
+    comments: 'Code of Conduct Signing up',
+    userId: store.loginUserId,
+    userCorpId: store.loginUserCorporation.id,
+    codeDate: store.loginCorporation.CodeDate,
+    status: 'Creating PDF'
+  })
+
+  // Create doc in pdfs collection to Trigger PDF Creation
+  await addDoc(collection(db, 'pdfs'), {
+    Name: signature.value,
+    code: store.loginCorporation.Code.split('\n'),
+    _pdfplum_config: {
+      outputFileName: `Code/${idFile}.pdf`,
+      templatePath: 'vue-safe-env-pdfs/code.zip',
+      chromiumPdfOptions: {
+        format: 'Letter',
+        margin: {
+          top: '0.5in',
+          bottom: '0.5in',
+          right: '0.5in',
+          left: '0.5in'
+        }
+      }
+    }
+  })
+
+  // Listener to Bucket for PDF file Created => Send email
+  if (unsubConsentPdf) {
+    unsubConsentPdf()
+  }
+  unsubConsentPdf = onSnapshot(doc(db, 'temp', idFile), (d) => {
+    if (d.data().status == 'To send Email') {
+      unsubConsentPdf()
+      updateDoc(doc(db, 'UsersCorporations', store.loginUserCorporation.id), {
+        ScreeningReqCodeUptoDate: true,
+        'ScreeningReq.Code': arrayUnion({
+          CodeDate: store.loginCorporation.CodeDate,
+          Date: new Date().toISOString(),
+          name: 'Code of Conduct.pdf',
+          path: `gs://vue-safe-env-pdfs/Code/${idFile}.pdf`,
+          by: '',
+          byName: 'User'
+        })
+      })
+      message.value = 'Sending email...'
+      getDownloadURL(storageRef(storage, `gs://vue-safe-env-pdfs/Code/${idFile}.pdf`)).then(
+        (url) => {
+          sentEmailCode(url, stop1, stop2, idFile)
+        }
+      )
+    }
+  })
+}
+
+// Send email with PDF attachment
+function sentEmailCode(url, stop1, stop2, idFile) {
+  // Create doc to Trigger email
+  addDoc(collection(db, 'mail'), {
+    template: {
+      name: 'Code',
+      data: {
+        Nickname: store.loginUser.Nickname,
+        file_link: url
+      }
+    },
+    to: 'casedu@gmail.com'
+  }).then((res) => {
+    const idEmail = res.id
+
+    // Listener to SUCCESS state in doc
+    if (unsubEmail) {
+      unsubEmail()
+    }
+    unsubEmail = onSnapshot(doc(db, 'mail', idEmail), (d) => {
+      const delivery = d.data().delivery
+      if (delivery?.state == 'SUCCESS') {
+        updateDoc(doc(db, 'temp', idFile), {
+          status: 'SUCCESS'
+        })
+        message.value = 'Email has been sent'
+        emailPending.value = false
+        stop1()
+        stop2()
+        unsubEmail()
+        return
+      }
+      if (delivery?.state == 'ERROR') {
+        message.value = delivery.error
+        emailPending.value = false
+        stop1()
+        stop2()
+        unsubEmail()
+      }
+    })
+  })
+}
+// #endregion
+
+// eslint-disable-next-line no-unused-vars
+async function onSigningConsent2() {
   seeSignature.value = true
   await nextTick()
   // console.log('pdfContetn', pdfContent)
@@ -221,13 +363,134 @@ async function onSigningConsent() {
   })
 }
 
-function showFile(file) {
-  getDownloadURL(storageRef(storage, `Users/${store.loginUserId}/Screening/${file}`)).then(
-    (url) => {
-      window.open(url)
+/************** 
+Consent: Generate PDF And email it
+ **************/
+// #region
+
+// Begin PDF Creation and send email
+async function onSigningConsent() {
+  // Init
+  consentEditing.value = false
+  emailPending.value = true
+  message.value = 'Creating PDF...'
+  showMessage.value = true
+
+  // Timers
+  const { stop: stop1 } = useTimeoutFn(() => {
+    message.value = "It's taking longer than expected..."
+  }, 30000)
+  const { stop: stop2 } = useTimeoutFn(() => {
+    message.value = "Sorry, the email couldn't be delivered."
+    emailPending.value = false
+  }, 60000)
+
+  // Create doc in pdfs collection to Trigger PDF Creation
+  await addDoc(collection(db, 'pdfs'), {
+    Name: signatureConsent.value,
+    Corp: store.loginCorporation.Name,
+    _pdfplum_config: {
+      outputFileName: `Consent-Forms/${store.loginUserCorporation.id}.pdf`,
+      chromiumPdfOptions: {
+        format: 'Letter',
+        margin: {
+          top: '0.5in',
+          bottom: '0.5in',
+          right: '0.5in',
+          left: '0.5in'
+        }
+      }
     }
-  )
+  })
+
+  // Listener to Bucket for PDF file Created => Send email
+  if (unsubConsentPdf) {
+    unsubConsentPdf()
+  }
+  unsubConsentPdf = onSnapshot(doc(db, 'UsersCorporations', store.loginUserCorporation.id), (d) => {
+    const consent = d.data().ScreeningReqConsentLoaded
+    if (consent) {
+      message.value = 'Sending email...'
+      unsubConsentPdf()
+      updateDoc(doc(db, 'UsersCorporations', store.loginUserCorporation.id), {
+        'ScreeningReq.Consent': [
+          {
+            name: 'Consent-Form.pdf',
+            by: '',
+            byName: 'User',
+            path: `gs://vue-safe-env-pdfs/Consent-Forms/${store.loginUserCorporation.id}.pdf`,
+            Date: new Date().toISOString()
+          }
+        ]
+      })
+      getDownloadURL(
+        storageRef(
+          storage,
+          `gs://vue-safe-env-pdfs/Consent-Forms/${store.loginUserCorporation.id}.pdf`
+        )
+      ).then((url) => {
+        sentEmailConsent(url, stop1, stop2)
+      })
+    }
+  })
 }
+
+// Send email with PDF attachment
+function sentEmailConsent(url, stop1, stop2) {
+  // Create doc to Trigger email
+  addDoc(collection(db, 'mail'), {
+    template: {
+      name: 'Consent',
+      data: {
+        Nickname: store.loginUser.Nickname,
+        file_link: url
+      }
+    },
+    to: 'casedu@gmail.com'
+  }).then((res) => {
+    const idEmail = res.id
+
+    // Listener to SUCCESS state in doc
+    if (unsubEmail) {
+      unsubEmail()
+    }
+    unsubEmail = onSnapshot(doc(db, 'mail', idEmail), (d) => {
+      const delivery = d.data().delivery
+      if (delivery?.state == 'SUCCESS') {
+        message.value = 'Email has been sent'
+        emailPending.value = false
+        stop1()
+        stop2()
+        unsubEmail()
+        return
+      }
+      if (delivery?.state == 'ERROR') {
+        message.value = delivery.error
+        emailPending.value = false
+        stop1()
+        stop2()
+        unsubEmail()
+      }
+    })
+  })
+}
+// #endregion
+
+function showFile(file) {
+  getDownloadURL(storageRef(storage, file)).then((url) => {
+    window.open(url)
+  })
+}
+
+const urlTest = ref(null)
+function test() {
+  getDownloadURL(
+    storageRef(storage, 'gs://vue-safe-env-pdfs/Code/07b482ba-720c-47f9-a3b9-efe2ce0b4eab.pdf')
+  ).then((url) => {
+    urlTest.value = url
+  })
+}
+test()
 
 function sortTraining() {
   console.log('Sorting...')
@@ -335,7 +598,7 @@ function editTraining(t) {
     <div class="flex flex-wrap justify-center gap-5">
       <!-- List of Code of Counduct Signed -->
       <div
-        v-if="store.loginUserCorporation?.ScreeningReq?.Code?.length > 0"
+        v-if="validCode"
         class="w-fit p-5 shadow-md"
       >
         <div class="font-semibold">
@@ -358,7 +621,7 @@ function editTraining(t) {
 
       <!-- Card with Consent Date -->
       <div
-        v-if="store.loginUserCorporation?.ScreeningReq?.Consent?.FileName"
+        v-if="validConsent"
         class="w-fit p-5 shadow-md"
       >
         <div class="font-semibold">
@@ -366,13 +629,11 @@ function editTraining(t) {
           Information
         </div>
         <div
-          @click="showFile(store.loginUserCorporation?.ScreeningReq?.Consent?.FileName)"
+          @click="showFile(store.loginUserCorporation?.ScreeningReq?.Consent?.[0].path)"
           class="cursor-pointer p-2 text-blue-600 underline"
         >
           {{
-            dayjs(store.loginUserCorporation?.ScreeningReq?.Consent?.SignatureDate).format(
-              'MMM DD, YYYY'
-            )
+            dayjs(store.loginUserCorporation?.ScreeningReq?.Consent?.Date).format('MMM DD, YYYY')
           }}
         </div>
       </div>
@@ -429,13 +690,14 @@ function editTraining(t) {
                   <!-- Last Files uploaded -->
                   <div
                     v-if="loginUser.Training[t.id].at(-1).files?.length > 0"
-                    class="flex flex-wrap mt-1"
+                    class="mt-1 flex flex-wrap"
                   >
                     <div
                       v-for="f in loginUser.Training[t.id].at(-1).files"
                       :key="f.uuid"
                       class="mr-1 rounded border bg-slate-200 px-1 text-xs"
-                    > <FontAwesomeIcon icon="fa-file" class="text-slate-500" />
+                    >
+                      <FontAwesomeIcon icon="fa-file" class="text-slate-500" />
                       {{ f.name }}
                     </div>
                   </div>
@@ -565,6 +827,9 @@ function editTraining(t) {
       :training="trainingToEdit"
       :user="store.loginUser"
     />
+
+    <!-- Message -->
+    <MyMessage v-model="showMessage" :message="message" :spinner="emailPending" />
   </div>
 </template>
 

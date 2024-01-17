@@ -21,7 +21,8 @@
             <template v-for="req in store.SCREENING_REQ" :key="req">
               <UserViewScreeningCorpItem
                 v-if="currentCorp?.Screening[currentScreeningType][req]"
-                :user="userCorp"
+                :user-corp="userCorp"
+                :user="user"
                 :item="req"
               />
             </template>
@@ -51,18 +52,31 @@
 <script setup>
 /*
 Every Corporation:
-- Code of Conduct
-- Consent to Release and Share Information
+1. Code of Conduct 
+    => pdfs/Code/${UUID}.pdf; 
+      [UsersCorporations/${idUserCorp}/ScreeningReq.Code.at(-1).FileName]
+2. Consent to Release and Share Information 
+    => pdfs/Code/${userCorpId}.pdf
+      [UsersCorporations/${idUserCorp}/ScreeningReq.Consent.FileName]
 
 All Corporations:
-- Background Check
+3. Background Check
+    => default/Users/${idUser}/ScreeningBackgroundCheck/${UUID}.pdf 
+      [Users/${idUser}/ScreeningBackgroundCheck[]]
 
 Sharing and Every Corporation:
 - Written application
+    => default/Users/${idUser}/ScreeningWrittenApplication/${UUID}.pdf 
+      [Users/${idUser}/ScreeningWrittenApplication[]]
 - Face to Face Interview
+    => default/Users/${idUser}/ScreeningInterview/${UUID}.pdf 
+      [Users/${idUser}/ScreeningInterview[]]
 - Reference Check
+     => default/Users/${idUser}/ScreeningReferenceCheck/${UUID}.pdf 
+      [Users/${idUser}/ScreeningReferenceCheck[]]
 
 
+In Database filds: {Filename, idCorp, Date, LoadedBy}
 */
 import MyModal from '@/components/MyModal.vue'
 import MyButton from '@/components/MyButton.vue'
@@ -84,9 +98,13 @@ const currentScreeningType = computed(() => store.getScreening(userCorp.value?.F
 const isLoading = computed(() => store.isUploadingFiles)
 const percentage = computed(() => store.isUploadingFilesPercentage)
 
-const currentCorpRef = computed(() => doc(db, 'Corporations', userCorp.value?.CorporationId || 'xxx'))
+const currentCorpRef = computed(() =>
+  doc(db, 'Corporations', userCorp.value?.CorporationId || 'xxx')
+)
 const currentCorp = useDocument(currentCorpRef)
 
+const userRef = computed(() => doc(db, 'Users', userCorp.value?.UserId || 'xxx'))
+const user = useDocument(userRef)
 </script>
 
 <style scoped>

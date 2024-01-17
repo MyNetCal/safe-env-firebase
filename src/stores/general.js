@@ -1,8 +1,9 @@
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { useCollection, useDocument, useFirebaseAuth, useFirestore } from 'vuefire'
 import { onAuthStateChanged } from 'firebase/auth'
-import { collection, doc, onSnapshot, query, where } from 'firebase/firestore'
+import { collection, doc, onSnapshot, query, updateDoc, where } from 'firebase/firestore'
+import dayjs from 'dayjs'
 
 // import { useFirestore, useCollection } from 'vuefire'
 // import { collection, orderBy, query } from 'firebase/firestore'
@@ -19,6 +20,10 @@ export const useGeneralStore = defineStore('general', () => {
   const countListAll = ref(0)
 
   const currentUserEmail = ref('')
+  const loginUser = ref({})
+  const loginUserId = ref('xxx')
+  const loginCurrentUsersCorporationsId = ref('xxx')
+
   let unsubUser
   onAuthStateChanged(auth, (user) => {
     if (user) {
@@ -26,15 +31,22 @@ export const useGeneralStore = defineStore('general', () => {
       getUser()
     } else {
       currentUserEmail.value = ''
+      loginUser.value = {}
+      loginUserId.value = 'xxx'
       if (unsubUser) {
         unsubUser()
       }
     }
   })
 
-  const loginUser = ref({})
-  const loginUserId = ref('xxx')
-  const loginCurrentUsersCorporationsId = ref('xxx')
+  
+
+  watch(loginUserId, (id) => {
+    console.log('New loginID: ', id);
+    if (id != 'xxx') {
+      updateDoc(doc(db, 'Users', id), { LastLogin: dayjs().toISOString() })
+    }
+  })
 
   const corpsLoaded = ref([])
 
@@ -74,42 +86,42 @@ export const useGeneralStore = defineStore('general', () => {
   )
 
   const isUserBoardScreening = computed(
-    () =>  isUserBoard.value || loginUserCorporation.value?.Screening
+    () => isUserBoard.value || loginUserCorporation.value?.Screening
   )
 
-  const accessLevelName = computed (() => {
+  const accessLevelName = computed(() => {
     if (loginUserCorporation.value?.CorporationName == 'Prelature') {
       if (loginUserCorporation.value?.SEC) {
-        return "Zeus: SEC of the Prealture"
+        return 'Zeus: SEC of the Prealture'
       }
-      if(loginUserCorporation.value?.Board) {
+      if (loginUserCorporation.value?.Board) {
         return 'Olympian God: Board in the Prealture'
       }
     }
     if (loginUserCorporation.value?.SEC) {
-      return "Lesser God - Kratos: SEC of the Corporation"
+      return 'Lesser God - Kratos: SEC of the Corporation'
     }
-    if(loginUserCorporation.value?.Board) {
+    if (loginUserCorporation.value?.Board) {
       return 'Demigod - Heracles: Board in the Corporation'
     }
     if (loginUserCorporation.value?.Function == FUNCTION_DIRECTOR) {
       return 'Heracles: Activity Director'
     }
-    return "just a mortal"
+    return 'just a mortal'
   })
-  const accessLevel = computed (() => {
+  const accessLevel = computed(() => {
     if (loginUserCorporation.value?.CorporationName == 'Prelature') {
       if (loginUserCorporation.value?.SEC) {
         return 5
       }
-      if(loginUserCorporation.value?.Board) {
+      if (loginUserCorporation.value?.Board) {
         return 4
       }
     }
     if (loginUserCorporation.value?.SEC) {
       return 3
     }
-    if(loginUserCorporation.value?.Board) {
+    if (loginUserCorporation.value?.Board) {
       return 2
     }
     if (loginUserCorporation?.Function == FUNCTION_DIRECTOR) {

@@ -1,16 +1,29 @@
 <script setup>
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { computed, ref, watchEffect } from 'vue'
+import { computed, onUnmounted, ref, watchEffect } from 'vue'
 import MyInputText from './MyInputs/MyInputText.vue'
 import dayjs from 'dayjs'
-import { collection, getDocs, query, where } from 'firebase/firestore'
+import {
+  collection,
+  getDocs,
+  query,
+  where,
+  addDoc,
+  onSnapshot,
+  doc,
+  updateDoc
+} from 'firebase/firestore'
 import { useFirestore } from 'vuefire'
-import MyInputCheckBox from './MyInputs/MyInputCheckBox.vue'
+import MyButton from './MyButton.vue'
+import { useTimeoutFn } from '@vueuse/core'
+import MyMessage from './MyMessage.vue'
+import { useGeneralStore } from '@/stores/general'
 
 const props = defineProps({ modelValue: Object, isAllValidInfo: Boolean })
 const emit = defineEmits(['update:modelValue', 'update:isAllValidInfo'])
 
 const db = useFirestore()
+const store = useGeneralStore()
 
 const userToEdit = computed({
   get() {
@@ -71,9 +84,9 @@ const isErrorDOB = computed(() => {
     dayjs().diff(dayjs(userToEdit.value.DOB), 'y') >= 18
   )
   const label =
-    !dayjs(userToEdit.value.DOB).isValid() || dayjs().diff(dayjs(userToEdit.value.DOB), 'y') > 100
-      ? ''
-      : 'Should be older than 18'
+    dayjs(userToEdit.value.DOB).isValid() && dayjs().diff(dayjs(userToEdit.value.DOB), 'y') < 18
+      ? 'Should be older than 18'
+      : ''
   return { formula, label }
 })
 
@@ -84,7 +97,63 @@ watchEffect(() => {
     !isErrorDOB.value.formula
 })
 
-const sf = ref(false)
+let unsub = null
+const message = ref('Sending Email...')
+const emailPending = ref(false)
+const showMessage = ref(false)
+function emailAppLink() {
+  emailPending.value = true
+  showMessage.value = true
+  const { stop: stop1 } = useTimeoutFn(() => {
+    message.value = "It's taking longer than expected..."
+  }, 5000)
+  const { stop: stop2 } = useTimeoutFn(() => {
+    message.value = "Sorry, the email couldn't be delivered"
+    emailPending.value = false
+  }, 10000)
+  addDoc(collection(db, 'mail'), {
+    template: {
+      name: 'SignUp',
+      data: {
+        Nickname: userToEdit.value.Nickname,
+        corp: store.loginCorporation.Name,
+        idUser: userToEdit.value.id
+      }
+    },
+    to: 'casedu@gmail.com'
+  }).then((res) => {
+    const idEmail = res.id
+    if (unsub) {
+      unsub()
+    }
+    unsub = onSnapshot(doc(db, 'mail', idEmail), (d) => {
+      const delivery = d.data().delivery
+      if (delivery?.state == 'SUCCESS') {
+        message.value = 'Email has been sent'
+        emailPending.value = false
+        stop1()
+        stop2()
+        userToEdit.value.EmailSent = true
+        updateDoc(doc(db, 'Users', userToEdit.value.id), {
+          EmailSent: true
+        })
+        return
+      }
+      if (delivery?.state == 'ERROR') {
+        message.value = delivery.error
+        emailPending.value = false
+        stop1()
+        stop2()
+      }
+    })
+  })
+}
+
+onUnmounted(() => {
+  if (unsub) {
+    unsub()
+  }
+})
 </script>
 
 <template>
@@ -174,8 +243,18 @@ const sf = ref(false)
           :isError="isErrorDOB"
         ></MyInputText>
       </div>
-      <div><MyInputCheckBox label="sf" v-model="sf"></MyInputCheckBox></div>
     </div>
+
+    <!-- Email Link -->
+    <div
+      v-if="(!userToEdit.LastLogin || !userToEdit.EmailSent) && userToEdit.id != ''"
+      class="mx-auto mt-3 w-fit"
+    >
+      <MyButton class="bg-orange-600" @click="emailAppLink">
+        <span v-if="userToEdit.EmailSent">Re-</span>Email App's Link
+      </MyButton>
+    </div>
+    <MyMessage v-model="showMessage" :message="message" :spinner="emailPending" />
   </div>
 </template>
 
