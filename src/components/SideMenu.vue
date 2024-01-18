@@ -16,7 +16,7 @@
         class="mb-10 flex w-full place-items-center rounded bg-blue-600 py-1 px-1 text-blue-50"
       >
         <font-awesome-icon icon="bars" size="lg" class="" />
-        <div class="ml-4 text-xl">Praesidum</div>
+        <div class="ml-4 text-xl">Safe Environment</div>
       </div>
       <!-- Menu: Home -->
       <div
@@ -78,7 +78,7 @@
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="users-line" />
-        <div class="ml-6 whitespace-nowrap">* Board</div>
+        <div class="ml-6 whitespace-nowrap">Board</div>
       </div>
       <!-- Menu: Personnel -->
       <div
@@ -86,7 +86,7 @@
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="users" />
-        <div class="ml-6 whitespace-nowrap">* Personnel</div>
+        <div class="ml-6 whitespace-nowrap">Personnel</div>
       </div>
       <!-- Menu: Corporations -->
       <div
@@ -94,7 +94,7 @@
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="shop" />
-        <div class="ml-6 whitespace-nowrap">* Corporations</div>
+        <div class="ml-6 whitespace-nowrap">Corporations</div>
       </div>
       <!-- Menu: Training -->
       <div
@@ -102,7 +102,7 @@
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="chalkboard-user" />
-        <div class="ml-6 whitespace-nowrap">* Training</div>
+        <div class="ml-6 whitespace-nowrap">Training</div>
       </div>
       <!-- Menu: Screening -->
       <div
@@ -110,7 +110,7 @@
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="list-check" />
-        <div class="ml-6 whitespace-nowrap">* Screening</div>
+        <div class="ml-6 whitespace-nowrap">Screening</div>
       </div>
       <!-- Menu: Sponsoring Entities -->
       <div
@@ -118,7 +118,7 @@
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="map-location-dot" />
-        <div class="ml-6 whitespace-nowrap">* Sites</div>
+        <div class="ml-6 whitespace-nowrap">Sites</div>
       </div>
       <!-- Menu: Participants -->
       <div

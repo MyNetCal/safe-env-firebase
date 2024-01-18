@@ -92,22 +92,22 @@ export const useGeneralStore = defineStore('general', () => {
   const accessLevelName = computed(() => {
     if (loginUserCorporation.value?.CorporationName == 'Prelature') {
       if (loginUserCorporation.value?.SEC) {
-        return 'Zeus: SEC of the Prealture'
+        return 'SEC of the Prealture'
       }
       if (loginUserCorporation.value?.Board) {
-        return 'Olympian God: Board in the Prealture'
+        return 'Board of the Prealture'
       }
     }
     if (loginUserCorporation.value?.SEC) {
-      return 'Lesser God - Kratos: SEC of the Corporation'
+      return 'SEC of the Corporation'
     }
     if (loginUserCorporation.value?.Board) {
-      return 'Demigod - Heracles: Board in the Corporation'
+      return 'Board of the Corporation'
     }
     if (loginUserCorporation.value?.Function == FUNCTION_DIRECTOR) {
-      return 'Heracles: Activity Director'
+      return 'Activity Director'
     }
-    return 'just a mortal'
+    return 'Personnel'
   })
   const accessLevel = computed(() => {
     if (loginUserCorporation.value?.CorporationName == 'Prelature') {

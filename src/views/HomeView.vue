@@ -192,12 +192,15 @@ async function onSigningCode() {
 // Send email with PDF attachment
 function sentEmailCode(url, stop1, stop2, idFile) {
   // Create doc to Trigger email
-  addDoc(collection(db, 'mail'), {
+  addDoc(collection(db, 'mail-triggers'), {
     template: {
       name: 'Code',
       data: {
         Nickname: store.loginUser.Nickname,
-        file_link: url
+        file_link: url,
+        corp: store.loginCorporation.Name,
+        corpShort: store.loginCorporation.Short,
+        secEmail: store.loginCorporation.EmailFiles
       }
     },
     to: [loginUser.value.Email, store.loginCorporation.EmailFiles]
@@ -208,7 +211,7 @@ function sentEmailCode(url, stop1, stop2, idFile) {
     if (unsubEmail) {
       unsubEmail()
     }
-    unsubEmail = onSnapshot(doc(db, 'mail', idEmail), (d) => {
+    unsubEmail = onSnapshot(doc(db, 'mail-triggers', idEmail), (d) => {
       const delivery = d.data().delivery
       if (delivery?.state == 'SUCCESS') {
         updateDoc(doc(db, 'temp', idFile), {
@@ -308,12 +311,15 @@ async function onSigningConsent() {
 // Send email with PDF attachment
 function sentEmailConsent(url, stop1, stop2) {
   // Create doc to Trigger email
-  addDoc(collection(db, 'mail'), {
+  addDoc(collection(db, 'mail-triggers'), {
     template: {
-      name: 'Consent',
+      name: 'ConsentInfo',
       data: {
         Nickname: store.loginUser.Nickname,
-        file_link: url
+        file_link: url,
+        corp: store.loginCorporation.Name,
+        corpShort: store.loginCorporation.Short,
+        secEmail: store.loginCorporation.EmailFiles
       }
     },
     to: [loginUser.value.Email, store.loginCorporation.EmailFiles]
@@ -324,7 +330,7 @@ function sentEmailConsent(url, stop1, stop2) {
     if (unsubEmail) {
       unsubEmail()
     }
-    unsubEmail = onSnapshot(doc(db, 'mail', idEmail), (d) => {
+    unsubEmail = onSnapshot(doc(db, 'mail-triggers', idEmail), (d) => {
       const delivery = d.data().delivery
       if (delivery?.state == 'SUCCESS') {
         message.value = 'Email has been sent'

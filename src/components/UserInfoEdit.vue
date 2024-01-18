@@ -111,13 +111,15 @@ function emailAppLink() {
     message.value = "Sorry, the email couldn't be delivered"
     emailPending.value = false
   }, 10000)
-  addDoc(collection(db, 'mail'), {
+  addDoc(collection(db, 'mail-triggers'), {
     template: {
-      name: 'SignUp',
+      name: 'SignUpInfo',
       data: {
         Nickname: userToEdit.value.Nickname,
         corp: store.loginCorporation.Name,
-        idUser: userToEdit.value.id
+        corpShort: store.loginCorporation.Short,
+        idUser: userToEdit.value.id,
+        secEmail: store.loginCorporation.EmailFiles
       }
     },
     to: userToEdit.value.Email
@@ -126,7 +128,7 @@ function emailAppLink() {
     if (unsub) {
       unsub()
     }
-    unsub = onSnapshot(doc(db, 'mail', idEmail), (d) => {
+    unsub = onSnapshot(doc(db, 'mail-triggers', idEmail), (d) => {
       const delivery = d.data().delivery
       if (delivery?.state == 'SUCCESS') {
         message.value = 'Email has been sent'
