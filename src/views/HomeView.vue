@@ -6,12 +6,11 @@ Flags for screening:
 
  */
 import { useGeneralStore } from '@/stores/general'
-import { ref as storageRef, uploadBytesResumable, getDownloadURL } from '@firebase/storage'
+import { ref as storageRef, getDownloadURL } from '@firebase/storage'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
-import { computed, nextTick, onUnmounted, ref, toRefs, watch } from 'vue'
+import { computed, onUnmounted, ref, toRefs, watch } from 'vue'
 import { useScroll, useTimeoutFn } from '@vueuse/core'
 import MyButton from '@/components/MyButton.vue'
-import jsPDF from 'jspdf'
 import dayjs from 'dayjs'
 import localizedFormat from 'dayjs/plugin/localizedFormat'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -88,84 +87,12 @@ const { bottom } = toRefs(arrivedState)
 const signature = ref('')
 const signatureConsent = ref('')
 
-const b = ref()
 let idFile = ''
-const statusCreatingPdf = ref('')
-const errorEmail = ref(false)
 
 const validCode = computed(() => store.loginUserCorporation?.ScreeningReqCodeUptoDate || false)
 
 const validConsent = computed(() => store.loginUserCorporation?.ScreeningReqConsentLoaded || false)
 
-// eslint-disable-next-line no-unused-vars
-function onSigningCode2() {
-  codeEditing.value = false
-  const pdfContent = `
-    <p style="margin-bottom: 12px; text-align: justify;">
-      ${store.loginCorporation.Code.replace(
-        /(?:\r|\n|\r\n)/g,
-        '</p> <p style="margin-bottom: 12px; text-align: justify;">'
-      )}
-    </p>
-    <p style="margin-bottom: 12px; text-align: justify;">
-      I, ${signature.value} , have read the Code of Conduct and agree to 
-      abide by it in connection with all Activities involving Minors
-    </p>
-    <p>
-      ${dayjs().format('MMMM D, YYYY')}
-    </p>
-  `
-  // console.log('pdfContetn', pdfContent)
-  const pdfDoc = new jsPDF({ format: 'letter', unit: 'px', hotfixes: ['px_scaling'] })
-  store.isUploadingFiles = true
-  pdfDoc.html(pdfContent, {
-    callback: function (pdfDoc) {
-      // The pdf has been created
-      b.value = pdfDoc.output('blob')
-      idFile = self.crypto.randomUUID()
-      const fileRef = storageRef(storage, `Users/${store.loginUserId}/Screening/${idFile}.pdf`)
-
-      // Uploading File to the Server
-      statusCreatingPdf.value = 'Saving Report Info...'
-      store.isUploadingFiles = true
-      store.isUploadingFilesPercentage = 0
-      const uploadTask = uploadBytesResumable(fileRef, b.value)
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          // progress uploading the file
-          store.isUploadingFilesPercentage = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-        },
-        (error) => {
-          statusCreatingPdf.value = 'Error Uploading File: ' + error
-          // error uploading the file
-          store.isUploadingFiles = false
-          console.log('ERROR', error)
-          errorEmail.value.true
-        },
-        () => {
-          // the file has been uploaded
-          //sentEmail()
-          console.log('DONE')
-          store.isUploadingFiles = false
-          updateDoc(doc(db, 'UsersCorporations', store.loginUserCorporation.id), {
-            'ScreeningReq.Code': arrayUnion({
-              FileName: `${idFile}.pdf`,
-              CodeDate: store.loginCorporation.CodeDate,
-              SignatureDate: dayjs().toISOString()
-            })
-          })
-        }
-      )
-    },
-    x: 0,
-    y: 0,
-    margin: [24, 24, 24, 24],
-    autoPaging: 'text',
-    width: 768, // letter width: 8.5 * 96 = 816; Margins: 2 * 24 = 48; Content width: 816 - 48 = 768
-    windowWidth: 768
-  })
-}
 
 const seeSignature = ref(false)
 
@@ -305,63 +232,6 @@ function sentEmailCode(url, stop1, stop2, idFile) {
   })
 }
 // #endregion
-
-// eslint-disable-next-line no-unused-vars
-async function onSigningConsent2() {
-  seeSignature.value = true
-  await nextTick()
-  // console.log('pdfContetn', pdfContent)
-  const pdfDoc = new jsPDF({ format: 'letter', unit: 'px', hotfixes: ['px_scaling'] })
-  store.isUploadingFiles = true
-  pdfDoc.html(consentText.value.innerHTML, {
-    callback: function (pdfDoc) {
-      consentEditing.value = false
-      seeSignature.value = false
-      // The pdf has been created
-      b.value = pdfDoc.output('blob')
-      idFile = self.crypto.randomUUID()
-      const fileRef = storageRef(storage, `Users/${store.loginUserId}/Screening/${idFile}.pdf`)
-
-      // Uploading File to the Server
-      statusCreatingPdf.value = 'Saving Report Info...'
-      store.isUploadingFiles = true
-      store.isUploadingFilesPercentage = 0
-      const uploadTask = uploadBytesResumable(fileRef, b.value)
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          // progress uploading the file
-          store.isUploadingFilesPercentage = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-        },
-        (error) => {
-          statusCreatingPdf.value = 'Error Uploading File: ' + error
-          // error uploading the file
-          store.isUploadingFiles = false
-          console.log('ERROR', error)
-          errorEmail.value.true
-        },
-        () => {
-          // the file has been uploaded
-          //sentEmail()
-          console.log('DONE')
-          store.isUploadingFiles = false
-          updateDoc(doc(db, 'UsersCorporations', store.loginUserCorporation.id), {
-            'ScreeningReq.Consent': {
-              FileName: `${idFile}.pdf`,
-              SignatureDate: dayjs().toISOString()
-            }
-          })
-        }
-      )
-    },
-    x: 0,
-    y: 0,
-    margin: [24, 24, 24, 24],
-    autoPaging: 'text',
-    width: 768, // letter width: 8.5 * 96 = 816; Margins: 2 * 24 = 48; Content width: 816 - 48 = 768
-    windowWidth: 768
-  })
-}
 
 /************** 
 Consent: Generate PDF And email it
@@ -610,10 +480,10 @@ function editTraining(t) {
             :key="code.CodeDate"
           >
             <div
-              @click="showFile(code.FileName)"
+              @click="showFile(code.path)"
               class="cursor-pointer p-1 text-blue-600 underline"
             >
-              {{ dayjs(code.SignatureDate).format('MMM DD, YYYY') }}
+              {{ dayjs(code.Date).format('MMM DD, YYYY') }}
             </div>
           </template>
         </div>
