@@ -11,10 +11,12 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
   onSnapshot,
   orderBy,
   query,
-  updateDoc
+  updateDoc,
+  where
 } from 'firebase/firestore'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
@@ -22,6 +24,7 @@ import { useElementHover, useElementBounding } from '@vueuse/core'
 import dayjs from 'dayjs'
 import localizedFormat from 'dayjs/plugin/localizedFormat'
 import { ref as storageRef, getDownloadURL } from '@firebase/storage'
+import MyButton from '@/components/MyButton.vue'
 
 const store = useGeneralStore()
 const db = useFirestore()
@@ -47,6 +50,48 @@ const showUser = ref(false)
 
 const reportsList = ref([])
 let unsubReportsList = null
+
+const codeEditing = ref(false)
+const newCode = ref('')
+
+function openCodeEditor() {
+  getDoc(doc(db, 'Corporations', store.loginCorporationId)).then((d) => {
+    newCode.value = d.data().Code
+  })
+  codeEditing.value = true
+}
+
+function closingCodeEditor() {
+  codeEditing.value = false
+}
+
+function updatingCode() {
+  if (newCode.value != '') {
+    const docRef = doc(db, 'Corporations', store.loginCorporationId)
+    updateDoc(docRef, {
+      Code: newCode.value,
+      CodeDate: dayjs().toISOString()
+    })
+
+    // reset UsersCorporations.ScreeningReqCodeUptoDate = false
+    // all UsersCorporations.CorporationId = store.loginCorporationId
+    const q = query(
+      collection(db, 'UsersCorporations'),
+      where('CorporationId', '==', store.loginCorporationId)
+    )
+    getDocs(q).then((res) => {
+      res.forEach((d) => {
+        console.log('Lets update: ', d.data().id)
+        const userCorp = d.data()
+        const dRef = doc(db, 'UsersCorporations', userCorp.id)
+        updateDoc(dRef, {
+          ScreeningReqCodeUptoDate: false
+        })
+      })
+    })
+  }
+  codeEditing.value = false
+}
 
 watch(
   () => itemRefs.value.length,
@@ -251,6 +296,11 @@ function getUrlReport(id) {
         @on-change="savesEmailFiles"
       ></MyInputText>
 
+      <!-- Code of Conduct -->
+      <div class="mt-5 text-center">
+        <MyButton class="bg-green-600" @click="openCodeEditor">Update Code Of Conduct</MyButton>
+      </div>
+
       <!-- List of reports -->
       <div class="mt-10" v-if="store.accessLevel == 5">
         <div>List of Reports</div>
@@ -267,14 +317,36 @@ function getUrlReport(id) {
               v-for="r in reportsList"
               :key="r.id"
               @click="getUrlReport(r.id)"
-              class="cursor-pointer hover:bg-slate-200 m-2"
+              class="m-2 cursor-pointer hover:bg-slate-200"
             >
               <td class="p-3 py-1">{{ dayjs(r.Date).format('LL') }}</td>
-              <td class="pr-3 py-1">{{ r.Corporation }}</td>
-              <td class="pr-3 py-1">{{ r.UserName }}</td>
+              <td class="py-1 pr-3">{{ r.Corporation }}</td>
+              <td class="py-1 pr-3">{{ r.UserName }}</td>
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div
+        v-if="codeEditing"
+        class="absolute inset-0 z-50 justify-between bg-slate-200/95 p-2 text-left"
+      >
+        <div class="pdf-height mx-auto max-w-[816px] bg-white p-2 text-stone-600">
+          <textarea
+            v-model="newCode"
+            class="code-input thinsb relative w-full resize-none rounded border-0 bg-white px-1 py-1 placeholder-gray-400 shadow outline-none hover:shadow-md focus:outline-none focus:ring-1 focus:ring-blue-300"
+          ></textarea>
+          <div class="mt-6 px-2">
+            I, __________________________________, have read the above guidelines and agree to abide by them in connection with all Activities and Programs involving Minors. I understand that I will be asked to review and sign my agreement with these guidelines annually.
+          </div>
+        </div>
+        <div class="mt-5 text-center">
+          <MyButton class="bg-red-600" @click="closingCodeEditor">Cancel</MyButton>
+          <MyButton class="bg-green-700" @click="updatingCode">Update</MyButton>
+        </div>
+        <div class="text-center text-xs text-slate-500">
+          * Updating the Code of Conduct will require all personnel to sign it again
+        </div>
       </div>
     </div>
   </div>
@@ -289,5 +361,9 @@ function getUrlReport(id) {
 .v-enter-from,
 .v-leave-to {
   opacity: 0;
+}
+
+.code-input {
+  height: calc(100vh - 200px);
 }
 </style>

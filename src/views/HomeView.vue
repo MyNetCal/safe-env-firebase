@@ -622,8 +622,7 @@ function editTraining(t) {
             type="text"
             v-model="signature"
             class="input-ring relative rounded border-0 bg-white px-2 py-0.5 text-sm outline-none ring-1 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
-          />, have read the Code of Conduct and agree to abide by it in connection with all
-          Activities involving Minors
+          />, have read the above guidelines and agree to abide by them in connection with all Activities and Programs involving Minors. I understand that I will be asked to review and sign my agreement with these guidelines annually.
         </div>
       </div>
       <div class="mt-5 text-center">

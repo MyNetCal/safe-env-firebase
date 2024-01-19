@@ -17,6 +17,7 @@ const db = useFirestore()
 
 const userEmail = ref('')
 const password = ref('')
+const password2 = ref('')
 
 const { orientation } = useScreenOrientation()
 
@@ -28,13 +29,17 @@ watchEffect(() => {
 })
 
 const loginFailed = ref(false)
-const isErrorLabel = ref('Error!')
+const isErrorLabel = ref('Password no valid!')
 
 const isError = computed(() => {
   const formula = password.value == '' && loginFailed.value
   const label = isErrorLabel.value
   return { formula, label }
 })
+
+const isValidPasswords = computed(
+  () => password.value.length >= 8 && password.value == password2.value
+)
 
 function createNewUser() {
   console.log('Create new user')
@@ -49,8 +54,15 @@ function createNewUser() {
       isErrorLabel.value = error.message
       const errorCode = error.code
       const errorMessage = error.message
-      
-      console.log( 'Error: ', error,  '  ==>  Error Code: ', errorCode, '     Message: ', errorMessage)
+
+      console.log(
+        'Error: ',
+        error,
+        '  ==>  Error Code: ',
+        errorCode,
+        '     Message: ',
+        errorMessage
+      )
     })
 }
 </script>
@@ -81,10 +93,20 @@ function createNewUser() {
             placeholder="Password"
             autocomplete="current-password"
             :isError="isError"
-            class="mb-6 mt-2"
+            class="mt-4"
+          />
+          <MyInputPassword
+            label="Re-enter Password"
+            v-model="password2"
+            placeholder="Password"
+            autocomplete="current-password"
+            :isError="isError"
+            class="mb-6"
           />
         </div>
-        <MyButton color="bg-blue-600 mb-3" @click="createNewUser">Login</MyButton>
+        <MyButton color="bg-blue-600 mb-3" @click="createNewUser" :disabled="!isValidPasswords"
+          >Login</MyButton
+        >
       </form>
     </div>
   </div>

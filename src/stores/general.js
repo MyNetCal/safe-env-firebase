@@ -39,7 +39,7 @@ export const useGeneralStore = defineStore('general', () => {
     }
   })
 
-  
+
 
   watch(loginUserId, (id) => {
     console.log('New loginID: ', id);
@@ -92,22 +92,28 @@ export const useGeneralStore = defineStore('general', () => {
   const accessLevelName = computed(() => {
     if (loginUserCorporation.value?.CorporationName == 'Prelature') {
       if (loginUserCorporation.value?.SEC) {
-        return 'SEC of the Prealture'
+        return 'SEC of the Prealture' // 5
       }
       if (loginUserCorporation.value?.Board) {
-        return 'Board of the Prealture'
+        return 'Board of the Prealture' // 4
       }
     }
     if (loginUserCorporation.value?.SEC) {
-      return 'SEC of the Corporation'
+      return 'SEC of the Corporation' // 3
     }
     if (loginUserCorporation.value?.Board) {
-      return 'Board of the Corporation'
+      return 'Board of the Corporation' // 2
     }
     if (loginUserCorporation.value?.Function == FUNCTION_DIRECTOR) {
-      return 'Activity Director'
+      return 'Activity Director' // 1
     }
-    return 'Personnel'
+    if (loginUserCorporation.value?.Function == FUNCTION_PERSONNEL) {
+      return 'Staff' // 0
+    }
+    if (loginUserCorporation.value?.Function == FUNCTION_JUNIOR_COUNSELOR || loginUserCorporation?.Function == FUNCTION_LOW_ACCESS) {
+      return 'Low Access' // -1
+    }
+    return 'xxx'
   })
   const accessLevel = computed(() => {
     if (loginUserCorporation.value?.CorporationName == 'Prelature') {
@@ -124,10 +130,16 @@ export const useGeneralStore = defineStore('general', () => {
     if (loginUserCorporation.value?.Board) {
       return 2
     }
-    if (loginUserCorporation?.Function == FUNCTION_DIRECTOR) {
+    if (loginUserCorporation.value?.Function == FUNCTION_DIRECTOR) {
       return 1
     }
-    return 0
+    if (loginUserCorporation.value?.Function == FUNCTION_PERSONNEL) {
+      return 0
+    }
+    if (loginUserCorporation.value?.Function == FUNCTION_JUNIOR_COUNSELOR || loginUserCorporation?.Function == FUNCTION_LOW_ACCESS) {
+      return -1
+    }
+    return -2
   })
 
   // const db = useFirestore()

@@ -38,7 +38,7 @@
         <!-- Activities -->
         <div class="mt-5">
           <div class="text-xs text-slate-600">
-            Activities [Check all the activities sponsor by this coorporation]
+            Activities and Roles [Check all that apply to this corporation]
           </div>
           <div
             class="min-h-[52px] rounded border-0 bg-slate-100 p-1 outline-none ring-1 ring-slate-300 hover:shadow-md hover:ring-slate-400"
@@ -61,7 +61,7 @@
           </div>
         </div>
 
-        <!-- Groups -->
+        <!-- Groups 
         <div class="mt-5">
           <div class="text-xs text-slate-600">Group Activities</div>
           <div
@@ -87,7 +87,7 @@
                   @keyup.enter="addGroup"
                 />
                 <button
-                  class="hover:shadow-lgs right z-10 h-12 w-12 rounded-full bg-amber-700 px-4 py-2 text-xs font-bold uppercase text-white shadow-md outline-none transition-all duration-100 ease-linear hover:brightness-125 focus:outline-none active:shadow-inner active:brightness-75 disabled:cursor-not-allowed disabled:bg-gray-500/60 disabled:text-slate-200 disabled:shadow-none disabled:brightness-100"
+                  class="hover:shadow-lgs right z-20 h-12 w-12 rounded-full bg-amber-700 px-4 py-2 text-xs font-bold uppercase text-white shadow-md outline-none transition-all duration-100 ease-linear hover:brightness-125 focus:outline-none active:shadow-inner active:brightness-75 disabled:cursor-not-allowed disabled:bg-gray-500/60 disabled:text-slate-200 disabled:shadow-none disabled:brightness-100"
                   type="button"
                   @click="addGroup"
                 >
@@ -97,6 +97,7 @@
             </div>
           </div>
         </div>
+      -->
 
         <!-- Buttons -->
         <div class="mb-6 mt-10 flex justify-center">
@@ -127,13 +128,16 @@
           class="code-input thinsb relative w-full resize-none rounded border-0 bg-white px-1 py-1 placeholder-gray-400 shadow outline-none hover:shadow-md focus:outline-none focus:ring-1 focus:ring-blue-300"
         ></textarea>
         <div class="mt-6 px-2">
-          I, __________________________________, have read the Code of Conduct and agree to abide by
-          it in connection with all Activities involving Minors
+          I, __________________________________, have read the above guidelines and agree to abide
+          by them in connection with all Activities and Programs involving Minors. I understand that
+          I will be asked to review and sign my agreement with these guidelines annually.
         </div>
       </div>
       <div class="mt-5 text-center">
         <MyButton class="bg-red-600" @click="closingCodeEditor">Cancel</MyButton>
-        <MyButton class="bg-green-700" @click="updatingCode">{{ dataToEdit.id == '' ? 'Save' : 'Update *' }}</MyButton>
+        <MyButton class="bg-green-700" @click="updatingCode">{{
+          dataToEdit.id == '' ? 'Save' : 'Update *'
+        }}</MyButton>
       </div>
       <div class="text-center text-xs text-slate-500" v-if="dataToEdit.id != ''">
         * Updating the Code of Conduct will require all personnel to sign it again
@@ -170,6 +174,9 @@ const inputGroup = ref('')
 function addGroup() {
   if (inputGroup.value == '') {
     return
+  }
+  if (!dataToEdit.value.ActivityGroups) {
+    dataToEdit.value.ActivityGroups = []
   }
   dataToEdit.value.ActivityGroups.push(inputGroup.value)
   inputGroup.value = ''

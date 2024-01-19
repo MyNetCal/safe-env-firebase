@@ -6,17 +6,17 @@
     class="h-full overflow-x-hidden bg-slate-200/90 text-left transition-all backdrop:blur print:hidden"
     :class="[showSidemenu ? 'w-64' : 'w-full']"
   >
-    <div v-if="!showSidemenu && !isLargeScreen" class="fixed top-1 left-2" @click="onClickShowOpen">
+    <div v-if="!showSidemenu && !isLargeScreen" class="fixed left-2 top-1" @click="onClickShowOpen">
       <font-awesome-icon icon="bars" size="lg" class="text-blue-50" />
     </div>
     <div class="p-2">
       <!-- Title -->
       <div
         @click="onClickShowOpen"
-        class="mb-10 flex w-full place-items-center rounded bg-blue-600 py-1 px-1 text-blue-50"
+        class="mb-4 flex w-full place-items-center rounded bg-blue-600 px-1 py-1 text-blue-50"
       >
         <font-awesome-icon icon="bars" size="lg" class="" />
-        <div class="ml-4 text-xl">Safe Environment</div>
+        <div class="ml-4 whitespace-nowrap text-lg">Safe Environment</div>
       </div>
       <!-- Menu: Home -->
       <div
@@ -26,54 +26,9 @@
         <FontAwesomeIcon icon="home" />
         <div class="ml-6 whitespace-nowrap">My Status</div>
       </div>
-      <!-- Menu: Users 
-      <Disclosure v-slot="{ open, close }">
-        <DisclosureButton
-          @click="onClickDisclosureButton(close, 'Users')"
-          class="flex w-full cursor-pointer place-items-center justify-between rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
-        >
-          <div class="flex place-items-center">
-            <FontAwesomeIcon icon="users" />
-            <div class="ml-6 whitespace-nowrap">* Users</div>
-          </div>
-          <font-awesome-icon
-            class="transition-all"
-            icon="chevron-right"
-            :class="open ? 'rotate-90 transform' : ''"
-          ></font-awesome-icon>
-        </DisclosureButton>
-        <div
-          class="overflow-hidden transition-all duration-300"
-          :style="{ height: open ? '80px' : '0px' }"
-        >
-          <DisclosurePanel class="disclosure-panel">
-           Board
-            <div
-              class="flex place-items-center rounded p-2 pl-8 text-slate-700 hover:bg-slate-400"
-              @click="goto('/board')"
-            >
-              <font-awesome-icon
-                icon="users-line"
-                class="mr-3"
-              ></font-awesome-icon>
-              <div class="whitespace-nowrap">Board</div>
-            </div>
-            Templates
-            <div
-              class="flex place-items-center rounded p-2 pl-9 text-slate-700 hover:bg-slate-400"
-              @click="goto('/personnel')"
-            >
-              <font-awesome-icon
-                icon="user-tie"
-                class="mr-4"
-              ></font-awesome-icon>
-              <div class="whitespace-nowrap">Personnel</div>
-            </div>
-          </DisclosurePanel>
-        </div>
-      </Disclosure> -->
       <!-- Menu: Board -->
       <div
+        v-if="accessLevel > 0"
         @click="goto('/board')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
@@ -82,6 +37,7 @@
       </div>
       <!-- Menu: Personnel -->
       <div
+        v-if="accessLevel > 0"
         @click="goto('/personnel')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
@@ -90,6 +46,7 @@
       </div>
       <!-- Menu: Corporations -->
       <div
+        v-if="accessLevel >= 4"
         @click="goto('/corporations')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
@@ -98,22 +55,25 @@
       </div>
       <!-- Menu: Training -->
       <div
+        v-if="accessLevel > 0"
         @click="goto('/training')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
-        <FontAwesomeIcon icon="chalkboard-user" />
+        <FontAwesomeIcon icon="list-check" />
         <div class="ml-6 whitespace-nowrap">Training</div>
       </div>
       <!-- Menu: Screening -->
       <div
+        v-if="accessLevel > 0"
         @click="goto('/screening')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
-        <FontAwesomeIcon icon="list-check" />
+        <FontAwesomeIcon icon="chalkboard-user" />
         <div class="ml-6 whitespace-nowrap">Screening</div>
       </div>
       <!-- Menu: Sponsoring Entities -->
       <div
+        v-if="accessLevel >= 0"
         @click="goto('/Sites')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
@@ -122,6 +82,7 @@
       </div>
       <!-- Menu: Participants -->
       <div
+        v-if="accessLevel >= 0"
         @click="goto('/participants')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-2 text-slate-700 hover:bg-slate-400"
       >
@@ -130,6 +91,7 @@
       </div>
       <!-- Menu: Activities -->
       <div
+        v-if="accessLevel >= 0"
         @click="goto('/activities')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-2 text-slate-700 hover:bg-slate-400"
       >
@@ -157,18 +119,23 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { onClickOutside, useMediaQuery } from '@vueuse/core'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import router from '@/router'
-import { signOut } from '@firebase/auth';
-import { useFirebaseAuth } from 'vuefire';
+import { signOut } from '@firebase/auth'
+import { useFirebaseAuth } from 'vuefire'
+import { useGeneralStore } from '@/stores/general'
 // import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
 
 const sidebar = ref(null)
 const showSidemenu = ref(false)
 const stateBeforeClicking = ref(false)
 const auth = useFirebaseAuth()
+
+const store = useGeneralStore()
+
+const accessLevel = computed(() => store.accessLevel)
 
 const isLargeScreen = useMediaQuery('(min-width: 640px)')
 
@@ -220,7 +187,6 @@ function onClickDisclosureButton(close, name) {
     }
   });
 } */
-
 </script>
 
 <style scoped></style>
