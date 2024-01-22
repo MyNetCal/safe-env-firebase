@@ -24,6 +24,7 @@
                 :user-corp="userCorp"
                 :user="user"
                 :item="req"
+                :corp="currentCorp"
               />
             </template>
           </div>

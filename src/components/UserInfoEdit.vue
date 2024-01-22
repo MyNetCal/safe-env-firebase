@@ -162,9 +162,9 @@ onUnmounted(() => {
   <div class="">
     <!-- Branch & Dot -->
 
-    <h2 class="mt-2 text-center font-medium text-blue-500">General User Information</h2>
+    <h2 class="mt-2 text-center font-medium text-blue-500">General Personnel Information</h2>
     <div class="mb-2 text-center text-sm text-slate-500">
-      [This information is shared between all corporations]
+      [This information is shared among all corporations]
     </div>
     <!-- Search User Outer Box -->
     <div
@@ -174,7 +174,7 @@ onUnmounted(() => {
       <!-- Title and DOB Input -->
       <div class="flex justify-between">
         <div class="flex place-items-center">
-          <div class="mr-5">Search User in other Corporations - DOB:</div>
+          <div class="mr-5">Search for Personnel in other Corporations - DOB:</div>
           <div class="w-fit">
             <MyInputText type-input="date" v-model="searchDate" />
           </div>
@@ -253,7 +253,9 @@ onUnmounted(() => {
       class="mx-auto mt-3 w-fit"
     >
       <MyButton class="bg-orange-600" @click="emailAppLink">
-        <span v-if="userToEdit.EmailSent">Re-</span>Email App's Link
+        <span v-if="userToEdit.EmailSent">Resend</span>
+        <span v-else>Send</span>
+        Invitation Email
       </MyButton>
     </div>
     <MyMessage v-model="showMessage" :message="message" :spinner="emailPending" />

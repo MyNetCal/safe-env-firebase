@@ -11,7 +11,9 @@ import {
   where,
   or,
   and,
-  arrayUnion
+  arrayUnion,
+  getDocs,
+  getDoc
 } from 'firebase/firestore'
 import { watch, onUnmounted, ref } from 'vue'
 
@@ -92,8 +94,8 @@ function entities(corpEntity) {
   return corpEntity == store.ENTITY_PRELATURE
     ? [store.ENTITY_PRELATURE]
     : corpEntity == store.ENTITY_PARTY
-    ? [store.ENTITY_PARTY]
-    : [store.ENTITY_PRELATURE, store.ENTITY_PARTY]
+      ? [store.ENTITY_PARTY]
+      : [store.ENTITY_PRELATURE, store.ENTITY_PARTY]
 }
 
 // *************
@@ -371,15 +373,15 @@ function initSite(site) {
 function initParticipant(participant = {}) {
   const newPart = JSON.parse(JSON.stringify(participant))
   return {
-    id:'',
+    id: '',
     Name: '',
     LastName: '',
     Nickname: '',
     DOB: '',
     Email: '',
     Phone: '',
-    Plan: {FileName: '', Description: ''},
-    Consent: {FileName: '', Description: ''},
+    Plan: { FileName: '', Description: '' },
+    Consent: { FileName: '', Description: '' },
     Active: true,
     ActivityGroups: [],
     CorpId: '',
@@ -413,6 +415,35 @@ function initActivity(act = {}) {
   }
 }
 
+async function getEmailSECPrelature() {
+  // Get id of Prelature Corporataion (Short=='Prelature')
+  let idCorpPrelature = '' // in TEst is Dx1Z...
+  let q = query(collection(db, 'Corporations'), where('Short', '==', 'Prelature'))
+  let dd = await getDocs(q)
+  dd.forEach((d) => {
+    idCorpPrelature = d.data().id // it should be: Dx1Z...
+  })
+
+  // Get UserId of SEC of Prelature: GFu...  UserId == fxK
+  let idUserSECPrelature = ''
+  q = query(
+    collection(db, 'UsersCorporations'),
+    where('CorporationId', '==', idCorpPrelature),
+    where('SEC', '==', true)
+  )
+  dd = await getDocs(q)
+  dd.forEach((d) => {
+    idUserSECPrelature = d.data().UserId // it should be: Dx1Z...
+  })
+
+  // Get Email of SEC of the Prelature
+  const d = await getDoc(doc(db, 'Users', idUserSECPrelature))
+  const emailSECPrelature = d.data().Email
+
+  return emailSECPrelature
+
+}
+
 export {
   initUser,
   initUserCorp,
@@ -428,5 +459,6 @@ export {
   getUsersByCorp,
   initSite,
   initParticipant,
-  initActivity
+  initActivity,
+  getEmailSECPrelature
 }

@@ -75,10 +75,10 @@ const entities = computed(() => {
   <div>
     <div>
       <h2 class="text-center font-medium text-blue-500">
-        User Role at {{ corpToEdit.CorporationName }}
+        Personnel Role at {{ corpToEdit.CorporationName }}
       </h2>
       <div class="mb-2 text-center text-sm text-slate-500">
-        [This information is specific for {{ corpToEdit.CorporationName }}]
+        [This information is specific to {{ corpToEdit.CorporationName }}]
       </div>
       <div v-if="corpToEdit.id == '' && store.isUserBoardPrelature">
         <MySelectCorporation v-model="corpToEdit.CorporationId" @newEntry="newSelCorporation" />

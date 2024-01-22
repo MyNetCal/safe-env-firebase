@@ -1,8 +1,8 @@
 <script setup>
 /* 
 Flags for screening:
-- ScreeningReqCodeUptoDate [edited after pdf created]
-- ScreeningReqConsentLoaded [edited by Function]
+- ScreeningReqFlagCode [edited after pdf created]
+- ScreeningReqFlagConsent [edited by Function]
 
  */
 import { useGeneralStore } from '@/stores/general'
@@ -89,9 +89,9 @@ const signatureConsent = ref('')
 
 let idFile = ''
 
-const validCode = computed(() => store.loginUserCorporation?.ScreeningReqCodeUptoDate || false)
+const validCode = computed(() => store.loginUserCorporation?.ScreeningReqFlagCode || false)
 
-const validConsent = computed(() => store.loginUserCorporation?.ScreeningReqConsentLoaded || false)
+const validConsent = computed(() => store.loginUserCorporation?.ScreeningReqFlagConsent || false)
 
 
 const seeSignature = ref(false)
@@ -169,7 +169,7 @@ async function onSigningCode() {
     if (d.data().status == 'To send Email') {
       unsubConsentPdf()
       updateDoc(doc(db, 'UsersCorporations', store.loginUserCorporation.id), {
-        ScreeningReqCodeUptoDate: true,
+        ScreeningReqFlagCode: true,
         'ScreeningReq.Code': arrayUnion({
           CodeDate: store.loginCorporation.CodeDate,
           Date: new Date().toISOString(),
@@ -281,7 +281,7 @@ async function onSigningConsent() {
     unsubConsentPdf()
   }
   unsubConsentPdf = onSnapshot(doc(db, 'UsersCorporations', store.loginUserCorporation.id), (d) => {
-    const consent = d.data().ScreeningReqConsentLoaded
+    const consent = d.data().ScreeningReqFlagConsent
     if (consent) {
       message.value = 'Sending email...'
       unsubConsentPdf()

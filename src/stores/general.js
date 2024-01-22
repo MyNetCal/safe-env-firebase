@@ -173,7 +173,7 @@ export const useGeneralStore = defineStore('general', () => {
   ]
 
   const ENTITY_PRELATURE = 'Prelature'
-  const ENTITY_PARTY = '3rd Party'
+  const ENTITY_PARTY = '3rd Party Only'
   const ENTITY_BOTH = 'Both'
 
   const USER_STATUS_BOARD = 'BOARD'

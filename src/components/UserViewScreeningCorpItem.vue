@@ -37,135 +37,168 @@ Flags for screening:
 
 import { useGeneralStore } from '@/stores/general'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { toRefs, ref, computed, watch } from 'vue'
+import { toRefs, computed, ref, watch } from 'vue'
 import { useFileDialog } from '@vueuse/core'
 import {
   deleteObject,
   getDownloadURL,
-  listAll,
   ref as storageRef,
   uploadBytesResumable
 } from 'firebase/storage'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
-import { arrayUnion, doc, getDoc, updateDoc } from 'firebase/firestore'
+import { addDoc, arrayUnion, collection, doc, onSnapshot, updateDoc } from 'firebase/firestore'
+import { useTimeoutFn } from '@vueuse/core'
+import MyMessage from './MyMessage.vue'
+import dayjs from 'dayjs'
+import { getEmailSECPrelature } from '@/stores/datadb'
+import relativeTime from 'dayjs/plugin/relativeTime'
 
-const props = defineProps({ item: String, userCorp: Object, user: Object })
+const props = defineProps({ item: String, userCorp: Object, user: Object, corp: Object })
 // item= [Application, Interview, Reference, Background, Code, Consent]
 
-const { item, userCorp, user } = toRefs(props)
+const { item, userCorp, user, corp } = toRefs(props)
 
 const store = useGeneralStore()
 const storage = useFirebaseStorage()
 const db = useFirestore()
 
-const corps = ref({})
+dayjs.extend(relativeTime)
 
 function screeningChecked() {
   switch (item.value) {
     case 'Consent':
-      updateDoc(doc(db, 'UsersCorporations', userCorp.value.id), {
-        ScreeningReqConsentLoaded: !userCorp.value?.ScreeningReqConsentLoaded
-      })
-      break
     case 'Code':
       updateDoc(doc(db, 'UsersCorporations', userCorp.value.id), {
-        ScreeningReqCodeUptoDate: !userCorp.value?.ScreeningReqCodeUptoDate
+        [`ScreeningReqFlag${item.value}`]: !(
+          userCorp.value[`ScreeningReqFlag${item.value}`] || false
+        )
       })
       break
-
     default:
       updateDoc(doc(db, 'Users', user.value?.id), {
         [`ScreeningReqFlag${item.value}`]: !(user.value[`ScreeningReqFlag${item.value}`] || false)
       })
       break
   }
+  if (item.value == 'Background') {
+    toggleBackgroundCheckStatus()
+  }
 }
 
 const filesData = computed(() => {
   switch (item.value) {
     case 'Consent':
-      return userCorp.value?.ScreeningReq?.Consent
+      return userCorp.value?.ScreeningReq?.Consent || []
     case 'Code':
-      return userCorp.value?.ScreeningReq?.Code
+      return userCorp.value?.ScreeningReq?.Code || []
     default:
-      return user.value?.[`ScreeningReqFiles${item.value}`]
+      return user.value?.[`ScreeningReqFiles${item.value}`] || []
   }
 })
 
 const flag = computed(() => {
   switch (item.value) {
     case 'Consent':
-      return userCorp.value?.ScreeningReqConsentLoaded || false
     case 'Code':
-      return userCorp.value?.ScreeningReqCodeUptoDate || false
+      return userCorp.value?.[`ScreeningReqFlag${item.value}`] || false
     default:
       return user.value?.[`ScreeningReqFlag${item.value}`] || false
   }
 })
 
-// ***********************
-// #region - Get All Files
-// ***********************
-const allFiles = ref([])
-function getUserScreeningFiles(dirInit, newDir, acc) {
-  store.countListAll++
-  if (store.countListAll > 80) {
-    return
-  }
-  let pathDir = newDir ? dirInit + '/' + newDir : dirInit
-  const dirFiles = storageRef(storage, pathDir)
-  listAll(dirFiles)
-    .then((res) => {
-      store.countListAll--
-      res.prefixes.forEach((folderRef) => {
-        getUserScreeningFiles(pathDir, folderRef.name, acc)
-      })
-      res.items.forEach((itemRef) => {
-        const by = newDir == '' ? userCorp.value.CorporationId : newDir
-        if (!corps.value[by]) {
-          getDoc(doc(db, 'Corporations', by)).then((d) => {
-            corps.value[by] = d.data()
-            acc.push({
-              name: itemRef.name,
-              by: by,
-              path: itemRef.fullPath,
-              byName: d.data().Short
-            })
-          })
-        } else {
-          acc.push({
-            name: itemRef.name,
-            by: by,
-            path: itemRef.fullPath,
-            byName: corps.value[by].Short
-          })
-        }
-      })
-    })
-    .catch((error) => {
-      store.countListAll == 0
-      console.log('Error: ', error)
-    })
-}
+const isClickable = computed(() => filesData.value?.length > 0)
 
-const dirInit = computed(() => {
-  return item.value == 'Code' || item.value == 'Consent'
-    ? `Users/${userCorp.value.UserId}/Screening/${item.value}/${userCorp.value.CorporationId}`
-    : `Users/${userCorp.value.UserId}/Screening/${item.value}`
-})
-
-watch(
-  () => userCorp.value.id,
-  (newUser) => {
-    console.log('on Watch: ', newUser)
-    allFiles.value = []
-    // getUserScreeningFiles(dirInit.value, '', allFiles.value)
-  },
-  { immediate: true }
+const reqBackgoundDisabled = computed(
+  () =>
+    isClickable.value &&
+    dayjs(user.value?.ScreeningBackgroundDate).add(11, 'months').isAfter(dayjs())
 )
 
-// #endregion - Get All Files
-// --------------------------
+function toggleBackgroundCheckStatus() {
+  if (user.value?.ScreeningReqFlagBackground) {
+    console.log('Flag should be off')
+    return
+  }
+  console.log('Flag should be on')
+}
+
+function newBackgroudnDate() {
+  updateDoc(doc(db, 'Users', user.value.id), {
+    ScreeningBackgroundDate: bacgkroundNewDate.value
+  })
+}
+
+const message = ref('Sending Email...')
+const emailPending = ref(false)
+const showMessage = ref(false)
+const bacgkroundNewDate = ref(dayjs().format('YYYY-MM-DD'))
+
+watch(
+  () => user.value?.ScreeningBackgroundDate,
+  (d) => {
+    bacgkroundNewDate.value = d
+  }
+)
+
+async function sentEmailRequestingBacground(type) {
+  // Create doc to Trigger email
+  message.value = 'Sending Email...'
+  showMessage.value = true
+
+  //  Create counters just in case it doesnt work
+  const { stop: stop1 } = useTimeoutFn(() => {
+    message.value = "It's taking longer than expected..."
+  }, 30000)
+  const { stop: stop2 } = useTimeoutFn(() => {
+    message.value = "Sorry, the email couldn't be delivered."
+    emailPending.value = false
+  }, 60000)
+
+  const emailSECPrelature = await getEmailSECPrelature()
+  console.log('emailSECPrelature: ', emailSECPrelature)
+  addDoc(collection(db, 'mail-triggers'), {
+    to: [emailSECPrelature], // TODO change to emailSECPrelature
+    message: {
+      subject: 'Background Check Requested',
+      html: `<p>${type} Requested for ${user.value.Name} ${user.value.LastName}</p>
+              <p>Email: ${user.value.Email}</p>
+              <p>Corporation: ${corp.value.Name}</p>
+              <p>Activity: ${store.activities[userCorp.value.Activity].Name}</p>
+              <p>Role: ${userCorp.value.Role}</p>
+              <p>Entity: ${userCorp.value.Entity}</p>
+              <p>Board: ${userCorp.value.Board ? 'Yes' : 'No'}</p>
+              <p>Screening: ${userCorp.value.Screening ? 'Yes' : 'No'}</p>`
+    }
+  }).then((res) => {
+    const idEmail = res.id
+    let unsubEmail = null
+    // Listener to SUCCESS state in doc
+    if (unsubEmail) {
+      unsubEmail()
+    }
+    unsubEmail = onSnapshot(doc(db, 'mail-triggers', idEmail), (d) => {
+      const delivery = d.data().delivery
+      if (delivery?.state == 'SUCCESS') {
+        updateDoc(doc(db, 'Users', user.value.id), {
+          ScreeningBackgroundCheckRequested: type
+        })
+        message.value = 'Email has been sent'
+        emailPending.value = false
+        stop1()
+        stop2()
+        unsubEmail()
+        return
+      }
+      if (delivery?.state == 'ERROR') {
+        message.value = delivery.error
+        emailPending.value = false
+        stop1()
+        stop2()
+        unsubEmail()
+      }
+    })
+  })
+}
 
 // **********************
 // #region - Upload Files
@@ -177,6 +210,8 @@ function uploadFile() {
     const idFile = self.crypto.randomUUID()
     const extFile = data.name.split('.').pop()
     const uuidAndExt = data.name == extFile ? idFile : `${idFile}.${extFile}`
+    const byName =
+      item.value == 'Code' || item.value == 'Consent' ? 'byUser' : store.loginCorporation.Short
 
     store.isUploadingFiles = true
     store.isUploadingFilesPercentage = 0
@@ -197,14 +232,18 @@ function uploadFile() {
         updateDoc(doc(db, 'Users', user.value.id), {
           [`ScreeningReqFiles${item.value}`]: arrayUnion({
             Date: new Date().toISOString(),
-            name: `${item.value}.${extFile}`,
+            name: `${data.name}`,
             path: `Users/${user.value.id}/Screening/${uuidAndExt}`,
             by: store.loginCorporationId,
-            byName: 'User'
+            byName: byName
           })
         })
-        allFiles.value = []
-        // getUserScreeningFiles(dirInit.value, '', allFiles.value)
+        if (item.value == 'Background') {
+          updateDoc(doc(db, 'Users', user.value.id), {
+            ScreeningBackgroundDate: dayjs().format('YYYY-MM-DD'),
+            ScreeningBackgroundCheckRequested: ''
+          })
+        }
       }
     )
   }
@@ -239,13 +278,16 @@ function downloadFile(f) {
 // *******************
 // #region Delete File
 // *******************
-function deleteFile(e, f) {
+function deleteFile(e, f, index) {
   e.stopPropagation()
+  
   deleteObject(storageRef(storage, f.path))
     .then(() => {
-      console.log('File Deleted')
-      allFiles.value = []
-      // getUserScreeningFiles(dirInit.value, '', allFiles.value)
+      const allFiles = user.value?.[`ScreeningReqFiles${item.value}`]
+      allFiles.splice(index, 1)
+      updateDoc(doc(db, 'Users', user.value.id), {
+        [`ScreeningReqFiles${item.value}`]: allFiles
+      })
     })
     .catch((error) => {
       console.log('Error: ', error)
@@ -257,18 +299,25 @@ function deleteFile(e, f) {
 
 <template>
   <div class="mx-auto mb-2 flex max-w-md justify-center">
+    <!-- Left Block with Check Mark -->
     <div
-      class="flex w-12 cursor-pointer place-items-center justify-center"
-      :class="[flag ? 'bg-green-700' : 'bg-red-700']"
+      class="flex w-12 place-items-center justify-center"
+      :class="[
+        flag ? 'bg-green-700' : 'bg-red-700',
+        isClickable ? 'cursor-pointer' : 'pointer-events-none'
+      ]"
       @click="screeningChecked"
     >
       <div><FontAwesomeIcon :icon="flag ? 'check' : 'xmark'" /></div>
     </div>
+
+    <!-- Rigth Block with title and Files -->
     <div class="w-full bg-slate-300">
+      <!-- Title & Upload icon-->
       <div class="flex justify-between p-1 font-semibold">
         <div></div>
         <div>{{ store.SCREENING_TITLE[item] }}</div>
-
+        <!-- Upload Icon -->
         <div
           class="cursor-pointer rounded hover:bg-slate-600 hover:text-slate-50"
           @click="openFileDiologAndUpload"
@@ -278,35 +327,78 @@ function deleteFile(e, f) {
         </div>
         <div v-else></div>
       </div>
-      <div>
-        <!-- List of Files uploaded -->
-        <div class="flex min-h-[28px] bg-slate-200">
-          <!-- For Loop -->
-          <div v-for="(f, n) in filesData" :key="f.name" class="flex place-items-center">
-            <!-- File Icon and Name -->
+
+      <!-- Background Input Date -->
+      <div v-if="item == 'Background' && isClickable" class="place-items-center justify-center">
+        <div class="text-xs text-slate-600">Last Background Check issued on</div>
+        <input
+          @input="newBackgroudnDate"
+          type="date"
+          class="ml-2 rounded bg-slate-200 px-1"
+          v-model="bacgkroundNewDate"
+        />
+        <div class="text-xs text-slate-600">
+          Expire<span v-if="dayjs(bacgkroundNewDate).add(1, 'y').isBefore(dayjs())">d</span
+          ><span v-else>s</span>
+          {{ dayjs(bacgkroundNewDate).add(1, 'y').fromNow() }}
+        </div>
+      </div>
+
+      <!-- Requested Legend -->
+      <div
+        v-if="item == 'Background' && user?.ScreeningBackgroundCheckRequested"
+        class="my-2 text-sm text-red-700"
+      >
+        {{ user?.ScreeningBackgroundCheckRequested }} Requested
+      </div>
+
+      <!-- Request Buttons -->
+      <div v-if="item == 'Background' && !reqBackgoundDisabled" class="mb-1 flex">
+        <div class="small-button" @click="sentEmailRequestingBacground('Background Check')">
+          Request Background Check Only
+        </div>
+        <div
+          class="small-button"
+          @click="sentEmailRequestingBacground('Background Check & Training')"
+        >
+          Request Background Check & Training
+        </div>
+      </div>
+
+      <!-- List of Files uploaded -->
+      <div class="flex min-h-[28px] bg-slate-200">
+        <!-- For Loop -->
+        <div v-for="(f, n) in filesData" :key="f.name" class="flex place-items-center">
+          <!-- File Icon and Name -->
+          <div
+            class="m-1 flex grow cursor-pointer place-items-center rounded pl-1 text-left text-xs hover:bg-blue-300"
+            :class="[f.by != store.loginCorporationId ? 'bg-orange-200' : 'bg-green-100']"
+            @click="downloadFile(f.path)"
+          >
+            <div class="py-1">
+              {{ n + 1 }}. {{ f.name }}
+              <span v-if="f.by != store.loginCorporationId">[{{ f.byName }}]</span>
+            </div>
             <div
-              class="m-1 flex grow cursor-pointer place-items-center rounded pl-1 text-left text-xs hover:bg-blue-300"
-              :class="[f.by != userCorp.CorporationId ? 'bg-orange-200' : 'bg-green-100']"
-              @click="downloadFile(f.path)"
+              v-if="f.by == store.loginCorporationId || store.loginCorporation.Short == 'Prelature'"
+              class="mr-1 cursor-pointer rounded px-2 py-1 hover:bg-slate-300"
+              @click="deleteFile($event, f, n)"
             >
-              <div class="py-1">
-                {{ n + 1 }}. {{ f.name }}
-                <span v-if="f.by != userCorp.CorporationId">[{{ f.byName }}]</span>
-              </div>
-              <div
-                v-if="f.by == userCorp.CorporationId"
-                class="mr-1 cursor-pointer rounded px-2 py-1 hover:bg-slate-300"
-                @click="deleteFile($event, f)"
-              >
-                <!-- Trash Icon -->
-                <FontAwesomeIcon icon="trash" class="text-slate-600" />
-              </div>
+              <!-- Trash Icon -->
+              <FontAwesomeIcon icon="trash" class="text-slate-600" />
             </div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Message -->
+    <MyMessage v-model="showMessage" :message="message" :spinner="emailPending" />
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.small-button {
+  @apply mx-1 w-fit cursor-pointer rounded bg-slate-600 px-2 py-1 text-xs text-white shadow-md hover:shadow-xl hover:brightness-90;
+}
+</style>

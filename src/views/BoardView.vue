@@ -73,7 +73,7 @@ function updatingCode() {
       CodeDate: dayjs().toISOString()
     })
 
-    // reset UsersCorporations.ScreeningReqCodeUptoDate = false
+    // reset UsersCorporations.ScreeningReqFlagCode = false
     // all UsersCorporations.CorporationId = store.loginCorporationId
     const q = query(
       collection(db, 'UsersCorporations'),
@@ -85,7 +85,7 @@ function updatingCode() {
         const userCorp = d.data()
         const dRef = doc(db, 'UsersCorporations', userCorp.id)
         updateDoc(dRef, {
-          ScreeningReqCodeUptoDate: false
+          ScreeningReqFlagCode: false
         })
       })
     })

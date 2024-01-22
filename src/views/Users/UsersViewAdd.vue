@@ -57,7 +57,7 @@ const currentCorpName = ref('')
 const currenUserId = ref('')
 
 const titleWindow = computed(() =>
-  id.value == '' ? 'New user' : user.value.Nickname + ' ' + user.value.LastName
+  id.value == '' ? 'New Personnel' : user.value.Nickname + ' ' + user.value.LastName
 )
 
 function getCorporation() {
