@@ -8,7 +8,6 @@
       maxWidth="max-w-4xl"
       @onClose="$emit('onClose')"
       @onOpenModal="onOpenModal()"
-      :is-loading="isLoading"
     >
       <div class="relative">
         <div class="m-2 text-center">
@@ -23,16 +22,23 @@
           </div>
 
           <!-- Section Tabs -->
-          <div v-if="!isLoading" class="">
+          <div v-if="currentTab == 'Initial'" class="">
             <!-- Content Tabs -->
             <!-- Content Tab 0: Funcion -->
-            <div>
+            <div v-if="user.ApprovedOn" class="max-w-lg mx-auto text-left">
+              <UsersTrainingApprovedStatus :training="training" :user="user.UserData" />
+            </div>
+            <div v-else>
               <UsersViewTrainingList
-                :training-collection="trainingCollection"
+                :training-collection="training"
                 :user-id="user.UserId"
                 :user="user"
               />
             </div>
+          </div>
+
+          <div v-if="currentTab == 'Ongoing'">
+            <h3>Under Construction</h3>
           </div>
 
           <!-- isLoading lists -->
@@ -50,12 +56,14 @@
 <script setup>
 import MyModal from '@/components/MyModal.vue'
 import MyButton from '@/components/MyButton.vue'
-import { toRefs, computed, ref, watchEffect } from 'vue'
-import { useCollection, useFirestore } from 'vuefire'
-import { collection, orderBy, query, where } from 'firebase/firestore'
+import { toRefs, computed, ref, onUnmounted } from 'vue'
+import { useFirestore } from 'vuefire'
+import { collection, onSnapshot, query, where } from 'firebase/firestore'
 import { useGeneralStore } from '@/stores/general'
 import UsersViewTrainingList from '@/components/UsersViewTrainingList.vue'
 import MySwitchBothLabels from '@/components/MyInputs/MySwitchBothLabels.vue'
+import dayjs from 'dayjs'
+import UsersTrainingApprovedStatus from '@/components/UsersTrainingApprovedStatus.vue'
 
 const props = defineProps({ showModal: Boolean, user: Object })
 const { showModal, user } = toRefs(props)
@@ -64,17 +72,7 @@ const db = useFirestore()
 
 const isOutgoingTraining = ref(false)
 
-const currentCorpId = ref('')
-
 const currentTab = computed(() => (isOutgoingTraining.value ? 'Ongoing' : 'Initial'))
-
-const loginCorporationId = computed(() => store.loginCorporationId)
-watchEffect(() => {
-  currentCorpId.value = loginCorporationId.value
-})
-watchEffect(() => {
-  currentCorpId.value = user.value?.CorporationId || 'xxx'
-})
 
 const arrayFunctions = computed(() => {
   const a = []
@@ -91,18 +89,63 @@ const arrayFunctions = computed(() => {
   return a
 })
 
-const trainingCollectionRef = computed(() =>
-  query(
-    collection(db, `Corporations/${currentCorpId.value}/${currentTab.value} Training`),
-    where('Functions', 'array-contains-any', arrayFunctions.value),
-    orderBy('Title')
+const training = ref([])
+let unsubTraining = null
+
+function dueDates() {
+  training.value.forEach((t) => {
+    t.isCompleted = user.value.UserData.Training?.[t.id]?.length > 0
+    t.dueDate = t.isCompleted
+      ? dayjs(user.value.UserData.Training[t.id].at(-1).date)
+          .add(t.Expiration, 'months')
+          .format('YYYY-MM-DD')
+      : dayjs(user.value.ApprovedOn).add(t.Complete, 'days').format('YYYY-MM-DD')
+    t.isLate = dayjs(t.dueDate).endOf('day').isBefore(dayjs())
+    t.isDueNextWeek = dayjs(t.dueDate).subtract(10, 'd').endOf('day').isBefore(dayjs())
+    t.isDueNextMonth = dayjs(t.dueDate).subtract(90, 'd').endOf('day').isBefore(dayjs())
+  })
+}
+
+function getCorpInitialTrainig() {
+  training.value = []
+  const q = query(
+    collection(db, `Corporations/${user.value.CorporationId}/Initial Training`),
+    where('Functions', 'array-contains-any', arrayFunctions.value)
   )
-)
 
-const { data: trainingCollection, pending: pendingCollectionTraining } =
-  useCollection(trainingCollectionRef)
+  if (unsubTraining) {
+    unsubTraining()
+  }
 
-const isLoading = computed(() => pendingCollectionTraining.value)
+  unsubTraining = onSnapshot(q, (res) => {
+    res.docChanges().forEach((change) => {
+      const { newIndex, oldIndex, doc: tDoc } = change
+      const t = tDoc.data()
+      t.id = tDoc.id
+      if (change.type === 'added') {
+        training.value.splice(newIndex, 0, t)
+      }
+      if (change.type === 'modified') {
+        training.value.splice(oldIndex, 1)
+        training.value.splice(newIndex, 0, t)
+      }
+      if (change.type === 'removed') {
+        training.value.splice(oldIndex, 1)
+      }
+    })
+    if (user.value.ApprovedOn && currentTab.value == 'Initial') {
+      console.log('Get due dates')
+      dueDates()
+    }
+  })
+}
+onUnmounted(() => {
+  if (unsubTraining) {
+    unsubTraining()
+  }
+})
+
+getCorpInitialTrainig()
 
 function onOpenModal() {}
 </script>

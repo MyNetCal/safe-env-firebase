@@ -219,8 +219,8 @@ const { showModal, userCorp } = toRefs(props)
 const db = useFirestore()
 const store = useGeneralStore()
 
-const votesNeededFromPrelature = ref(null)
-const votesNeededFromCorp = ref(null)
+const votesNeededFromPrelature = ref(2)
+const votesNeededFromCorp = ref(2)
 
 const dataVotesUsers = ref([])
 const dataVotesCorps = ref([])

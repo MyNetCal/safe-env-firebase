@@ -421,7 +421,7 @@ async function getEmailSECPrelature() {
   let q = query(collection(db, 'Corporations'), where('Short', '==', 'Prelature'))
   let dd = await getDocs(q)
   dd.forEach((d) => {
-    idCorpPrelature = d.data().id // it should be: Dx1Z...
+    idCorpPrelature = d.id // it should be: Dx1Z...
   })
 
   // Get UserId of SEC of Prelature: GFu...  UserId == fxK
@@ -444,6 +444,42 @@ async function getEmailSECPrelature() {
 
 }
 
+async function getEmailsAllSEC() {
+  const emails = {}
+  const qAllSECs = query(collection(db, 'UsersCorporations'), where('SEC', '==', true))
+  const colAllSecs = await getDocs(qAllSECs)
+  const a = []
+  colAllSecs.forEach((d) => {
+    const userId = d.data().UserId
+    const corpId = d.data().CorporationId
+    const id = d.id
+    a.push({ userId, corpId, id })
+  })
+  for (let index = 0; index < a.length; index++) {
+    const e = a[index];
+    const d = await getDoc(doc(db, 'Users', e.userId))
+    const email = d.data().Email
+    emails[e.corpId] = email
+  }
+  return emails
+}
+
+async function getEmailSECBoards(userId) {
+  // Get emails of all SEC
+  const allEmailsSec = await getEmailsAllSEC()
+
+  // Get all Corps of the User
+  const allEmails = []
+  const collAllCorps = await getDocs(query(collection(db, 'UsersCorporations'), where('UserId', '==', userId)))
+  collAllCorps.forEach((d) => {
+    const corpId = d.data().CorporationId
+    allEmails.push(allEmailsSec[corpId])
+  })
+
+  return allEmails
+}
+
+
 export {
   initUser,
   initUserCorp,
@@ -460,5 +496,6 @@ export {
   initSite,
   initParticipant,
   initActivity,
-  getEmailSECPrelature
+  getEmailSECPrelature,
+  getEmailSECBoards
 }

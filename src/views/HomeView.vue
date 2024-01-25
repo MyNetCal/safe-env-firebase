@@ -28,6 +28,7 @@ import {
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import TrainingInputDate from '@/components/TrainingInputDate.vue'
 import MyMessage from '@/components/MyMessage.vue'
+import UsersTrainingApprovedStatus from '@/components/UsersTrainingApprovedStatus.vue'
 
 const store = useGeneralStore()
 const storage = useFirebaseStorage()
@@ -92,7 +93,6 @@ let idFile = ''
 const validCode = computed(() => store.loginUserCorporation?.ScreeningReqFlagCode || false)
 
 const validConsent = computed(() => store.loginUserCorporation?.ScreeningReqFlagConsent || false)
-
 
 const seeSignature = ref(false)
 
@@ -427,10 +427,6 @@ function getCorpTrainig(a) {
 }
 
 const trainingToEdit = ref({})
-function editTraining(t) {
-  trainingToEdit.value = t
-  showEditingTraining.value = true
-}
 </script>
 
 <template>
@@ -473,10 +469,7 @@ function editTraining(t) {
     <!-- Screening Cards Info -->
     <div class="flex flex-wrap justify-center gap-5">
       <!-- List of Code of Counduct Signed -->
-      <div
-        v-if="validCode"
-        class="w-fit p-5 shadow-md"
-      >
+      <div v-if="validCode" class="w-fit p-5 shadow-md">
         <div class="font-semibold">
           <FontAwesomeIcon icon="check" class="text-green-700" /> Code of Conduct Signed
         </div>
@@ -485,10 +478,7 @@ function editTraining(t) {
             v-for="code in store.loginUserCorporation?.ScreeningReq?.Code"
             :key="code.CodeDate"
           >
-            <div
-              @click="showFile(code.path)"
-              class="cursor-pointer p-1 text-blue-600 underline"
-            >
+            <div @click="showFile(code.path)" class="cursor-pointer p-1 text-blue-600 underline">
               {{ dayjs(code.Date).format('MMM DD, YYYY') }}
             </div>
           </template>
@@ -496,10 +486,7 @@ function editTraining(t) {
       </div>
 
       <!-- Card with Consent Date -->
-      <div
-        v-if="validConsent"
-        class="w-fit p-5 shadow-md"
-      >
+      <div v-if="validConsent" class="w-fit p-5 shadow-md">
         <div class="font-semibold">
           <FontAwesomeIcon icon="check" class="text-green-700" /> Consent to Release and Share
           Information
@@ -515,92 +502,14 @@ function editTraining(t) {
       </div>
     </div>
 
+    <!-- Training -->
     <div class="mt-10">
       <!-- List of Training -->
       <div v-if="trainingDueDate.length > 0" class="mx-auto w-fit text-left">
         <div class="rounded-t bg-sky-700 p-2 text-center text-lg font-semibold text-white">
           My Training
         </div>
-        <TransitionGroup name="list">
-          <template v-for="t in trainingDueDate" :key="t.id">
-            <!-- Each training card -->
-            <div class="relative mb-2 rounded shadow">
-              <!-- Title and req for -->
-              <div
-                class="p-2 text-white"
-                :class="[
-                  t.isLate ? 'bg-red-600' : t.isDueNextMonth ? 'bg-orange-500' : 'bg-green-600'
-                ]"
-              >
-                <div class="font-semibold">{{ t.Title }}</div>
-
-                <div class="flex text-sm">
-                  <div v-for="f in t.Functions" :key="f">
-                    <div class="mx-1 rounded px-1">&bull; {{ f }}</div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Body Card -->
-              <div class="p-2">
-                <!-- Training is completed -->
-                <div v-if="t.isCompleted">
-                  <!-- Completed on -->
-                  <div class="flex">
-                    <div>Completed on:</div>
-                    <template v-for="d in loginUser.Training[t.id]" :key="d.date">
-                      <div class="mx-1 px-1 font-semibold">
-                        &check;
-                        {{ dayjs(d.date).format('LL') }}
-                      </div>
-                    </template>
-                  </div>
-
-                  <!-- Expires on  -->
-                  <div>
-                    Expires on:
-                    <span class="font-semibold"> {{ dayjs(t.dueDate).format('LL') }}</span>
-                    <span class="text-sm text-slate-500"> [{{ dayjs(t.dueDate).fromNow() }}]</span>
-                  </div>
-
-                  <!-- Last Files uploaded -->
-                  <div
-                    v-if="loginUser.Training[t.id].at(-1).files?.length > 0"
-                    class="mt-1 flex flex-wrap"
-                  >
-                    <div
-                      v-for="f in loginUser.Training[t.id].at(-1).files"
-                      :key="f.uuid"
-                      class="mr-1 rounded border bg-slate-200 px-1 text-xs"
-                    >
-                      <FontAwesomeIcon icon="fa-file" class="text-slate-500" />
-                      {{ f.name }}
-                    </div>
-                  </div>
-                  <div v-else>No files</div>
-                </div>
-
-                <!-- Training is Pending -->
-                <div v-else>
-                  <span v-if="t.isLate">It should've been completed by:</span>
-                  <span v-else>Due date:</span>
-                  <span class="ml-1 font-semibold" :class="{ 'text-red-700': t.isLate }">
-                    {{ dayjs(t.dueDate).format('LL') }}</span
-                  >
-                  <span class="text-sm text-slate-500"> [{{ dayjs(t.dueDate).fromNow() }}]</span>
-                </div>
-              </div>
-
-              <!-- Fab -->
-              <div
-                class="absolute bottom-0 right-0 flex h-8 w-8 cursor-pointer place-items-center justify-center rounded-full text-blue-700 hover:bg-slate-300/100"
-                @click="editTraining(t)"
-              >
-                <FontAwesomeIcon icon="fa-pen" />
-              </div>
-            </div>
-          </template>
-        </TransitionGroup>
+        <UsersTrainingApprovedStatus :training="trainingDueDate" :user="loginUser" />
       </div>
     </div>
 
@@ -622,7 +531,9 @@ function editTraining(t) {
             type="text"
             v-model="signature"
             class="input-ring relative rounded border-0 bg-white px-2 py-0.5 text-sm outline-none ring-1 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
-          />, have read the above guidelines and agree to abide by them in connection with all Activities and Programs involving Minors. I understand that I will be asked to review and sign my agreement with these guidelines annually.
+          />, have read the above guidelines and agree to abide by them in connection with all
+          Activities and Programs involving Minors. I understand that I will be asked to review and
+          sign my agreement with these guidelines annually.
         </div>
       </div>
       <div class="mt-5 text-center">

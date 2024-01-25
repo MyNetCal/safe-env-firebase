@@ -50,7 +50,7 @@ import { addDoc, arrayUnion, collection, doc, onSnapshot, updateDoc } from 'fire
 import { useTimeoutFn } from '@vueuse/core'
 import MyMessage from './MyMessage.vue'
 import dayjs from 'dayjs'
-import { getEmailSECPrelature } from '@/stores/datadb'
+import { getEmailSECPrelature, getEmailSECBoards } from '@/stores/datadb'
 import relativeTime from 'dayjs/plugin/relativeTime'
 
 const props = defineProps({ item: String, userCorp: Object, user: Object, corp: Object })
@@ -108,13 +108,8 @@ const flag = computed(() => {
 
 const isClickable = computed(() => filesData.value?.length > 0)
 
-const reqBackgoundDisabled = computed(
-  () =>
-    isClickable.value &&
-    dayjs(user.value?.ScreeningBackgroundDate).add(11, 'months').isAfter(dayjs())
-)
-
 function toggleBackgroundCheckStatus() {
+  // TODO Maybe this is not necesary
   if (user.value?.ScreeningReqFlagBackground) {
     console.log('Flag should be off')
     return
@@ -140,9 +135,9 @@ watch(
   }
 )
 
-async function sentEmailRequestingBacground(type) {
+async function sentEmailRequestingBacground(type, isForAll) {
   // Create doc to Trigger email
-  message.value = 'Sending Email...'
+  message.value = 'Sending Email'
   showMessage.value = true
 
   //  Create counters just in case it doesnt work
@@ -154,12 +149,13 @@ async function sentEmailRequestingBacground(type) {
     emailPending.value = false
   }, 60000)
 
+  // triger email to SEC prelature
   const emailSECPrelature = await getEmailSECPrelature()
   console.log('emailSECPrelature: ', emailSECPrelature)
-  addDoc(collection(db, 'mail-triggers'), {
-    to: [emailSECPrelature], // TODO change to emailSECPrelature
+  const resSECPrelature = await addDoc(collection(db, 'mail-triggers'), {
+    to: [emailSECPrelature],
     message: {
-      subject: 'Background Check Requested',
+      subject: `${type} Requested`,
       html: `<p>${type} Requested for ${user.value.Name} ${user.value.LastName}</p>
               <p>Email: ${user.value.Email}</p>
               <p>Corporation: ${corp.value.Name}</p>
@@ -169,34 +165,47 @@ async function sentEmailRequestingBacground(type) {
               <p>Board: ${userCorp.value.Board ? 'Yes' : 'No'}</p>
               <p>Screening: ${userCorp.value.Screening ? 'Yes' : 'No'}</p>`
     }
-  }).then((res) => {
-    const idEmail = res.id
-    let unsubEmail = null
-    // Listener to SUCCESS state in doc
-    if (unsubEmail) {
-      unsubEmail()
-    }
-    unsubEmail = onSnapshot(doc(db, 'mail-triggers', idEmail), (d) => {
-      const delivery = d.data().delivery
-      if (delivery?.state == 'SUCCESS') {
-        updateDoc(doc(db, 'Users', user.value.id), {
-          ScreeningBackgroundCheckRequested: type
-        })
-        message.value = 'Email has been sent'
-        emailPending.value = false
-        stop1()
-        stop2()
-        unsubEmail()
-        return
-      }
-      if (delivery?.state == 'ERROR') {
-        message.value = delivery.error
-        emailPending.value = false
-        stop1()
-        stop2()
-        unsubEmail()
+  })
+
+  if (isForAll) {
+    const allEmails = await getEmailSECBoards(user.value.id)
+    console.log('allEmails: ', allEmails)
+    addDoc(collection(db, 'mail-triggers'), {
+      to: allEmails,
+      message: {
+        subject: `${type} Requested`,
+        html: `<p>A renewal of ${user.value.Name} ${user.value.LastName}’s expiring background check has been requested.  ${user.value.Nickname} should receive an email from Praesidium with the steps to complete the background check shortly.  If ${user.value.Nickname} does not receive the email within a week, please contact the Safe Environment Coordinator of the Prelature at ${emailSECPrelature}.</p>`
       }
     })
+  }
+
+  const idEmailSECPrelature = resSECPrelature.id
+  let unsubEmailSECPrelature = null
+
+  // Listener to SUCCESS state in doc
+  if (unsubEmailSECPrelature) {
+    unsubEmailSECPrelature()
+  }
+  unsubEmailSECPrelature = onSnapshot(doc(db, 'mail-triggers', idEmailSECPrelature), (d) => {
+    const delivery = d.data().delivery
+    if (delivery?.state == 'SUCCESS') {
+      updateDoc(doc(db, 'Users', user.value.id), {
+        ScreeningBackgroundCheckRequested: type
+      })
+      message.value = 'Email has been sent'
+      emailPending.value = false
+      stop1()
+      stop2()
+      unsubEmailSECPrelature()
+      return
+    }
+    if (delivery?.state == 'ERROR') {
+      message.value = delivery.error
+      emailPending.value = false
+      stop1()
+      stop2()
+      unsubEmailSECPrelature()
+    }
   })
 }
 
@@ -280,7 +289,7 @@ function downloadFile(f) {
 // *******************
 function deleteFile(e, f, index) {
   e.stopPropagation()
-  
+
   deleteObject(storageRef(storage, f.path))
     .then(() => {
       const allFiles = user.value?.[`ScreeningReqFiles${item.value}`]
@@ -316,7 +325,12 @@ function deleteFile(e, f, index) {
       <!-- Title & Upload icon-->
       <div class="flex justify-between p-1 font-semibold">
         <div></div>
-        <div>{{ store.SCREENING_TITLE[item] }}</div>
+        <div>
+          {{ store.SCREENING_TITLE[item] }}
+          <span v-if="item == 'Reference'"
+            >[{{ corp.Screening[store.getScreening(userCorp.Function)].Reference }}]</span
+          >
+        </div>
         <!-- Upload Icon -->
         <div
           class="cursor-pointer rounded hover:bg-slate-600 hover:text-slate-50"
@@ -353,7 +367,7 @@ function deleteFile(e, f, index) {
       </div>
 
       <!-- Request Buttons -->
-      <div v-if="item == 'Background' && !reqBackgoundDisabled" class="mb-1 flex">
+      <div v-if="item == 'Background' && !isClickable" class="mb-1 flex">
         <div class="small-button" @click="sentEmailRequestingBacground('Background Check')">
           Request Background Check Only
         </div>
@@ -362,6 +376,24 @@ function deleteFile(e, f, index) {
           @click="sentEmailRequestingBacground('Background Check & Training')"
         >
           Request Background Check & Training
+        </div>
+      </div>
+
+      <!-- Request Buttons -->
+      <div
+        v-if="
+          item == 'Background' &&
+          isClickable &&
+          dayjs(user?.ScreeningBackgroundDate).add(11, 'months').isBefore(dayjs()) &&
+          !user?.ScreeningBackgroundCheckRequested
+        "
+        class="mb-1 mt-2 flex justify-center"
+      >
+        <div
+          class="small-button"
+          @click="sentEmailRequestingBacground('Background Check Renewal', true)"
+        >
+          Request Background Check Renewal
         </div>
       </div>
 
@@ -399,6 +431,6 @@ function deleteFile(e, f, index) {
 
 <style scoped>
 .small-button {
-  @apply mx-1 w-fit cursor-pointer rounded bg-slate-600 px-2 py-1 text-xs text-white shadow-md hover:shadow-xl hover:brightness-90;
+  @apply mx-1 w-fit cursor-pointer rounded bg-sky-700 px-2 py-1 text-xs text-white shadow-md hover:shadow-xl hover:brightness-90;
 }
 </style>

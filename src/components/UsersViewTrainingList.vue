@@ -1,13 +1,10 @@
 <script setup>
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { toRefs, ref, computed } from 'vue'
-import { useFileDialog } from '@vueuse/core'
-import DateEditModal from '@/components/DateEditModal.vue'
 import {
   deleteObject,
   getDownloadURL,
   ref as storageRef,
-  uploadBytesResumable
 } from 'firebase/storage'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
 import dayjs from 'dayjs'
@@ -26,16 +23,12 @@ const { trainingCollection, userId, user } = toRefs(props)
 const storage = useFirebaseStorage()
 const db = useFirestore()
 
-const openEditDateModal = ref(false)
-
-const editingDateTrainingId = ref('')
 
 const trainingCompletedById = computed(() => user.value.UserData.Training || {})
 
 const trainingToEdit = ref({})
 const showEditingTraining = ref(false)
 
-const trainingArray = ref([])
 function editDate(training) {
   // editingDateTrainingId.value = training.id // This is the id of the document in Collecection  "Training"
   // trainingArray.value = trainingCompletedById.value[training.id] || []
@@ -75,46 +68,8 @@ function deleteFile(e, trainingId, indexFile, f) {
     })
 }
 const percentage = ref(0)
-function uploadPicture() {
-  console.log('About to uploading File...')
-  const data = files.value?.item(0)
-  if (data) {
-    isLoading.value = true
-    const fileRef = storageRef(
-      storage,
-      `Users/${userId.value}/Training/${uploadingFileUserId.value}/${data.name}`
-    )
-    const uploadTask = uploadBytesResumable(fileRef, data)
-    uploadTask.on(
-      'state_changed',
-      (snapshot) => {
-        percentage.value = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-      },
-      (error) => {
-        isLoading.value = false
-        console.log('ERROR', error)
-      },
-      () => {
-        console.log('Uploaded Success')
-        isLoading.value = false
-        reset()
-       
-      }
-    )
-  }
-}
 
-const { files, open, onChange, reset } = useFileDialog()
-onChange(() => {
-  uploadPicture()
-})
-
-const uploadingFileUserId = ref('')
 const isLoading = ref(false)
-function openFileDiologAndUpload(id) {
-  uploadingFileUserId.value = id
-  open({ multiple: false })
-}
 </script>
 
 <template>
@@ -154,12 +109,6 @@ function openFileDiologAndUpload(id) {
             <div class="rounded-tr bg-slate-300 p-1">
               <div class="flex place-items-start justify-between font-semibold">
                 {{ row.Title }}
-                <!-- Upload Icon -->
-                <FontAwesomeIcon
-                  icon="cloud-arrow-up"
-                  class="cursor-pointer rounded px-2 py-1 hover:bg-slate-600 hover:text-slate-50"
-                  @click="openFileDiologAndUpload(row.id)"
-                />
               </div>
               <div class="text-xs">{{ row.Functions }}</div>
             </div>
@@ -195,14 +144,6 @@ function openFileDiologAndUpload(id) {
         </div>
       </template>
     </div>
-    <DateEditModal
-      :user-id="userId"
-      :training-id="editingDateTrainingId"
-      :training-array="trainingArray"
-      :show-modal="openEditDateModal"
-      @onClose="openEditDateModal = false"
-    >
-    </DateEditModal>
     <!-- Training Modal -->
     <TrainingInputDate
       v-if="showEditingTraining"

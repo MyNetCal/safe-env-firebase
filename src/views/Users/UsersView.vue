@@ -35,7 +35,9 @@
                   @click="editUserInfo(p)"
                 >
                   <h3 class="font-semibold">
-                    <span v-if="!p.UserData.LastLogin" class="text-orange-600 font-bold mr-1">&bull;</span>
+                    <span v-if="!p.UserData.LastLogin" class="mr-1 font-bold text-orange-600"
+                      >&bull;</span
+                    >
                     <span
                       >{{ p.UserData.Nickname }} {{ p.UserData.Middle }}
                       {{ p.UserData.LastName }}</span
@@ -61,7 +63,11 @@
                   >
                     <FontAwesomeIcon icon="list-check" />
                   </div>
-                  <div class="click-icon text-slate-500" @click="openUsersViewVote(index)">
+                  <div
+                    class="click-icon"
+                    @click="openUsersViewVote(index)"
+                    :class="[userHasAllScreening(p) ? 'text-green-700' : 'text-red-700']"
+                  >
                     <FontAwesomeIcon icon="check-to-slot" />
                   </div>
                 </div>
@@ -134,7 +140,7 @@
       @onClose="showUsersViewAdd = false"
     />
     <UsersViewScreening
-    v-if="showUsersViewScreening"
+      v-if="showUsersViewScreening"
       :show-modal="showUsersViewScreening"
       :user-corp-id="userSelectedId"
       @onClose="showUsersViewScreening = false"
@@ -227,31 +233,33 @@ const id = ref('')
 
 const userSelected = ref({})
 const userSelectedId = ref('')
-const totScreeningReq = computed(() => {
-  return {
-    [store.SCREENING_STAFF]: Object.values(
-      corp.value?.Screening?.[store.SCREENING_STAFF] || {}
-    ).reduce((acc, val) => acc + (val ? 1 : 0), 0),
-    [store.SCREENING_JUNIOR_COUNSELOR]: Object.values(
-      corp.value?.Screening?.[store.SCREENING_JUNIOR_COUNSELOR] || {}
-    ).reduce((acc, val) => acc + (val ? 1 : 0), 0),
-    [store.SCREENING_LOW_ACCESS]: Object.values(
-      corp.value?.Screening?.[store.SCREENING_LOW_ACCESS] || {}
-    ).reduce((acc, val) => acc + (val ? 1 : 0), 0)
-  }
-})
 
-function countScreeningReq(screeningReqUser) {
-  if (screeningReqUser) {
-    return Object.values(screeningReqUser).reduce((acc, val) => acc + val, 0)
+function getScreeningReqType(type) {
+  const a = []
+  for (const [key, value] of Object.entries(corp.value?.Screening?.[type] || {})) {
+    if (value) {
+      a.push(key)
+    }
   }
-  return 0
+  return a
 }
 
 function userHasAllScreening(user) {
-  return (
-    countScreeningReq(user.ScreeningReq) >= totScreeningReq.value[store.getScreening(user.Function)]
-  )
+  const typeScreening = store.getScreening(user.Function) // SCREENING_STAFF || SCREENING_JUNIOR_COUNSELOR || SCREENING_LOW_ACCESS
+  const req = getScreeningReqType(typeScreening)
+  let b = true
+  req.forEach((item) => {
+    switch (item) {
+      case 'Consent':
+      case 'Code':
+        b = b && user[`ScreeningReqFlag${item}`]
+        break // TODO add code to work
+      default:
+        b = b && user.UserData[`ScreeningReqFlag${item}`]
+        break
+    }
+  })
+  return b
 }
 
 function userHasAllTraining(user) {
@@ -316,6 +324,9 @@ const showUsersViewVote = ref(false)
 const indexSelected = ref(0)
 function openUsersViewVote(index) {
   //userSelected.value = p
+  if (!userHasAllScreening(personnel.value[index])) {
+    return
+  }
   indexSelected.value = index
   showUsersViewVote.value = true
 }

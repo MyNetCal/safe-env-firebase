@@ -4,9 +4,10 @@ import { computed, watchEffect, ref } from 'vue'
 import MySelectCorporation from './MySelect/MySelectCorporation.vue'
 import MySelectActivity from './MySelect/MySelectActivity.vue'
 import MySelectAuto from './MyInputs/MySelectAuto.vue'
-import { doc, getDoc } from 'firebase/firestore'
+import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore'
 import { useFirestore } from 'vuefire'
 import MyInputCheckBox from './MyInputs/MyInputCheckBox.vue'
+import { getEmailSECPrelature } from '@/stores/datadb'
 
 const props = defineProps({ modelValue: Object })
 const emit = defineEmits(['update:modelValue'])
@@ -66,9 +67,48 @@ const entities = computed(() => {
   return corpEntity.value == store.ENTITY_PRELATURE
     ? [store.ENTITY_PRELATURE]
     : corpEntity.value == store.ENTITY_PARTY
-    ? [store.ENTITY_PARTY]
-    : [store.ENTITY_PRELATURE, store.ENTITY_PARTY]
+      ? [store.ENTITY_PARTY]
+      : [store.ENTITY_PRELATURE, store.ENTITY_PARTY]
 })
+
+function activeStatusUpdated() {
+  console.log('Active Status Updated: ', corpToEdit.value.Active)
+  if (corpToEdit.value.id) {
+    console.log('Needs to be updated')
+    activeEmail()
+  }
+}
+
+const activeStatusLegend = ref(false)
+
+async function activeEmail() {
+  const userSnap = await getDoc(doc(db, 'Users', corpToEdit.value.UserId))
+  const user = userSnap.data()
+  const corpSnap = await getDoc(doc(db, 'Corporations', corpToEdit.value.CorporationId))
+  const corp = corpSnap.data()
+  const emailSECPrelature = await getEmailSECPrelature()
+  addDoc(collection(db, 'mail-triggers'), {
+    to: [emailSECPrelature],
+    message: {
+      subject: `${user.Name} ${user.LastName} is now ${corpToEdit.value.Active ? 'Active' : 'Inactive'}`,
+      html: `<p>Name: ${user.Name} ${user.LastName}</p>
+              <p>Email: ${user.Email}</p>
+              <p>Corporation: ${corp.Name}</p>
+              <p>Activity: ${store.activities[corpToEdit.value.Activity].Name}</p>
+              <p>Role: ${corpToEdit.value.Role}</p>
+              <p>Entity: ${corpToEdit.value.Entity}</p>
+              <p>Board: ${corpToEdit.value.Board ? 'Yes' : 'No'}</p>
+              <p>Screening: ${corpToEdit.value.Screening ? 'Yes' : 'No'}</p>
+              <p>Active: ${corpToEdit.value.Active ? 'Active' : 'Inactive'}</p>`
+    }
+  })
+
+  updateDoc(doc(db, 'UsersCorporations', corpToEdit.value.id), {
+    Active: corpToEdit.value.Active
+  }).then(() => {
+    activeStatusLegend.value = true
+  })
+}
 </script>
 
 <template>
@@ -103,7 +143,7 @@ const entities = computed(() => {
           ></MySelectAuto>
         </div>
       </div>
-      <div class="mb-1 flex gap-x-2">
+      <div class="flex gap-x-2">
         <MySelectAuto
           label="Entity"
           :items="entities"
@@ -124,7 +164,19 @@ const entities = computed(() => {
           v-model="corpToEdit.Screening"
           label="Screening"
         ></MyInputCheckBox>
-        <MyInputCheckBox v-model="corpToEdit.Active" label="Active"></MyInputCheckBox>
+        <MyInputCheckBox
+          v-model="corpToEdit.Active"
+          :label="corpToEdit.id ? '*Active' : 'Active'"
+          @update:model-value="activeStatusUpdated"
+        ></MyInputCheckBox>
+      </div>
+      <div v-if="corpToEdit.id" class="text-xs text-slate-500">
+        * Updating the <span class="font-semibold">Active</span> status will
+        <span class="italic">immediately</span> send a notification to the Safe Environment
+        Coordinator of the Prelature
+      </div>
+      <div class="text-xs text-red-600" v-if="activeStatusLegend">
+        New Active status have been updated: {{ corpToEdit.Active ? 'Active' : 'Inactive' }}
       </div>
     </div>
   </div>

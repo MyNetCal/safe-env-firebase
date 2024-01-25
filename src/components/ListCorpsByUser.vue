@@ -54,9 +54,7 @@ const yPx = computed(() => y.value + 'px')
         <!-- Loop by corporations -->
         <template v-for="c in corps" :key="c.id">
           <div class="mb-2 rounded bg-slate-200 shadow">
-            <div
-              class="flex place-items-center justify-between rounded-t p-1"
-            >
+            <div class="flex place-items-center justify-between rounded-t p-1">
               <div></div>
               <div class="flex grow place-items-center justify-center">
                 <h3 class="font-semibold">{{ c.CorporationName }}</h3>
@@ -68,11 +66,6 @@ const yPx = computed(() => y.value + 'px')
                   @click="editCorp(c)"
                 >
                   <FontAwesomeIcon icon="pen" />
-                </div>
-                <div
-                  class="rounded px-2 py-1 text-slate-600 hover:cursor-pointer hover:bg-slate-600 hover:text-slate-200"
-                >
-                  <FontAwesomeIcon icon="trash" />
                 </div>
               </div>
             </div>
