@@ -18,6 +18,14 @@
         <font-awesome-icon icon="bars" size="lg" class="" />
         <div class="ml-4 whitespace-nowrap text-lg">Safe Environment</div>
       </div>
+      <!-- Menu: Dashboard -->
+      <div
+        @click="goto('/dashboard')"
+        class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
+      >
+        <FontAwesomeIcon icon="gauge" />
+        <div class="ml-6 whitespace-nowrap">Dashboard</div>
+      </div>
       <!-- Menu: Home -->
       <div
         @click="goto('/')"

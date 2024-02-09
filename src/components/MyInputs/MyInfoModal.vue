@@ -1,6 +1,6 @@
 <template>
   <div>
-    <teleport to="#body">
+    <teleport to="body">
       <div
         v-if="showInfo"
         class="tooltip absolute top-6 left-1/2 z-50 max-w-md rounded-lg border border-green-300 bg-green-100"

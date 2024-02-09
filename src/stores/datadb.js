@@ -1,5 +1,5 @@
 import { useFirestore } from 'vuefire'
-import { useGeneralStore } from './general'
+import { useGeneralStore } from '@/stores/general'
 import {
   addDoc,
   collection,
@@ -13,7 +13,8 @@ import {
   and,
   arrayUnion,
   getDocs,
-  getDoc
+  getDoc,
+  arrayRemove
 } from 'firebase/firestore'
 import { watch, onUnmounted, ref } from 'vue'
 
@@ -44,6 +45,9 @@ function createUser(user) {
     if (user.Nickname == '') {
       user.Nickname = user.Name
     }
+    user.CorpsActiveAtLeastOne = false
+    user.CorpsActiveIds = []
+    user.CorpsIds = []
     addDoc(collection(db, 'Users'), user).then(
       (d) => {
         res(d)
@@ -138,8 +142,19 @@ function createUserCorp(userCorp, userId) {
   delete userCorp.UserData
   return new Promise((res, err) => {
     addDoc(collection(db, 'UsersCorporations'), userCorp).then(
-      (d) => {
+      async (d) => {
         updateUser({ id: userId, CurrentUsersCorporationsId: d.id })
+        await updateDoc(doc(db, 'Users', userId), {
+          CorpsActiveIds: userCorp.Active
+            ? arrayUnion(userCorp.CorporationId)
+            : arrayRemove(userCorp.CorporationId)
+        })
+        const u = await getDoc(doc(db, "Users", userId))
+        const userCorps = u.data().CorpsActiveIds
+        updateDoc(doc(db, 'Users', userId), {
+          CorpsActiveAtLeastOne: userCorps.length > 0,
+          CorpsIds: arrayUnion(userCorp.CorporationId)
+        })
         res(d)
       },
       (e) => err(e)
@@ -148,13 +163,24 @@ function createUserCorp(userCorp, userId) {
 }
 
 function updateUserCorp(userCorp) {
+  const corpId = userCorp.CorporationId
   delete userCorp.CorporationId
   delete userCorp.CorporationName
   delete userCorp.UserRef
   delete userCorp.UserData
   return new Promise((res, err) => {
     updateDoc(doc(db, 'UsersCorporations', userCorp.id), userCorp).then(
-      (d) => {
+      async (d) => {
+        await updateDoc(doc(db, 'Users', userCorp.UserId), {
+          CorpsActiveIds: userCorp.Active
+            ? arrayUnion(corpId)
+            : arrayRemove(corpId)
+        })
+        const u = await getDoc(doc(db, "Users", userCorp.UserId))
+        const userCorps = u.data().CorpsActiveIds
+        updateDoc(doc(db, 'Users', userCorp.UserId), {
+          CorpsActiveAtLeastOne: userCorps.length > 0
+        })
         res(d)
       },
       (e) => err(e)
@@ -470,7 +496,13 @@ async function getEmailSECBoards(userId) {
 
   // Get all Corps of the User
   const allEmails = []
-  const collAllCorps = await getDocs(query(collection(db, 'UsersCorporations'), where('UserId', '==', userId)))
+  const collAllCorps = await getDocs(
+    query(
+      collection(db, 'UsersCorporations'),
+      where('UserId', '==', userId),
+      where('Active', '==', true)
+    )
+  )
   collAllCorps.forEach((d) => {
     const corpId = d.data().CorporationId
     allEmails.push(allEmailsSec[corpId])
@@ -478,6 +510,7 @@ async function getEmailSECBoards(userId) {
 
   return allEmails
 }
+
 
 
 export {
@@ -497,5 +530,6 @@ export {
   initParticipant,
   initActivity,
   getEmailSECPrelature,
-  getEmailSECBoards
+  getEmailSECBoards,
+  getEmailsAllSEC
 }

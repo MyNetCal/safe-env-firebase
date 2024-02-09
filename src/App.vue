@@ -10,6 +10,7 @@ import MyListBox from './components/MyInputs/MyListBox.vue'
 import { ref, watchEffect } from 'vue'
 import { doc, updateDoc } from 'firebase/firestore'
 import { useMediaQuery } from '@vueuse/core'
+import MyInfoMessage from './components/MyInfoMessage.vue'
 
 const storeGeneral = useGeneralStore()
 const {
@@ -41,7 +42,6 @@ function saveNuewLoginCorp() {
     CurrentUsersCorporationsId: selUserCorp.value.id
   })
 }
-
 </script>
 
 <template>
@@ -73,7 +73,6 @@ function saveNuewLoginCorp() {
         <div class="mr-1 flex place-items-center justify-end">
           <div class="mr-2">{{ loginUser.Nickname }}</div>
           <FontAwesomeIcon icon="user" class="mr-4" />
-
         </div>
       </div>
       <!-- Side Menu -->
@@ -86,14 +85,23 @@ function saveNuewLoginCorp() {
       <div
         class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-300 px-3 text-slate-800 print:hidden"
       >
-        <div>v.3.8.2</div>
+        <div>v.3.8.4</div>
         <div class="flex">
           {{ accessLevelName }}
         </div>
       </div>
     </div>
+    <MyInfoMessage
+      v-model="storeGeneral.infoMessage.show"
+      :class="storeGeneral.infoMessage.colorClass"
+      :spinner="storeGeneral.infoMessage.spinner"
+      :close-button="storeGeneral.infoMessage.closeButton"
+      :time="storeGeneral.infoMessage.time"
+      :timer="storeGeneral.infoMessage.timer"
+      >{{ storeGeneral.infoMessage.message }}</MyInfoMessage
+    >
     <!-- Modals -->
-    <div id="body"></div>
+    <div id="messages" class="absolute bottom-20 z-50 w-full"></div>
   </div>
 </template>
 
@@ -137,11 +145,11 @@ function saveNuewLoginCorp() {
     max-height: calc(100vh - 36px - 24px);
   }
   .app-layout-content {
-  grid-area: content;
-  width: calc(100vw - 40px);
-  max-height: calc(100vh - 36px - 24px);
-  overflow: hidden;
-}
+    grid-area: content;
+    width: calc(100vw - 40px);
+    max-height: calc(100vh - 36px - 24px);
+    overflow: hidden;
+  }
 }
 .app-layout-footer {
   grid-area: footer;

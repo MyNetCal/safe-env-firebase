@@ -2,7 +2,7 @@ import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { useCollection, useDocument, useFirebaseAuth, useFirestore } from 'vuefire'
 import { onAuthStateChanged } from 'firebase/auth'
-import { collection, doc, onSnapshot, query, updateDoc, where } from 'firebase/firestore'
+import { addDoc, collection, doc, onSnapshot, query, updateDoc, where } from 'firebase/firestore'
 import dayjs from 'dayjs'
 
 // import { useFirestore, useCollection } from 'vuefire'
@@ -72,6 +72,7 @@ export const useGeneralStore = defineStore('general', () => {
   const loginUserCorporationCollection = useCollection(loginUsersCorporationsQuery)
 
   const loginCorporationId = computed(() => loginUserCorporation.value?.CorporationId || 'xxx')
+
   const loginCorporationRef = computed(() =>
     doc(collection(db, 'Corporations'), loginCorporationId.value)
   )
@@ -142,14 +143,6 @@ export const useGeneralStore = defineStore('general', () => {
     return -2
   })
 
-  // const db = useFirestore()
-
-  // Activities
-  // const q = query(collection(db, 'Activities'), orderBy('Value'))
-  //  const activities = useCollection(q)
-
-  // Activities
-  //const corporations = useCollection(query(collection(db, 'Corporations'), orderBy('Name')))
   const ROLE_PRIEST = 'Priest'
   const ROLE_DIRECTOR = 'Director'
   const ROLE_STAFF = 'Staff'
@@ -303,6 +296,80 @@ export const useGeneralStore = defineStore('general', () => {
     }
   }
 
+  const infoMessageDefaults = {
+    show: false,
+    spinner: false,
+    closeButton: true,
+    colorClass: 'bg-orange-400/50 text-slate-700',
+    minWidth: 'min-w-72',
+    message: 'Last test',
+    time: 5000,
+    timer: false
+  }
+
+  const infoMessage = ref({ ...infoMessageDefaults })
+
+  function showMessage(params = { ...infoMessageDefaults }) {
+    infoMessage.value = { ...infoMessageDefaults, ...params, ...{ show: true } }
+  }
+
+  function triggerEmailTemplate(template, data, to) {
+    showMessage({ spinner: true, message: 'Sending email...', timer: true })
+    return new Promise((res, err) => {
+      addDoc(collection(db, 'mail-triggers'), {
+        template: {
+          name: template,
+          data
+        },
+        to
+      }).then((emailDoc) => {
+        const unsub = onSnapshot(doc(db, 'mail-triggers', emailDoc.id), (d) => {
+          const delivery = d.data().delivery
+          console.log('delivery state: ', delivery?.state);
+          if (delivery?.state == 'SUCCESS') {
+            unsub()
+            console.log('Email has been sent!');
+            showMessage({ message: 'Email sent', timer: true })
+            return res()
+          }
+          if (delivery?.state == 'ERROR') {
+            unsub()
+            console.log('Error!');
+            showMessage({ message: 'Error: ' + delivery.error })
+            return err()
+          }
+        })
+      })
+    })
+
+  }
+
+  function triggerEmail(subject, html, to) {
+    showMessage({ spinner: true, message: 'Sending email...', timer: true })
+    return new Promise((res, err) => {
+      addDoc(collection(db, 'mail-triggers'), {
+        to,
+        message: { subject, html }
+      }).then((emailDoc) => {
+        const unsub = onSnapshot(doc(db, 'mail-triggers', emailDoc.id), (d) => {
+          const delivery = d.data().delivery
+          if (delivery?.state == 'SUCCESS') {
+            unsub()
+            showMessage({ message: 'Email sent' })
+            return res()
+          }
+          if (delivery?.state == 'ERROR') {
+            unsub()
+            showMessage({ message: 'Error: ' + delivery.error })
+            return err()
+          }
+        })
+      })
+    })
+
+
+  }
+
   return {
     loginUserCorporationCollection,
     loginCurrentUsersCorporationsId,
@@ -356,6 +423,10 @@ export const useGeneralStore = defineStore('general', () => {
     SCREENING_REQ_TITLES,
     getFunction,
     getScreening,
-    corpsLoaded
+    corpsLoaded,
+    infoMessage,
+    showMessage,
+    triggerEmailTemplate,
+    triggerEmail
   }
 })

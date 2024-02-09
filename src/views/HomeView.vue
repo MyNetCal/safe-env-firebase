@@ -5,7 +5,7 @@ Flags for screening:
 - ScreeningReqFlagConsent [edited by Function]
 
  */
-import { useGeneralStore } from '@/stores/general'
+
 import { ref as storageRef, getDownloadURL } from '@firebase/storage'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
 import { computed, onUnmounted, ref, toRefs, watch } from 'vue'
@@ -23,12 +23,15 @@ import {
   query,
   onSnapshot,
   addDoc,
-  setDoc
+  setDoc,
+  getDocs
 } from 'firebase/firestore'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import TrainingInputDate from '@/components/TrainingInputDate.vue'
 import MyMessage from '@/components/MyMessage.vue'
 import UsersTrainingApprovedStatus from '@/components/UsersTrainingApprovedStatus.vue'
+
+import { useGeneralStore } from '@/stores/general'
 
 const store = useGeneralStore()
 const storage = useFirebaseStorage()
@@ -77,6 +80,17 @@ watch(
   }
 )
 
+function testEmail() {
+  store.triggerEmail('Once again', 'Content of the email', 'casedu@gmail.com').then(
+    () => {
+      console.log('SUCCESS sending email')
+    },
+    () => {
+      console.log('Error Sending email')
+    }
+  )
+}
+
 const codeEditing = ref(false)
 const consentEditing = ref(false)
 
@@ -101,6 +115,27 @@ let unsubConsentPdf = null
 const message = ref('Creating PDF...')
 const emailPending = ref(false)
 const showMessage = ref(false)
+
+const isCheckBackgroundExpiring = computed(
+  () =>
+    loginUser.value.ScreeningBackgroundDate &&
+    dayjs(loginUser.value.ScreeningBackgroundDate).add(11, 'M').isBefore(dayjs())
+)
+
+function testCol() {
+  const q = query(
+    collection(db, 'Users'),
+    where('ScreeningBackgroundDate', '<=', dayjs().subtract(11, 'months').format('YYYY-MM-DD')),
+    where('ScreeningBackgroundDate', '>=', dayjs().subtract(12, 'months').format('YYYY-MM-DD')),
+    where('ScreeningBackgroundCheckRenewalRequested', '==', false),
+    where('CorpsActiveAtLeastOne', '==', true)
+  )
+  getDocs(q).then((snapShot) => {
+    snapShot.forEach((user) => {
+      console.log('User: ', user.data())
+    })
+  })
+}
 
 // Unsubscribe listeners
 onUnmounted(() => {
@@ -203,6 +238,8 @@ function sentEmailCode(url, stop1, stop2, idFile) {
         secEmail: store.loginCorporation.EmailFiles
       }
     },
+
+    // [loginUser.value.Email, store.loginCorporation.EmailFiles]
     to: [loginUser.value.Email, store.loginCorporation.EmailFiles]
   }).then((res) => {
     const idEmail = res.id
@@ -434,7 +471,7 @@ const trainingToEdit = ref({})
     class="content-height thinsb h-full justify-between overflow-auto p-2 text-slate-700"
     v-if="store.loginUser && store.loginUserCorporation"
   >
-    <h1 class="select-none text-center">
+    <h1 class="select-none text-center" @click="testCol">
       {{ store.loginUser.Nickname }} {{ store.loginUser.LastName }}
     </h1>
     <h2>{{ store.loginUserCorporation.Status }}</h2>
@@ -462,6 +499,27 @@ const trainingToEdit = ref({})
           <span class="cursor-pointer text-blue-600 underline" @click="consentEditing = true"
             >Consent to Release and Share Information</span
           >
+        </div>
+      </div>
+    </div>
+
+    <!-- Renew Background Check -->
+    <div class="mx-auto my-5 w-fit shadow-md" v-if="isCheckBackgroundExpiring">
+      <div class="pb-3">
+        <div class="rounded-t bg-yellow-700 p-2 text-lg font-semibold text-white">
+          Background Check
+        </div>
+        <div class="px-2 pt-3 text-left">
+          <div>
+            Your background check is expiring on
+            <span class="font-semibold">
+              {{ dayjs(loginUser.ScreeningBackgroundDate).add(1, 'y').format('MMMM D') }}
+            </span>
+          </div>
+          <div class="mx-auto mt-5 w-fit text-slate-500">Request a new background check:</div>
+          <div class="mx-auto w-fit">
+            <MyButton class="bg-sky-700">Background Check Request</MyButton>
+          </div>
         </div>
       </div>
     </div>
@@ -646,5 +704,8 @@ const trainingToEdit = ref({})
    animations can be calculated correctly. */
 .list-leave-active {
   position: absolute;
+}
+.message {
+  @apply m-3 mx-auto w-fit rounded bg-orange-400/90 px-3 py-2 shadow-lg;
 }
 </style>

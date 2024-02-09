@@ -4,7 +4,15 @@ import { computed, watchEffect, ref } from 'vue'
 import MySelectCorporation from './MySelect/MySelectCorporation.vue'
 import MySelectActivity from './MySelect/MySelectActivity.vue'
 import MySelectAuto from './MyInputs/MySelectAuto.vue'
-import { addDoc, collection, doc, getDoc, updateDoc } from 'firebase/firestore'
+import {
+  addDoc,
+  arrayRemove,
+  arrayUnion,
+  collection,
+  doc,
+  getDoc,
+  updateDoc
+} from 'firebase/firestore'
 import { useFirestore } from 'vuefire'
 import MyInputCheckBox from './MyInputs/MyInputCheckBox.vue'
 import { getEmailSECPrelature } from '@/stores/datadb'
@@ -71,10 +79,19 @@ const entities = computed(() => {
       : [store.ENTITY_PRELATURE, store.ENTITY_PARTY]
 })
 
-function activeStatusUpdated() {
+async function activeStatusUpdated() {
   console.log('Active Status Updated: ', corpToEdit.value.Active)
   if (corpToEdit.value.id) {
-    console.log('Needs to be updated')
+    await updateDoc(doc(db, 'Users', corpToEdit.value.UserId), {
+      CorpsActiveIds: corpToEdit.value.Active
+        ? arrayUnion(corpToEdit.value.CorporationId)
+        : arrayRemove(corpToEdit.value.CorporationId)
+    })
+    const u = await getDoc(doc(db,"Users",corpToEdit.value.UserId))
+    const userCorps = u.data().CorpsActiveIds
+    updateDoc(doc(db, 'Users', corpToEdit.value.UserId), {
+      CorpsActiveAtLeastOne: userCorps.length > 0
+    })
     activeEmail()
   }
 }

@@ -119,7 +119,8 @@ function toggleBackgroundCheckStatus() {
 
 function newBackgroudnDate() {
   updateDoc(doc(db, 'Users', user.value.id), {
-    ScreeningBackgroundDate: bacgkroundNewDate.value
+    ScreeningBackgroundDate: bacgkroundNewDate.value,
+    ScreeningBackgroundCheckRenewalRequested: false
   })
 }
 
@@ -250,7 +251,8 @@ function uploadFile() {
         if (item.value == 'Background') {
           updateDoc(doc(db, 'Users', user.value.id), {
             ScreeningBackgroundDate: dayjs().format('YYYY-MM-DD'),
-            ScreeningBackgroundCheckRequested: ''
+            ScreeningBackgroundCheckRequested: '',
+            ScreeningBackgroundCheckRenewalRequested: false
           })
         }
       }
@@ -327,7 +329,7 @@ function deleteFile(e, f, index) {
         <div></div>
         <div>
           {{ store.SCREENING_TITLE[item] }}
-          <span v-if="item == 'Reference'"
+          <span v-if="item == 'Reference'" class="text-red-800"
             >[{{ corp.Screening[store.getScreening(userCorp.Function)].Reference }}]</span
           >
         </div>

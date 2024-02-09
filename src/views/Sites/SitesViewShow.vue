@@ -300,7 +300,7 @@ function showOriginalPhoto(photo) {
       <!-- ********************** -->
       <!-- Showing Original Photo -->
       <!-- ********************** -->
-      <teleport to="#body" v-if="urlPhoto">
+      <teleport to="body" v-if="urlPhoto">
         <div class="absolute inset-0 z-50 flex place-items-center justify-center bg-slate-800/80">
           <img :src="urlPhoto" :width="imgSizeComputed.w" />
           <MyFab @onClick="urlPhoto = null" class="top-2 bg-slate-500/60"

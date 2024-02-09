@@ -1,6 +1,6 @@
 <template>
   <div class="">
-    <teleport to="#body">
+    <teleport to="body">
       <div class="z-20">
         <div v-if="showModal" class="fixed inset-0 z-20 bg-black opacity-25"></div>
         <div

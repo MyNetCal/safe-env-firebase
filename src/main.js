@@ -79,7 +79,8 @@ import {
   faFilePdf,
   faList,
   faTableList,
-  faFilePen
+  faFilePen,
+  faGauge
 } from '@fortawesome/free-solid-svg-icons'
 import { faWindowClose, faCheckSquare, faSquare } from '@fortawesome/free-regular-svg-icons'
 
@@ -155,7 +156,8 @@ library.add(
   faFilePdf,
   faList,
   faTableList,
-  faFilePen
+  faFilePen,
+  faGauge
 )
 
 const app = createApp(App)
