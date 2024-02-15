@@ -1,27 +1,27 @@
 <script setup>
 /*
 Every Corporation:
-1. Code of Conduct 
-    => pdfs/Code/${UUID}.pdf; 
+1. Code of Conduct
+    => pdfs/Code/${UUID}.pdf;
       [UsersCorporations/${idUserCorp}/ScreeningReq.Code.at(-1).FileName]
-2. Consent to Release and Share Information 
+2. Consent to Release and Share Information
     => pdfs/Code/${userCorpId}.pdf
       [UsersCorporations/${idUserCorp}/ScreeningReq.Consent.FileName]
 
 All Corporations:
 3. Background Check
-    => default/Users/${idUser}/ScreeningBackgroundCheck/${UUID}.pdf 
+    => default/Users/${idUser}/ScreeningBackgroundCheck/${UUID}.pdf
       [Users/${idUser}/ScreeningBackgroundCheck[]]
 
 Sharing and Every Corporation:
 - Written application
-    => default/Users/${idUser}/ScreeningWrittenApplication/${UUID}.pdf 
+    => default/Users/${idUser}/ScreeningWrittenApplication/${UUID}.pdf
       [Users/${idUser}/ScreeningWrittenApplication[]]
 - Face to Face Interview
-    => default/Users/${idUser}/ScreeningInterview/${UUID}.pdf 
+    => default/Users/${idUser}/ScreeningInterview/${UUID}.pdf
       [Users/${idUser}/ScreeningInterview[]]
 - Reference Check
-     => default/Users/${idUser}/ScreeningReferenceCheck/${UUID}.pdf 
+     => default/Users/${idUser}/ScreeningReferenceCheck/${UUID}.pdf
       [Users/${idUser}/ScreeningReferenceCheck[]]
 
 
@@ -38,7 +38,7 @@ Flags for screening:
 import { useGeneralStore } from '@/stores/general'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { toRefs, computed, ref, watch } from 'vue'
-import { useFileDialog } from '@vueuse/core'
+import { onKeyStroke, useFileDialog } from '@vueuse/core'
 import {
   deleteObject,
   getDownloadURL,
@@ -46,12 +46,33 @@ import {
   uploadBytesResumable
 } from 'firebase/storage'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
-import { addDoc, arrayUnion, collection, doc, onSnapshot, updateDoc } from 'firebase/firestore'
+import {
+  addDoc,
+  arrayUnion,
+  collection,
+  doc,
+  onSnapshot,
+  updateDoc,
+  getDocs,
+  query,
+  where,
+  arrayRemove
+} from 'firebase/firestore'
 import { useTimeoutFn } from '@vueuse/core'
 import MyMessage from './MyMessage.vue'
 import dayjs from 'dayjs'
-import { getEmailSECPrelature, getEmailSECBoards } from '@/stores/datadb'
+import { getEmailSECPrelature } from '@/stores/datadb'
 import relativeTime from 'dayjs/plugin/relativeTime'
+import {
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  Popover,
+  PopoverButton,
+  PopoverOverlay,
+  PopoverPanel
+} from '@headlessui/vue'
+import MyButton from './MyButton.vue'
 
 const props = defineProps({ item: String, userCorp: Object, user: Object, corp: Object })
 // item= [Application, Interview, Reference, Background, Code, Consent]
@@ -106,7 +127,46 @@ const flag = computed(() => {
   }
 })
 
-const isClickable = computed(() => filesData.value?.length > 0)
+const thereAreFilesUploaded = computed(() => filesData.value?.length > 0)
+
+const isClickable = computed(() => {
+  switch (item.value) {
+    case 'Background':
+    case 'Code':
+    case 'Consent':
+      return false
+    default:
+      return thereAreFilesUploaded.value
+  }
+})
+
+const lastFileExpiring = computed(() => {
+  switch (item.value) {
+    case 'Code':
+      return dayjs(userCorp.value?.ScreeningCodeDate)
+        .add(1, 'years')
+        .subtract(30, 'days')
+        .isBefore(dayjs())
+    case 'Background':
+      return dayjs(user.value?.ScreeningBackgroundDate)
+        .add(2, 'years')
+        .subtract(30, 'days')
+        .isBefore(dayjs())
+    default:
+      return false
+  }
+})
+
+const lastFileExpired = computed(() => {
+  switch (item.value) {
+    case 'Code':
+      return dayjs(userCorp.value?.ScreeningCodeDate).add(1, 'years').isBefore(dayjs())
+    case 'Background':
+      return dayjs(user.value?.ScreeningBackgroundDate).add(2, 'years').isBefore(dayjs())
+    default:
+      return false
+  }
+})
 
 function toggleBackgroundCheckStatus() {
   // TODO Maybe this is not necesary
@@ -117,26 +177,66 @@ function toggleBackgroundCheckStatus() {
   console.log('Flag should be on')
 }
 
-function newBackgroudnDate() {
+const backgroundNewDateDiologue = ref(false)
+
+async function newBackgroudnDate() {
+  console.log('new date', bacgkroundNewDate.value)
+  if (dayjs(bacgkroundNewDate.value).add(2, 'years').isBefore(dayjs())) {
+    backgroundNewDateDiologue.value = true
+    return
+  }
   updateDoc(doc(db, 'Users', user.value.id), {
     ScreeningBackgroundDate: bacgkroundNewDate.value,
     ScreeningBackgroundCheckRenewalRequested: false
   })
+  if (!user.value.ScreeningReqFlagBackground) {
+    updateDoc(doc(db, 'Users', user.value.id), {
+      ScreeningReqFlagBackground: true
+    })
+    toggleRequiringStatusReasons(store.REQ_ATT_BACKGROUND, false)
+  }
 }
 
+function cancelBackgroundNewDate() {
+  bacgkroundNewDate.value = user.value.ScreeningBackgroundDate
+  backgroundNewDateDiologue.value = false
+}
+
+async function savingBackgroundNewDateExpired() {
+  backgroundNewDateDiologue.value = false
+  updateDoc(doc(db, 'Users', user.value.id), {
+    ScreeningBackgroundDate: bacgkroundNewDate.value,
+    ScreeningBackgroundCheckRenewalRequested: false,
+    ScreeningReqFlagBackground: false
+  })
+  toggleRequiringStatusReasons(store.REQ_ATT_BACKGROUND, true)
+}
+
+const inputDateBackground = ref(null)
+const checkMarkBlock = ref(null)
+
+onKeyStroke(
+  'Enter',
+  (e) => {
+    //inputDateBackground.value.blur()
+    checkMarkBlock.value.focus()
+    e.preventDefault()
+  },
+  { target: inputDateBackground }
+)
 const message = ref('Sending Email...')
 const emailPending = ref(false)
 const showMessage = ref(false)
-const bacgkroundNewDate = ref(dayjs().format('YYYY-MM-DD'))
+const bacgkroundNewDate = ref(user.value.ScreeningBackgroundDate)
 
 watch(
-  () => user.value?.ScreeningBackgroundDate,
+  () => user.value.ScreeningBackgroundDate,
   (d) => {
     bacgkroundNewDate.value = d
   }
 )
 
-async function sentEmailRequestingBacground(type, isForAll) {
+async function sentEmailRequestingBacground(type) {
   // Create doc to Trigger email
   message.value = 'Sending Email'
   showMessage.value = true
@@ -168,18 +268,6 @@ async function sentEmailRequestingBacground(type, isForAll) {
     }
   })
 
-  if (isForAll) {
-    const allEmails = await getEmailSECBoards(user.value.id)
-    console.log('allEmails: ', allEmails)
-    addDoc(collection(db, 'mail-triggers'), {
-      to: allEmails,
-      message: {
-        subject: `${type} Requested`,
-        html: `<p>A renewal of ${user.value.Name} ${user.value.LastName}’s expiring background check has been requested.  ${user.value.Nickname} should receive an email from Praesidium with the steps to complete the background check shortly.  If ${user.value.Nickname} does not receive the email within a week, please contact the Safe Environment Coordinator of the Prelature at ${emailSECPrelature}.</p>`
-      }
-    })
-  }
-
   const idEmailSECPrelature = resSECPrelature.id
   let unsubEmailSECPrelature = null
 
@@ -206,6 +294,37 @@ async function sentEmailRequestingBacground(type, isForAll) {
       stop1()
       stop2()
       unsubEmailSECPrelature()
+    }
+  })
+}
+
+async function toggleRequiringStatusReasons(reason = '', value = false) {
+  // true: add reason, false: remove reason
+  // let's gett all userCorps
+  const userCorpsCollection = await getDocs(
+    query(
+      collection(db, 'UsersCorporations'),
+      where('UserId', '==', user.value.id),
+      where('Active', '==', true)
+    )
+  )
+  const userCorps = userCorpsCollection.docs.map((d) => ({ ...d.data(), id: d.id }))
+  console.log(userCorps)
+  userCorps.forEach((uc) => {
+    if (value) {
+      updateDoc(doc(db, 'UsersCorporations', uc.id), {
+        StatusRquiringAttentionReasons: arrayUnion(reason),
+        Status: store.USER_STATUS_ATTENTION
+      })
+    } else {
+      let data = { StatusRquiringAttentionReasons: arrayRemove(reason) }
+      if (
+        uc.StatusRquiringAttentionReasons?.length == 1 &&
+        uc.StatusRquiringAttentionReasons[0] == reason
+      ) {
+        data = { ...data, Status: store.USER_STATUS_APPROVED }
+      }
+      updateDoc(doc(db, 'UsersCorporations', uc.id), data)
     }
   })
 }
@@ -251,9 +370,11 @@ function uploadFile() {
         if (item.value == 'Background') {
           updateDoc(doc(db, 'Users', user.value.id), {
             ScreeningBackgroundDate: dayjs().format('YYYY-MM-DD'),
+            ScreeningReqFlagBackground: true,
             ScreeningBackgroundCheckRequested: '',
             ScreeningBackgroundCheckRenewalRequested: false
           })
+          toggleRequiringStatusReasons(store.REQ_ATT_BACKGROUND, false)
         }
       }
     )
@@ -312,6 +433,8 @@ function deleteFile(e, f, index) {
   <div class="mx-auto mb-2 flex max-w-md justify-center">
     <!-- Left Block with Check Mark -->
     <div
+      ref="checkMarkBlock"
+      tabindex="0"
       class="flex w-12 place-items-center justify-center"
       :class="[
         flag ? 'bg-green-700' : 'bg-red-700',
@@ -327,11 +450,26 @@ function deleteFile(e, f, index) {
       <!-- Title & Upload icon-->
       <div class="flex justify-between p-1 font-semibold">
         <div></div>
-        <div>
-          {{ store.SCREENING_TITLE[item] }}
-          <span v-if="item == 'Reference'" class="text-red-800"
-            >[{{ corp.Screening[store.getScreening(userCorp.Function)].Reference }}]</span
-          >
+        <div class="flex">
+          <Popover class="relative">
+            {{ store.SCREENING_TITLE[item] }}
+            <span v-if="item == 'Reference'" class="ml-1 text-red-800">
+              [{{ corp.Screening[store.getScreening(userCorp.Function)].Reference }}]</span
+            >
+
+            <PopoverButton
+              v-if="
+                item == 'Background' &&
+                thereAreFilesUploaded &&
+                dayjs(filesData.at(-1).Date).isBefore(dayjs().subtract(1, 'day'))
+              "
+              class="popover-button"
+            >
+              <FontAwesomeIcon class="px-1 text-blue-600" icon="info-circle" />
+            </PopoverButton>
+            <PopoverOverlay class="fixed inset-0 bg-black opacity-10" />
+            <PopoverPanel class="popover-panel">Upload a new file to enter a new date</PopoverPanel>
+          </Popover>
         </div>
         <!-- Upload Icon -->
         <div
@@ -344,58 +482,69 @@ function deleteFile(e, f, index) {
         <div v-else></div>
       </div>
 
-      <!-- Background Input Date -->
-      <div v-if="item == 'Background' && isClickable" class="place-items-center justify-center">
-        <div class="text-xs text-slate-600">Last Background Check issued on</div>
-        <input
-          @input="newBackgroudnDate"
-          type="date"
-          class="ml-2 rounded bg-slate-200 px-1"
-          v-model="bacgkroundNewDate"
-        />
-        <div class="text-xs text-slate-600">
-          Expire<span v-if="dayjs(bacgkroundNewDate).add(1, 'y').isBefore(dayjs())">d</span
-          ><span v-else>s</span>
-          {{ dayjs(bacgkroundNewDate).add(1, 'y').fromNow() }}
+      <!-- Only for the Background Item -->
+      <div v-if="item == 'Background'">
+        <!-- There are files uploaded: Shows Issue and Expiration Dates -->
+        <div v-if="thereAreFilesUploaded" class="place-items-center justify-center">
+          <div class="text-xs text-slate-600">Last Background Check issued on</div>
+          <!-- Date Input -->
+          <input
+            @blur="newBackgroudnDate"
+            ref="inputDateBackground"
+            :disabled="dayjs(filesData.at(-1).Date).isBefore(dayjs().subtract(1, 'day'))"
+            type="date"
+            class="ml-2 rounded bg-slate-200 px-1"
+            v-model="bacgkroundNewDate"
+          />
+
+          <!-- Expiers On -->
+          <div class="mb-1 text-xs text-slate-600">
+            <span v-if="lastFileExpired" class="font-semibold text-red-700"
+              >Expired {{ dayjs(bacgkroundNewDate).add(2, 'y').fromNow() }}</span
+            >
+            <span v-else>Expires {{ dayjs(bacgkroundNewDate).add(2, 'y').fromNow() }}</span>
+          </div>
+        </div>
+
+        <!-- Requested First Background Check Legend -->
+        <div v-if="user?.ScreeningBackgroundCheckRequested" class="my-2 text-sm text-red-700">
+          {{ user?.ScreeningBackgroundCheckRequested }} Requested
+        </div>
+
+        <!-- Requested Renewal Background Check Legend -->
+        <div v-if="lastFileExpiring" class="mb-1 text-sm text-red-700">
+          <span v-if="user?.ScreeningBackgroundCheckRenewalRequested">Renewal pending</span>
+          <span v-else>Awaiting renewal request</span>
+        </div>
+
+        <!-- No files Uploaded: Request Buttons available -->
+        <div v-if="!thereAreFilesUploaded" class="mb-1 flex">
+          <div class="small-button" @click="sentEmailRequestingBacground('Background Check')">
+            Request Background Check Only
+          </div>
+          <div
+            class="small-button"
+            @click="sentEmailRequestingBacground('Background Check & Training')"
+          >
+            Request Background Check & Training
+          </div>
         </div>
       </div>
 
-      <!-- Requested Legend -->
-      <div
-        v-if="item == 'Background' && user?.ScreeningBackgroundCheckRequested"
-        class="my-2 text-sm text-red-700"
-      >
-        {{ user?.ScreeningBackgroundCheckRequested }} Requested
-      </div>
-
-      <!-- Request Buttons -->
-      <div v-if="item == 'Background' && !isClickable" class="mb-1 flex">
-        <div class="small-button" @click="sentEmailRequestingBacground('Background Check')">
-          Request Background Check Only
-        </div>
-        <div
-          class="small-button"
-          @click="sentEmailRequestingBacground('Background Check & Training')"
-        >
-          Request Background Check & Training
-        </div>
-      </div>
-
-      <!-- Request Buttons -->
-      <div
-        v-if="
-          item == 'Background' &&
-          isClickable &&
-          dayjs(user?.ScreeningBackgroundDate).add(11, 'months').isBefore(dayjs()) &&
-          !user?.ScreeningBackgroundCheckRequested
-        "
-        class="mb-1 mt-2 flex justify-center"
-      >
-        <div
-          class="small-button"
-          @click="sentEmailRequestingBacground('Background Check Renewal', true)"
-        >
-          Request Background Check Renewal
+      <div v-if="item == 'Code'">
+        <div v-if="userCorp.ScreeningReq.Code.length > 0">
+          <div class="text-xs text-slate-600">Last Code of Conduct Signed on</div>
+          <div class="mx-auto w-fit rounded bg-slate-200 px-1">
+            {{ dayjs(userCorp.ScreeningCodeDate).format('MMMM D, YYYY') }}
+          </div>
+          <div class="mb-1 text-xs text-slate-600">
+            <span v-if="lastFileExpired" class="font-semibold text-red-700"
+              >Expired {{ dayjs(userCorp.ScreeningCodeDate).add(1, 'y').fromNow() }}</span
+            >
+            <span v-else
+              >Expires {{ dayjs(userCorp.ScreeningCodeDate).add(1, 'y').fromNow() }}</span
+            >
+          </div>
         </div>
       </div>
 
@@ -428,6 +577,39 @@ function deleteFile(e, f, index) {
 
     <!-- Message -->
     <MyMessage v-model="showMessage" :message="message" :spinner="emailPending" />
+
+    <!-- New Background Expired Date Confirmation  -->
+    <Dialog
+      :open="backgroundNewDateDiologue"
+      class="absolute inset-0 z-50 rounded-md bg-slate-400/60"
+    >
+      <DialogPanel class="relative mx-auto mt-10 max-w-lg rounded-md bg-white">
+        <DialogTitle
+          class="flex place-items-center justify-between rounded-t-md bg-slate-500 px-4 py-2 text-white"
+        >
+          Background Check New Date
+          <FontAwesomeIcon
+            class="ml-2 cursor-pointer"
+            icon="xmark"
+            @click="cancelBackgroundNewDate"
+          />
+        </DialogTitle>
+        <div class="p-4">
+          <p class="mb-4">
+            The new Background Check date, {{ dayjs(bacgkroundNewDate).format('MMMM D, YYYY') }},
+            already expired. This action will make {{ user?.Nickname }} {{ user?.LastName }} no
+            longer eligible to staff activities with minors with any Corporation afiliated with the
+            Prelature. Are you sure you want to continue?
+          </p>
+          <div class="mx-auto w-fit">
+            <MyButton class="bg-stone-500" @click="cancelBackgroundNewDate">Cancel</MyButton>
+            <MyButton class="bg-red-600" @click="savingBackgroundNewDateExpired"
+              >Mark as 'Requiring Attention'</MyButton
+            >
+          </div>
+        </div>
+      </DialogPanel>
+    </Dialog>
   </div>
 </template>
 

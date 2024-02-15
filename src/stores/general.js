@@ -183,7 +183,7 @@ export const useGeneralStore = defineStore('general', () => {
   const SCREENING_TITLE_INTERVIEW = 'Face-to-face interview'
   const SCREENING_TITLE_REFERENCE = 'Reference check'
   const SCREENING_TITLE_BACKGROUND = 'Criminal background check'
-  const SCREENING_TITLE_CODE = 'Signed code of conduct'
+  const SCREENING_TITLE_CODE = 'Code of conduct'
   const SCREENING_TITLE_CONSENT = 'Consent to Release and Share Information'
   const SCREENING_REQ_TITLES = [
     'Written application',
@@ -370,6 +370,12 @@ export const useGeneralStore = defineStore('general', () => {
 
   }
 
+  // StatusRquiringAttentionReasons: []
+  const REQ_ATT_BACKGROUND = 'Background Check Expired'
+  const REQ_ATT_CODE = 'Code of Conduct Expired'
+  const REQ_ATT_INACTIVE = 'Inactive for 6 months'
+  const REQ_ATT_TRAINING = 'Failed Training'
+
   return {
     loginUserCorporationCollection,
     loginCurrentUsersCorporationsId,
@@ -427,6 +433,10 @@ export const useGeneralStore = defineStore('general', () => {
     infoMessage,
     showMessage,
     triggerEmailTemplate,
-    triggerEmail
+    triggerEmail,
+    REQ_ATT_BACKGROUND,
+    REQ_ATT_CODE,
+    REQ_ATT_INACTIVE,
+    REQ_ATT_TRAINING
   }
 })

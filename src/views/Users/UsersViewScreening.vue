@@ -20,7 +20,7 @@
             <h3 class="mb-2">{{ currentScreeningType }}</h3>
             <template v-for="req in store.SCREENING_REQ" :key="req">
               <UserViewScreeningCorpItem
-                v-if="currentCorp?.Screening[currentScreeningType][req]"
+                v-if="user && currentCorp?.Screening[currentScreeningType][req]"
                 :user-corp="userCorp"
                 :user="user"
                 :item="req"

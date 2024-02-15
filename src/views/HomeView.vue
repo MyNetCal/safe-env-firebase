@@ -24,7 +24,8 @@ import {
   onSnapshot,
   addDoc,
   setDoc,
-  getDocs
+  getDocs,
+  arrayRemove
 } from 'firebase/firestore'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import TrainingInputDate from '@/components/TrainingInputDate.vue'
@@ -80,17 +81,6 @@ watch(
   }
 )
 
-function testEmail() {
-  store.triggerEmail('Once again', 'Content of the email', 'casedu@gmail.com').then(
-    () => {
-      console.log('SUCCESS sending email')
-    },
-    () => {
-      console.log('Error Sending email')
-    }
-  )
-}
-
 const codeEditing = ref(false)
 const consentEditing = ref(false)
 
@@ -105,6 +95,37 @@ const signatureConsent = ref('')
 let idFile = ''
 
 const validCode = computed(() => store.loginUserCorporation?.ScreeningReqFlagCode || false)
+
+const codeExpiring = computed(
+  () =>
+    dayjs(store.loginUserCorporation?.ScreeningCodeDate).add(11, 'months').isBefore(dayjs()) ||
+    false
+)
+
+const codeExpired = computed(
+  () =>
+    dayjs(store.loginUserCorporation?.ScreeningCodeDate).add(1, 'year').isBefore(dayjs()) || false
+)
+
+const codeCardText = computed(() => {
+  if (validCode.value && codeExpiring.value) {
+    return (
+      'Your Signed Code of Conduct is Expiring on ' +
+      dayjs(store.loginUserCorporation.ScreeningCodeDate).add(1, 'year').format('LL') +
+      '. Please Re-sign the '
+    )
+  }
+  if (!validCode.value && codeExpired.value) {
+    return 'Your Signed Code of Conduct Expired! Please Re-sign the '
+  }
+  if (!validCode.value && store.loginUserCorporation?.ScreeningReq?.Code?.length > 0) {
+    return 'Please Read and Sign the Updated '
+  }
+  if (!validCode.value) {
+    return 'Please Read and Sign the '
+  }
+  return null
+})
 
 const validConsent = computed(() => store.loginUserCorporation?.ScreeningReqFlagConsent || false)
 
@@ -154,19 +175,8 @@ Code of Conduct: Generate PDF And email it
 
 async function onSigningCode() {
   codeEditing.value = false
-  emailPending.value = true
-  message.value = 'Creating PDF...'
-  showMessage.value = true
+  store.showMessage({ message: 'Creating PDF...', timer: true })
   idFile = self.crypto.randomUUID()
-
-  // Timers
-  const { stop: stop1 } = useTimeoutFn(() => {
-    message.value = "It's taking longer than expected..."
-  }, 30000)
-  const { stop: stop2 } = useTimeoutFn(() => {
-    message.value = "Sorry, the email couldn't be delivered."
-    emailPending.value = false
-  }, 60000)
 
   await setDoc(doc(db, 'temp', idFile), {
     idFile: idFile,
@@ -203,8 +213,18 @@ async function onSigningCode() {
   unsubConsentPdf = onSnapshot(doc(db, 'temp', idFile), (d) => {
     if (d.data().status == 'To send Email') {
       unsubConsentPdf()
+      if (
+        store.loginUserCorporation.StatusRquiringAttentionReasons?.length == 1 &&
+        store.loginUserCorporation.StatusRquiringAttentionReasons[0] == 'Code of Conduct Expired'
+      ) {
+        updateDoc(doc(db, 'UsersCorporations', store.loginUserCorporation.id), {
+          Status: store.USER_STATUS_APPROVED
+        })
+      }
       updateDoc(doc(db, 'UsersCorporations', store.loginUserCorporation.id), {
         ScreeningReqFlagCode: true,
+        ScreeningCodeDate: dayjs().format('YYYY-MM-DD'),
+        StatusRquiringAttentionReasons: arrayRemove('Code of Conduct Expired'),
         'ScreeningReq.Code': arrayUnion({
           CodeDate: store.loginCorporation.CodeDate,
           Date: new Date().toISOString(),
@@ -214,61 +234,34 @@ async function onSigningCode() {
           byName: 'User'
         })
       })
-      message.value = 'Sending email...'
       getDownloadURL(storageRef(storage, `gs://vue-safe-env-pdfs/Code/${idFile}.pdf`)).then(
         (url) => {
-          sentEmailCode(url, stop1, stop2, idFile)
+          // sentEmailCode(url, stop1, stop2, idFile)
+          store
+            .triggerEmailTemplate(
+              'Code',
+              {
+                Nickname: store.loginUser.Nickname,
+                file_link: url,
+                corp: store.loginCorporation.Name,
+                corpShort: store.loginCorporation.Short,
+                secEmail: store.loginCorporation.EmailFiles
+              },
+              [loginUser.value.Email, store.loginCorporation.EmailFiles]
+            )
+            .then(
+              () => {
+                updateDoc(doc(db, 'temp', idFile), {
+                  status: 'SUCCESS'
+                })
+              },
+              () => {
+                console.log('Error Sending email')
+              }
+            )
         }
       )
     }
-  })
-}
-
-// Send email with PDF attachment
-function sentEmailCode(url, stop1, stop2, idFile) {
-  // Create doc to Trigger email
-  addDoc(collection(db, 'mail-triggers'), {
-    template: {
-      name: 'Code',
-      data: {
-        Nickname: store.loginUser.Nickname,
-        file_link: url,
-        corp: store.loginCorporation.Name,
-        corpShort: store.loginCorporation.Short,
-        secEmail: store.loginCorporation.EmailFiles
-      }
-    },
-
-    // [loginUser.value.Email, store.loginCorporation.EmailFiles]
-    to: [loginUser.value.Email, store.loginCorporation.EmailFiles]
-  }).then((res) => {
-    const idEmail = res.id
-
-    // Listener to SUCCESS state in doc
-    if (unsubEmail) {
-      unsubEmail()
-    }
-    unsubEmail = onSnapshot(doc(db, 'mail-triggers', idEmail), (d) => {
-      const delivery = d.data().delivery
-      if (delivery?.state == 'SUCCESS') {
-        updateDoc(doc(db, 'temp', idFile), {
-          status: 'SUCCESS'
-        })
-        message.value = 'Email has been sent'
-        emailPending.value = false
-        stop1()
-        stop2()
-        unsubEmail()
-        return
-      }
-      if (delivery?.state == 'ERROR') {
-        message.value = delivery.error
-        emailPending.value = false
-        stop1()
-        stop2()
-        unsubEmail()
-      }
-    })
   })
 }
 // #endregion
@@ -480,19 +473,14 @@ const trainingToEdit = ref({})
     </h5>
 
     <!-- Pending Screening and Code of Conduct -->
-    <div class="mx-auto my-5 w-fit shadow-md" v-if="!validCode || !validConsent">
+    <div class="mx-auto my-5 w-fit max-w-lg shadow-md" v-if="codeCardText || !validConsent">
       <div class="pb-3">
         <div class="rounded-t bg-red-700 p-2 text-lg font-semibold text-white">Pending Tasks</div>
-        <div v-if="!validCode" class="px-2 pt-3 text-left">
-          &bull; Please Read and Sign the
-          <span
-            v-if="store.loginUserCorporation?.ScreeningReq?.Code?.length > 0"
-            class="font-semibold"
-            >Updated
+        <div v-if="codeCardText" class="px-2 pt-3 text-left">
+          &bull; {{ codeCardText }}
+          <span class="cursor-pointer text-blue-600 underline" @click="codeEditing = true">
+            Code of Conduct
           </span>
-          <span class="cursor-pointer text-blue-600 underline" @click="codeEditing = true"
-            >Code of Conduct</span
-          >
         </div>
         <div v-if="!validConsent" class="px-2 pt-3 text-left">
           &bull; Please Sign the
@@ -527,7 +515,7 @@ const trainingToEdit = ref({})
     <!-- Screening Cards Info -->
     <div class="flex flex-wrap justify-center gap-5">
       <!-- List of Code of Counduct Signed -->
-      <div v-if="validCode" class="w-fit p-5 shadow-md">
+      <div v-if="validCode || codeExpired" class="w-fit p-5 shadow-md">
         <div class="font-semibold">
           <FontAwesomeIcon icon="check" class="text-green-700" /> Code of Conduct Signed
         </div>

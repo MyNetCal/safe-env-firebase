@@ -36,6 +36,12 @@
 }
 @tailwind components;
 @layer components {
+  .popover-panel {
+    @apply absolute -top-2 z-50 -translate-y-full rounded-md bg-orange-400 px-3 py-3 shadow-xl;
+  }
+  .popover-button {
+    @apply focus:outline-none focus-visible:ring-0;
+  }
   .text-secondary {
     @apply text-gray-600;
   }
@@ -48,7 +54,7 @@
   }
 
   .tab {
-    @apply bg-slate-200 text-slate-600 grow w-16 cursor-pointer rounded-t-md px-5 py-3 border shadow;
+    @apply w-16 grow cursor-pointer rounded-t-md border bg-slate-200 px-5 py-3 text-slate-600 shadow;
   }
   .tab:hover {
     @apply bg-slate-500 text-slate-50;
@@ -57,7 +63,7 @@
     @apply bg-slate-600 text-slate-50;
   }
   .tab-active:hover {
-    @apply bg-slate-700
+    @apply bg-slate-700;
   }
   .modal-height {
     height: calc(100vh - 48px);
