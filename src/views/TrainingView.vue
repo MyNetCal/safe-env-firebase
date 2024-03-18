@@ -218,7 +218,7 @@ function deleteTraining() {
       <div class="relative w-full max-w-2xl">
         <!-- Tab: Initial Training -->
         <div class="text-left" v-if="currentTab == 0">
-          <div v-if="currentTraining?.length > 0" class="training-list">
+          <div v-if="currentTraining?.length > 0" class="training-list thinsb">
             <div v-for="req in currentTraining" :key="req.Title">
               <div class="mb-2 rounded-lg bg-white shadow-md">
                 <!-- Header -->
@@ -267,7 +267,7 @@ function deleteTraining() {
 
         <!-- Tab: Ongoing training -->
         <div class="text-left" v-if="currentTab == 1">
-          <div v-if="currentTraining?.length > 0" class="training-list">
+          <div v-if="currentTraining?.length > 0" class="training-list thinsb">
             <div v-for="req in currentTraining" :key="req.Title">
               <div class="mb-2 rounded-lg bg-white shadow-md">
                 <!-- Header -->
@@ -502,7 +502,7 @@ function deleteTraining() {
 .training-list {
   max-height: calc(100vh - 300px);
   overflow-y: auto;
-  @apply thinsb pr-2;
+  @apply pr-2;
 }
 
 .initial-training-grid {
