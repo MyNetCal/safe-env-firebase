@@ -4,25 +4,24 @@ import { computed, watchEffect, ref } from 'vue'
 import MySelectCorporation from './MySelect/MySelectCorporation.vue'
 import MySelectActivity from './MySelect/MySelectActivity.vue'
 import MySelectAuto from './MyInputs/MySelectAuto.vue'
-import {
-  addDoc,
-  arrayRemove,
-  arrayUnion,
-  collection,
-  doc,
-  getDoc,
-  updateDoc
-} from 'firebase/firestore'
+import { arrayRemove, arrayUnion, doc, getDoc, updateDoc } from 'firebase/firestore'
 import { useFirestore } from 'vuefire'
 import MyInputCheckBox from './MyInputs/MyInputCheckBox.vue'
 import { getEmailSECPrelature } from '@/stores/datadb'
+import MyInputTextArea from './MyInputs/MyInputTextArea.vue'
+import MyButton from './MyButton.vue'
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/vue'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import dayjs from 'dayjs'
 
 const props = defineProps({ modelValue: Object })
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'onClose'])
 
 const store = useGeneralStore()
 const db = useFirestore()
-//const corpToEdit = ref({})
+
+const showDialogDeactivate = ref(false)
+const showDialogReactivate = ref(false)
 
 const corpToEdit = computed({
   get() {
@@ -62,10 +61,18 @@ const isErrorRole = computed(() => {
 })
 
 const corpEntity = ref({})
+const user = ref({})
+const corp = ref({})
 watchEffect(() => {
   if (corpToEdit.value.CorporationId) {
     getDoc(doc(db, 'Corporations', corpToEdit.value.CorporationId)).then((d) => {
       corpEntity.value = d.data().Entity
+      corp.value = d.data()
+    })
+  }
+  if (corpToEdit.value.UserId) {
+    getDoc(doc(db, 'Users', corpToEdit.value.UserId)).then((d) => {
+      user.value = d.data()
     })
   }
 })
@@ -79,75 +86,90 @@ const entities = computed(() => {
       : [store.ENTITY_PRELATURE, store.ENTITY_PARTY]
 })
 
-async function activeStatusUpdated() {
-  console.log('Active Status Updated: ', corpToEdit.value.Active)
-  if (corpToEdit.value.id) {
-    await updateDoc(doc(db, 'Users', corpToEdit.value.UserId), {
-      CorpsActiveIds: corpToEdit.value.Active
-        ? arrayUnion(corpToEdit.value.CorporationId)
-        : arrayRemove(corpToEdit.value.CorporationId)
-    })
-    const u = await getDoc(doc(db,"Users",corpToEdit.value.UserId))
-    const userCorps = u.data().CorpsActiveIds
-    updateDoc(doc(db, 'Users', corpToEdit.value.UserId), {
-      CorpsActiveAtLeastOne: userCorps.length > 0
-    })
-    activeEmail()
-  }
-}
-
-const activeStatusLegend = ref(false)
-
-async function activeEmail() {
-  const userSnap = await getDoc(doc(db, 'Users', corpToEdit.value.UserId))
-  const user = userSnap.data()
-  const corpSnap = await getDoc(doc(db, 'Corporations', corpToEdit.value.CorporationId))
-  const corp = corpSnap.data()
-  const emailSECPrelature = await getEmailSECPrelature()
-  addDoc(collection(db, 'mail-triggers'), {
-    to: [emailSECPrelature],
-    message: {
-      subject: `${user.Name} ${user.LastName} is now ${corpToEdit.value.Active ? 'Active' : 'Inactive'}`,
-      html: `<p>Name: ${user.Name} ${user.LastName}</p>
-              <p>Email: ${user.Email}</p>
-              <p>Corporation: ${corp.Name}</p>
+async function deactivateEmailNotification() {
+  const to = await getEmailSECPrelature()
+  const cc = 'casedu@gmail.com'
+  const subject = `${user.value.Name} ${user.value.LastName} is no longer Active`
+  const html = `<p>Name: ${user.value.Name} ${user.value.LastName}</p>
+              <p>Email: ${user.value.Email}</p>
+              <p>Corporation: ${corp.value.Name}</p>
               <p>Activity: ${store.activities[corpToEdit.value.Activity].Name}</p>
               <p>Role: ${corpToEdit.value.Role}</p>
               <p>Entity: ${corpToEdit.value.Entity}</p>
               <p>Board: ${corpToEdit.value.Board ? 'Yes' : 'No'}</p>
-              <p>Screening: ${corpToEdit.value.Screening ? 'Yes' : 'No'}</p>
-              <p>Active: ${corpToEdit.value.Active ? 'Active' : 'Inactive'}</p>`
-    }
-  })
+              <p>Screening: ${corpToEdit.value.Screening ? 'Yes' : 'No'}</p>`
+  store.createDocTriggerEmail(subject, html, to, [], cc)
+}
 
+async function deactivateUser() {
+  deactivateEmailNotification()
   updateDoc(doc(db, 'UsersCorporations', corpToEdit.value.id), {
-    Active: corpToEdit.value.Active
-  }).then(() => {
-    activeStatusLegend.value = true
+    Active: false,
+    Status: 'Inactive',
+    StatusRquiringAttentionReasons: arrayUnion('No Active'),
+    InactiveSince: dayjs().toISOString(),
+    ApprovedOn: ''
   })
+  await updateDoc(doc(db, 'Users', corpToEdit.value.UserId), {
+    CorpsActiveIds: arrayRemove(corpToEdit.value.CorporationId)
+  })
+  const u = await getDoc(doc(db, 'Users', corpToEdit.value.UserId))
+  const userCorps = u.data().CorpsActiveIds
+  updateDoc(doc(db, 'Users', corpToEdit.value.UserId), {
+    CorpsActiveAtLeastOne: userCorps.length > 0
+  })
+  showDialogDeactivate.value = false
+  emit('onClose')
+}
+
+async function reactivateUser() {
+  const inactiveSince = dayjs(corpToEdit.value.InactiveSince)
+  const dayLimit = dayjs().subtract(6, 'M')
+  const needsBackgroundCheck = inactiveSince.isBefore(dayLimit)
+  updateDoc(doc(db, 'UsersCorporations', corpToEdit.value.id), {
+    Active: true,
+    Status: store.USER_STATUS_ATTENTION,
+    StatusRquiringAttentionReasons: arrayUnion('No Active'),
+    InactiveSince: '',
+    ApprovedOn: '',
+    ApprovedBy: []
+  })
+  await updateDoc(doc(db, 'Users', corpToEdit.value.UserId), {
+    CorpsActiveIds: arrayUnion(corpToEdit.value.CorporationId),
+    CorpsActiveAtLeastOne: true
+  })
+  if (needsBackgroundCheck) {
+    updateDoc(doc(db, 'UsersCorporations', corpToEdit.value.id), {
+      StatusRquiringAttentionReasons: arrayUnion('Background Check Expired'),
+      ScreeningReqFlagBackground: false,
+      BackgroundCheckExpiresOn: dayLimit.format('YYYY-MM-DD')
+    })
+  }
+  showDialogReactivate.value = false
+  emit('onClose')
 }
 </script>
 
 <template>
   <div>
-    <div>
+    <div class="min-h-52">
       <h2 class="text-center font-medium text-blue-500">
         Personnel Role at {{ corpToEdit.CorporationName }}
       </h2>
-      <div class="mb-2 text-center text-sm text-slate-500">
+      <div class="mb-5 text-center text-sm text-slate-500">
         [This information is specific to {{ corpToEdit.CorporationName }}]
       </div>
       <div v-if="corpToEdit.id == '' && store.isUserBoardPrelature">
         <MySelectCorporation v-model="corpToEdit.CorporationId" @newEntry="newSelCorporation" />
       </div>
-      <div class="flex gap-x-2">
+      <div class="flex flex-wrap gap-x-2">
         <div>
           <MySelectActivity
             v-model="corpToEdit.Activity"
             @newEntry="activitySelected"
             label="Activity: Choose the first option that applies"
             :isError="isErrorActivity"
-            class="max-h-44"
+            class="max-h-60"
           ></MySelectActivity>
         </div>
         <div>
@@ -181,21 +203,82 @@ async function activeEmail() {
           v-model="corpToEdit.Screening"
           label="Screening"
         ></MyInputCheckBox>
-        <MyInputCheckBox
-          v-model="corpToEdit.Active"
-          :label="corpToEdit.id ? '*Active' : 'Active'"
-          @update:model-value="activeStatusUpdated"
-        ></MyInputCheckBox>
       </div>
-      <div v-if="corpToEdit.id" class="text-xs text-slate-500">
-        * Updating the <span class="font-semibold">Active</span> status will
-        <span class="italic">immediately</span> send a notification to the Safe Environment
-        Coordinator of the Prelature
+      <div class="flex gap-x-2">
+        <MyInputTextArea class="w-full" v-model="corpToEdit.Notes" label="Notes" />
       </div>
-      <div class="text-xs text-red-600" v-if="activeStatusLegend">
-        New Active status have been updated: {{ corpToEdit.Active ? 'Active' : 'Inactive' }}
+      <div v-if="corpToEdit.id" class="my-2 text-center">
+        <MyButton v-if="corpToEdit.Active" class="bg-red-600" @click="showDialogDeactivate = true"
+          >No Active anymore</MyButton
+        >
+        <MyButton v-else class="bg-grean-600" @click="showDialogReactivate = true"
+          >Re-activate</MyButton
+        >
       </div>
     </div>
+
+    <Dialog
+      :open="showDialogDeactivate"
+      @close="showDialogDeactivate = false"
+      class="relative z-50"
+    >
+      <DialogPanel class="my-dialog">
+        <div class="my-dialog-overlay" />
+        <div class="my-dialog-outer">
+          <div class="my-dialog-inner">
+            <DialogTitle class="my-dialog-title">
+              {{ user.Nickname }} {{ user.LastName }}
+              <FontAwesomeIcon @click="showDialogDeactivate = false" class="" icon="times" />
+            </DialogTitle>
+            <div class="my-dialog-content">
+              <p class="mb-2">Important:</p>
+              <p class="mb-2">
+                {{ user.Nickname }} {{ user.LastName }} will no longer be able to staff any
+                activities with minors. An email notification will be sent to the Safe Environment
+                Coordinator of the Prelature. In case he becomes active again he will have to be
+                approved by the Board. Also, if he stays inactive for 6 months or more he will be
+                required to get a new background check.
+              </p>
+              <p class="mb-2">Do you want to continue?</p>
+            </div>
+            <div class="my-dialog-buttons my-4">
+              <MyButton class="bg-slate-600" @click="showDialogDeactivate = false">Close</MyButton>
+              <MyButton class="bg-red-700" @click="deactivateUser">Deactivate</MyButton>
+            </div>
+          </div>
+        </div>
+      </DialogPanel>
+    </Dialog>
+
+    <Dialog
+      :open="showDialogReactivate"
+      @close="showDialogReactivate = false"
+      class="relative z-50"
+    >
+      <DialogPanel class="my-dialog">
+        <div class="my-dialog-overlay" />
+        <div class="my-dialog-outer">
+          <div class="my-dialog-inner">
+            <DialogTitle class="my-dialog-title">
+              {{ user.Nickname }} {{ user.LastName }}
+              <FontAwesomeIcon @click="showDialogReactivate = false" class="" icon="times" />
+            </DialogTitle>
+            <div class="my-dialog-content">
+              <p class="my-2">Note:</p>
+              <p class="mb-2">
+                After being activated {{ user.Nickname }} {{ user.LastName }} will have to be
+                approved by the Board to start staffing activities with minors. Also, if he was
+                inactive for 6 months or more he will be required to get a new background check
+              </p>
+            </div>
+            <div class="my-dialog-buttons">
+              <MyButton class="bg-slate-600" @click="showDialogReactivate = false">Close</MyButton>
+              <MyButton class="bg-green-700" @click="reactivateUser">Re-activate</MyButton>
+            </div>
+          </div>
+        </div>
+      </DialogPanel>
+    </Dialog>
   </div>
 </template>
 

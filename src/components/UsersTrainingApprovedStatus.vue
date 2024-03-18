@@ -1,8 +1,13 @@
 <script setup>
-import dayjs from 'dayjs'
+import dayjs from 'dayjs';
+import relativeTime from 'dayjs/plugin/relativeTime';
+import localizedFormat from 'dayjs/plugin/localizedFormat';
 import { toRefs, ref } from 'vue'
 import TrainingInputDate from './TrainingInputDate.vue';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+
+dayjs.extend(relativeTime);
+dayjs.extend(localizedFormat);
 
 const props = defineProps(['training', 'user'])
 
@@ -57,7 +62,7 @@ function editTraining(t) {
               <div>
                 Expires on:
                 <span class="font-semibold"> {{ dayjs(t.dueDate).format('LL') }}</span>
-                <span class="text-sm text-slate-500"> [{{ dayjs(t.dueDate).fromNow() }}]</span>
+                <span class="text-sm text-slate-500"> [{{ dayjs("2020-01-01").fromNow() }}]</span>
               </div>
 
               <!-- Last Files uploaded -->

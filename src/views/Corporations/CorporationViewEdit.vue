@@ -151,7 +151,6 @@ import MyModal from '@/components/MyModal.vue'
 import MyButton from '@/components/MyButton.vue'
 import { toRefs, ref, computed } from 'vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
-import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { useGeneralStore } from '@/stores/general'
 import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'
@@ -168,24 +167,6 @@ const activities = computed(() => store.activities)
 const entities = store.entities
 
 const codeEditing = ref(false)
-
-const inputGroup = ref('')
-
-function addGroup() {
-  if (inputGroup.value == '') {
-    return
-  }
-  if (!dataToEdit.value.ActivityGroups) {
-    dataToEdit.value.ActivityGroups = []
-  }
-  dataToEdit.value.ActivityGroups.push(inputGroup.value)
-  inputGroup.value = ''
-}
-
-function removeFromNewGroups(group) {
-  let index = dataToEdit.value.ActivityGroups.indexOf(group)
-  dataToEdit.value.ActivityGroups.splice(index, 1)
-}
 
 const percentage = ref(0)
 const isLoading = ref(false)
@@ -206,6 +187,8 @@ function initPlace() {
     Code: '',
     Entity: '',
     Activities: [],
+    BackgroundCheckValidFor: 2,
+    CodeOfConductValidFor: 1,
     Screening: {
       Staff: {
         Application: true,

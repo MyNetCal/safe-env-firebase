@@ -56,7 +56,8 @@ import {
   getDocs,
   query,
   where,
-  arrayRemove
+  arrayRemove,
+  getDoc
 } from 'firebase/firestore'
 import { useTimeoutFn } from '@vueuse/core'
 import MyMessage from './MyMessage.vue'
@@ -86,24 +87,9 @@ const db = useFirestore()
 dayjs.extend(relativeTime)
 
 function screeningChecked() {
-  switch (item.value) {
-    case 'Consent':
-    case 'Code':
-      updateDoc(doc(db, 'UsersCorporations', userCorp.value.id), {
-        [`ScreeningReqFlag${item.value}`]: !(
-          userCorp.value[`ScreeningReqFlag${item.value}`] || false
-        )
-      })
-      break
-    default:
-      updateDoc(doc(db, 'Users', user.value?.id), {
-        [`ScreeningReqFlag${item.value}`]: !(user.value[`ScreeningReqFlag${item.value}`] || false)
-      })
-      break
-  }
-  if (item.value == 'Background') {
-    toggleBackgroundCheckStatus()
-  }
+  updateDoc(doc(db, 'UsersCorporations', userCorp.value.id), {
+    [`ScreeningReqFlag${item.value}`]: !(userCorp.value[`ScreeningReqFlag${item.value}`] || false)
+  })
 }
 
 const filesData = computed(() => {
@@ -117,15 +103,7 @@ const filesData = computed(() => {
   }
 })
 
-const flag = computed(() => {
-  switch (item.value) {
-    case 'Consent':
-    case 'Code':
-      return userCorp.value?.[`ScreeningReqFlag${item.value}`] || false
-    default:
-      return user.value?.[`ScreeningReqFlag${item.value}`] || false
-  }
-})
+const flag = computed(() => userCorp.value?.[`ScreeningReqFlag${item.value}`] || false)
 
 const thereAreFilesUploaded = computed(() => filesData.value?.length > 0)
 
@@ -143,13 +121,11 @@ const isClickable = computed(() => {
 const lastFileExpiring = computed(() => {
   switch (item.value) {
     case 'Code':
-      return dayjs(userCorp.value?.ScreeningCodeDate)
-        .add(1, 'years')
+      return dayjs(userCorp.value?.CodeOfConductExpiresOn)
         .subtract(30, 'days')
         .isBefore(dayjs())
     case 'Background':
-      return dayjs(user.value?.ScreeningBackgroundDate)
-        .add(2, 'years')
+      return dayjs(user.value?.BackgroundCheckExpiresOn)
         .subtract(30, 'days')
         .isBefore(dayjs())
     default:
@@ -160,41 +136,57 @@ const lastFileExpiring = computed(() => {
 const lastFileExpired = computed(() => {
   switch (item.value) {
     case 'Code':
-      return dayjs(userCorp.value?.ScreeningCodeDate).add(1, 'years').isBefore(dayjs())
+      return dayjs(userCorp.value?.CodeOfConductExpiresOn)
+        .isBefore(dayjs())
     case 'Background':
-      return dayjs(user.value?.ScreeningBackgroundDate).add(2, 'years').isBefore(dayjs())
+      return dayjs(user.value?.BackgroundCheckExpiresOn)
+        .isBefore(dayjs())
     default:
       return false
   }
 })
 
-function toggleBackgroundCheckStatus() {
-  // TODO Maybe this is not necesary
-  if (user.value?.ScreeningReqFlagBackground) {
-    console.log('Flag should be off')
-    return
-  }
-  console.log('Flag should be on')
-}
-
 const backgroundNewDateDiologue = ref(false)
+
+const backgroundCheckExpiredFor = ref([])
 
 async function newBackgroudnDate() {
   console.log('new date', bacgkroundNewDate.value)
-  if (dayjs(bacgkroundNewDate.value).add(2, 'years').isBefore(dayjs())) {
+
+  let backcgroundCheckExpiresOneCorporation = false
+  backgroundCheckExpiredFor.value = []
+  const userCorpsCollection = await getDocs(
+    query(
+      collection(db, 'UsersCorporations'),
+      where('UserId', '==', user.value.id),
+      where('Active', '==', true)
+    )
+  )
+  const userCorps = userCorpsCollection.docs.map((d) => ({ ...d.data(), id: d.id }))
+  for (let index = 0; index < userCorps.length; index++) {
+    const uc = userCorps[index]
+    const corpDoc = await getDoc(doc(db, 'Corporations', uc.CorporationId))
+    const backgroundCheckValidFor = corpDoc.data().BackgroundCheckValidFor
+    if (
+      dayjs(bacgkroundNewDate.value)
+        .add(backgroundCheckValidFor, 'years')
+        .isBefore(dayjs(uc.ScreeningBackgroundDate))
+    ) {
+      backcgroundCheckExpiresOneCorporation = true
+      backgroundCheckExpiredFor.value.push(corpDoc.data().Short)
+    }
+  }
+
+  if (backcgroundCheckExpiresOneCorporation) {
     backgroundNewDateDiologue.value = true
     return
   }
+
   updateDoc(doc(db, 'Users', user.value.id), {
     ScreeningBackgroundDate: bacgkroundNewDate.value,
     ScreeningBackgroundCheckRenewalRequested: false
   })
-  if (!user.value.ScreeningReqFlagBackground) {
-    updateDoc(doc(db, 'Users', user.value.id), {
-      ScreeningReqFlagBackground: true
-    })
-    toggleRequiringStatusReasons(store.REQ_ATT_BACKGROUND, false)
-  }
+  toggleRequiringStatusReasons(store.REQ_ATT_BACKGROUND, bacgkroundNewDate.value)
 }
 
 function cancelBackgroundNewDate() {
@@ -206,10 +198,9 @@ async function savingBackgroundNewDateExpired() {
   backgroundNewDateDiologue.value = false
   updateDoc(doc(db, 'Users', user.value.id), {
     ScreeningBackgroundDate: bacgkroundNewDate.value,
-    ScreeningBackgroundCheckRenewalRequested: false,
-    ScreeningReqFlagBackground: false
+    ScreeningBackgroundCheckRenewalRequested: false
   })
-  toggleRequiringStatusReasons(store.REQ_ATT_BACKGROUND, true)
+  toggleRequiringStatusReasons(store.REQ_ATT_BACKGROUND, bacgkroundNewDate.value)
 }
 
 const inputDateBackground = ref(null)
@@ -298,7 +289,7 @@ async function sentEmailRequestingBacground(type) {
   })
 }
 
-async function toggleRequiringStatusReasons(reason = '', value = false) {
+async function toggleRequiringStatusReasons(reason = '', newDate) {
   // true: add reason, false: remove reason
   // let's gett all userCorps
   const userCorpsCollection = await getDocs(
@@ -309,15 +300,25 @@ async function toggleRequiringStatusReasons(reason = '', value = false) {
     )
   )
   const userCorps = userCorpsCollection.docs.map((d) => ({ ...d.data(), id: d.id }))
-  console.log(userCorps)
-  userCorps.forEach((uc) => {
-    if (value) {
+  userCorps.forEach(async (uc) => {
+    const corpDoc = await getDoc(doc(db, 'Corporations', uc.CorporationId))
+    const backgroundCheckValidFor = corpDoc.data().BackgroundCheckValidFor
+    const backgroundCheckExpiresOn = dayjs(newDate).add(backgroundCheckValidFor, 'years')
+    const backgroundCheckExpired = dayjs().isAfter(backgroundCheckExpiresOn)
+
+    if (backgroundCheckExpired) {
       updateDoc(doc(db, 'UsersCorporations', uc.id), {
         StatusRquiringAttentionReasons: arrayUnion(reason),
-        Status: store.USER_STATUS_ATTENTION
+        Status: store.USER_STATUS_ATTENTION,
+        BackgroundCheckExpiresOn: backgroundCheckExpiresOn.format('YYYY-MM-DD'),
+        ScreeningReqFlagBackground: false
       })
     } else {
-      let data = { StatusRquiringAttentionReasons: arrayRemove(reason) }
+      let data = {
+        StatusRquiringAttentionReasons: arrayRemove(reason),
+        BackgroundCheckExpiresOn: backgroundCheckExpiresOn.format('YYYY-MM-DD'),
+        ScreeningReqFlagBackground: true
+      }
       if (
         uc.StatusRquiringAttentionReasons?.length == 1 &&
         uc.StatusRquiringAttentionReasons[0] == reason
@@ -370,11 +371,13 @@ function uploadFile() {
         if (item.value == 'Background') {
           updateDoc(doc(db, 'Users', user.value.id), {
             ScreeningBackgroundDate: dayjs().format('YYYY-MM-DD'),
-            ScreeningReqFlagBackground: true,
             ScreeningBackgroundCheckRequested: '',
             ScreeningBackgroundCheckRenewalRequested: false
           })
-          toggleRequiringStatusReasons(store.REQ_ATT_BACKGROUND, false)
+          toggleRequiringStatusReasons(
+            store.REQ_ATT_BACKGROUND,
+            dayjs().format('YYYY-MM-DD')
+          )
         }
       }
     )
@@ -500,9 +503,13 @@ function deleteFile(e, f, index) {
           <!-- Expiers On -->
           <div class="mb-1 text-xs text-slate-600">
             <span v-if="lastFileExpired" class="font-semibold text-red-700"
-              >Expired {{ dayjs(bacgkroundNewDate).add(2, 'y').fromNow() }}</span
+              >Expired
+              {{ dayjs(bacgkroundNewDate).add(corp.BackgroundCheckValidFor, 'y').fromNow() }}</span
             >
-            <span v-else>Expires {{ dayjs(bacgkroundNewDate).add(2, 'y').fromNow() }}</span>
+            <span v-else
+              >Expires
+              {{ dayjs(bacgkroundNewDate).add(corp.BackgroundCheckValidFor, 'y').fromNow() }}</span
+            >
           </div>
         </div>
 
@@ -531,6 +538,7 @@ function deleteFile(e, f, index) {
         </div>
       </div>
 
+      <!-- Only for the Code of Conduct Item -->
       <div v-if="item == 'Code'">
         <div v-if="userCorp.ScreeningReq.Code.length > 0">
           <div class="text-xs text-slate-600">Last Code of Conduct Signed on</div>
@@ -539,22 +547,28 @@ function deleteFile(e, f, index) {
           </div>
           <div class="mb-1 text-xs text-slate-600">
             <span v-if="lastFileExpired" class="font-semibold text-red-700"
-              >Expired {{ dayjs(userCorp.ScreeningCodeDate).add(1, 'y').fromNow() }}</span
+              >Expired
+              {{
+                dayjs(userCorp.CodeOfConductExpiresOn).fromNow()
+              }}</span
             >
             <span v-else
-              >Expires {{ dayjs(userCorp.ScreeningCodeDate).add(1, 'y').fromNow() }}</span
+              >Expires
+              {{
+                dayjs(userCorp.CodeOfConductExpiresOn).fromNow()
+              }}</span
             >
           </div>
         </div>
       </div>
 
       <!-- List of Files uploaded -->
-      <div class="flex min-h-[28px] bg-slate-200">
+      <div class="flex min-h-[24px] flex-wrap gap-x-1 gap-y-0.5 bg-slate-200 p-0.5">
         <!-- For Loop -->
         <div v-for="(f, n) in filesData" :key="f.name" class="flex place-items-center">
           <!-- File Icon and Name -->
           <div
-            class="m-1 flex grow cursor-pointer place-items-center rounded pl-1 text-left text-xs hover:bg-blue-300"
+            class="flex grow cursor-pointer place-items-center rounded pl-1 text-left text-xs hover:bg-blue-300"
             :class="[f.by != store.loginCorporationId ? 'bg-orange-200' : 'bg-green-100']"
             @click="downloadFile(f.path)"
           >
@@ -597,14 +611,17 @@ function deleteFile(e, f, index) {
         <div class="p-4">
           <p class="mb-4">
             The new Background Check date, {{ dayjs(bacgkroundNewDate).format('MMMM D, YYYY') }},
-            already expired. This action will make {{ user?.Nickname }} {{ user?.LastName }} no
-            longer eligible to staff activities with minors with any Corporation afiliated with the
-            Prelature. Are you sure you want to continue?
+            expires for
+            <span class="font-semibold">{{ backgroundCheckExpiredFor.join(', ') }}</span> . This
+            action will make
+            <span class="font-semibold">{{ user?.Nickname }} {{ user?.LastName }}</span> no longer
+            eligible to staff activities with minors with
+            {{ backgroundCheckExpiredFor.join(', ') }}. Are you sure you want to continue?
           </p>
           <div class="mx-auto w-fit">
             <MyButton class="bg-stone-500" @click="cancelBackgroundNewDate">Cancel</MyButton>
             <MyButton class="bg-red-600" @click="savingBackgroundNewDateExpired"
-              >Mark as 'Requiring Attention'</MyButton
+              >Yes, Continue</MyButton
             >
           </div>
         </div>

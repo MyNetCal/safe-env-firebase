@@ -1,5 +1,5 @@
 <script setup>
-/* 
+/*
 Flags for screening:
 - ScreeningReqFlagCode [edited after pdf created]
 - ScreeningReqFlagConsent [edited by Function]
@@ -8,31 +8,24 @@ Flags for screening:
 
 import { ref as storageRef, getDownloadURL } from '@firebase/storage'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
-import { computed, onUnmounted, ref, toRefs, watch } from 'vue'
-import { useScroll, useTimeoutFn } from '@vueuse/core'
+import { computed, ref, toRefs, watch } from 'vue'
+import { useScroll } from '@vueuse/core'
 import MyButton from '@/components/MyButton.vue'
 import dayjs from 'dayjs'
 import localizedFormat from 'dayjs/plugin/localizedFormat'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import {
   doc,
-  updateDoc,
   arrayUnion,
   collection,
-  where,
-  query,
-  onSnapshot,
   addDoc,
   setDoc,
-  getDocs,
-  arrayRemove
+  arrayRemove,
 } from 'firebase/firestore'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import TrainingInputDate from '@/components/TrainingInputDate.vue'
-import MyMessage from '@/components/MyMessage.vue'
-import UsersTrainingApprovedStatus from '@/components/UsersTrainingApprovedStatus.vue'
 
 import { useGeneralStore } from '@/stores/general'
+import UsersViewTrainingList from './Users/UsersViewTrainingList.vue'
 
 const store = useGeneralStore()
 const storage = useFirebaseStorage()
@@ -43,17 +36,6 @@ dayjs.extend(localizedFormat).extend(relativeTime)
 const corpId = computed(() => store.loginCorporationId)
 const loginUser = computed(() => store.loginUser)
 const loginUserCorporation = computed(() => store.loginUserCorporation)
-const training = ref([])
-const trainingDueDate = ref([])
-const showEditingTraining = ref(false)
-
-let unsubTraining = null
-
-onUnmounted(() => {
-  if (unsubTraining) {
-    unsubTraining()
-  }
-})
 
 watch(
   corpId,
@@ -67,18 +49,9 @@ watch(
       if (loginUserCorporation.value.Screening) {
         a.push('Screening')
       }
-      getCorpTrainig(a)
     }
   },
   { immediate: true }
-)
-
-watch(
-  () => loginUser.value.Training,
-  () => {
-    console.log('Sorting from watch')
-    sortTraining()
-  }
 )
 
 const codeEditing = ref(false)
@@ -92,26 +65,24 @@ const { bottom } = toRefs(arrivedState)
 const signature = ref('')
 const signatureConsent = ref('')
 
-let idFile = ''
-
 const validCode = computed(() => store.loginUserCorporation?.ScreeningReqFlagCode || false)
 
 const codeExpiring = computed(
   () =>
-    dayjs(store.loginUserCorporation?.ScreeningCodeDate).add(11, 'months').isBefore(dayjs()) ||
-    false
+    dayjs(store.loginUserCorporation?.CodeOfConductExpiresOn)
+      .subtract(30, 'days')
+      .isBefore(dayjs()) || false
 )
 
 const codeExpired = computed(
-  () =>
-    dayjs(store.loginUserCorporation?.ScreeningCodeDate).add(1, 'year').isBefore(dayjs()) || false
+  () => dayjs(store.loginUserCorporation?.CodeOfConductExpiresOn).isBefore(dayjs()) || false
 )
 
 const codeCardText = computed(() => {
   if (validCode.value && codeExpiring.value) {
     return (
       'Your Signed Code of Conduct is Expiring on ' +
-      dayjs(store.loginUserCorporation.ScreeningCodeDate).add(1, 'year').format('LL') +
+      dayjs(store.loginUserCorporation.CodeOfConductExpiresOn).format('LL') +
       '. Please Re-sign the '
     )
   }
@@ -127,72 +98,67 @@ const codeCardText = computed(() => {
   return null
 })
 
+const user = computed(() => {
+  const userCorp = JSON.parse(JSON.stringify(store.loginUserCorporation))
+  userCorp.UserData = JSON.parse(JSON.stringify(store.loginUser))
+  return userCorp
+})
+
 const validConsent = computed(() => store.loginUserCorporation?.ScreeningReqFlagConsent || false)
 
 const seeSignature = ref(false)
 
-let unsubEmail = null
-let unsubConsentPdf = null
-const message = ref('Creating PDF...')
-const emailPending = ref(false)
-const showMessage = ref(false)
 
 const isCheckBackgroundExpiring = computed(
   () =>
     loginUser.value.ScreeningBackgroundDate &&
-    dayjs(loginUser.value.ScreeningBackgroundDate).add(11, 'M').isBefore(dayjs())
+    dayjs(loginUser.value.ScreeningBackgroundDate)
+      .add(store.loginCorporation?.BackgroundCheckValidFor, 'years')
+      .subtract(1, 'M')
+      .isBefore(dayjs())
 )
 
-function testCol() {
-  const q = query(
-    collection(db, 'Users'),
-    where('ScreeningBackgroundDate', '<=', dayjs().subtract(11, 'months').format('YYYY-MM-DD')),
-    where('ScreeningBackgroundDate', '>=', dayjs().subtract(12, 'months').format('YYYY-MM-DD')),
-    where('ScreeningBackgroundCheckRenewalRequested', '==', false),
-    where('CorpsActiveAtLeastOne', '==', true)
-  )
-  getDocs(q).then((snapShot) => {
-    snapShot.forEach((user) => {
-      console.log('User: ', user.data())
-    })
-  })
-}
-
-// Unsubscribe listeners
-onUnmounted(() => {
-  if (unsubConsentPdf) {
-    unsubConsentPdf()
-  }
-  if (unsubEmail) {
-    unsubEmail()
-  }
-})
-
-/************** 
-Code of Conduct: Generate PDF And email it
- **************/
-// #region
-
-async function onSigningCode() {
+async function onCreatingEmailingCode() {
+  // Let's close editing pdf dialog
   codeEditing.value = false
-  store.showMessage({ message: 'Creating PDF...', timer: true })
-  idFile = self.crypto.randomUUID()
 
-  await setDoc(doc(db, 'temp', idFile), {
-    idFile: idFile,
-    comments: 'Code of Conduct Signing up',
-    userId: store.loginUserId,
-    userCorpId: store.loginUserCorporation.id,
-    codeDate: store.loginCorporation.CodeDate,
-    status: 'Creating PDF'
+  // lets get ref in pdfs
+  const pdfRef = doc(collection(db, 'pdfs'))
+
+  // message: Preparing pdf and sending email
+  const emailRef = await addDoc(collection(db, `Users/${store.loginUserId}/MessagesPending`), {
+    accepted: [],
+    error: '',
+    message: 'Preparing pdf and sending email',
+    rejected: [],
+    state: 'PENDING',
+    type: 'Email'
   })
 
-  // Create doc in pdfs collection to Trigger PDF Creation
-  await addDoc(collection(db, 'pdfs'), {
+  // info needed to send attachment to user and corporation
+  const dataEmail = {
+    to: [loginUser.value.Email, store.loginCorporation.EmailFiles],
+    bcc: [],
+    cc: [],
+    template: {
+      name: 'Code',
+      data: {
+        Nickname: store.loginUser.Nickname,
+        file_link: '',
+        corp: store.loginCorporation.Name,
+        corpShort: store.loginCorporation.Short,
+        secEmail: store.loginCorporation.EmailFiles
+      }
+    },
+    userId: store.loginUserId
+  }
+
+  // info needed to generate pdf
+  const dataPDFTemplate = {
     Name: signature.value,
     code: store.loginCorporation.Code.split('\n'),
     _pdfplum_config: {
-      outputFileName: `Code/${idFile}.pdf`,
+      outputFileName: `${store.loginUserId}/${pdfRef.id}.pdf`,
       templatePath: 'vue-safe-env-pdfs/code.zip',
       chromiumPdfOptions: {
         format: 'Letter',
@@ -204,96 +170,81 @@ async function onSigningCode() {
         }
       }
     }
-  })
-
-  // Listener to Bucket for PDF file Created => Send email
-  if (unsubConsentPdf) {
-    unsubConsentPdf()
   }
-  unsubConsentPdf = onSnapshot(doc(db, 'temp', idFile), (d) => {
-    if (d.data().status == 'To send Email') {
-      unsubConsentPdf()
-      if (
-        store.loginUserCorporation.StatusRquiringAttentionReasons?.length == 1 &&
-        store.loginUserCorporation.StatusRquiringAttentionReasons[0] == 'Code of Conduct Expired'
-      ) {
-        updateDoc(doc(db, 'UsersCorporations', store.loginUserCorporation.id), {
-          Status: store.USER_STATUS_APPROVED
-        })
-      }
-      updateDoc(doc(db, 'UsersCorporations', store.loginUserCorporation.id), {
-        ScreeningReqFlagCode: true,
-        ScreeningCodeDate: dayjs().format('YYYY-MM-DD'),
-        StatusRquiringAttentionReasons: arrayRemove('Code of Conduct Expired'),
-        'ScreeningReq.Code': arrayUnion({
-          CodeDate: store.loginCorporation.CodeDate,
-          Date: new Date().toISOString(),
-          name: 'Code of Conduct.pdf',
-          path: `gs://vue-safe-env-pdfs/Code/${idFile}.pdf`,
-          by: '',
-          byName: 'User'
-        })
-      })
-      getDownloadURL(storageRef(storage, `gs://vue-safe-env-pdfs/Code/${idFile}.pdf`)).then(
-        (url) => {
-          // sentEmailCode(url, stop1, stop2, idFile)
-          store
-            .triggerEmailTemplate(
-              'Code',
-              {
-                Nickname: store.loginUser.Nickname,
-                file_link: url,
-                corp: store.loginCorporation.Name,
-                corpShort: store.loginCorporation.Short,
-                secEmail: store.loginCorporation.EmailFiles
-              },
-              [loginUser.value.Email, store.loginCorporation.EmailFiles]
-            )
-            .then(
-              () => {
-                updateDoc(doc(db, 'temp', idFile), {
-                  status: 'SUCCESS'
-                })
-              },
-              () => {
-                console.log('Error Sending email')
-              }
-            )
-        }
-      )
-    }
-  })
+
+  // info needed to update UserCorp
+  const dataUserCorp = {
+    ScreeningReqFlagCode: true,
+    ScreeningCodeDate: dayjs().format('YYYY-MM-DD'),
+    CodeOfConductExpiresOn: dayjs()
+      .add(store.loginCorporation.CodeOfConductValidFor, 'years')
+      .format('YYYY-MM-DD'),
+    StatusRquiringAttentionReasons: arrayRemove('Code of Conduct Expired'),
+    'ScreeningReq.Code': arrayUnion({
+      CodeDate: store.loginCorporation.CodeDate,
+      Date: new Date().toISOString(),
+      name: 'Code of Conduct.pdf',
+      path: `gs://vue-safe-env-pdfs/${store.loginUserId}/${pdfRef.id}.pdf`,
+      by: '',
+      byName: 'User'
+    })
+  }
+
+  // all data
+  const data = {
+    ...dataPDFTemplate,
+    dataEmail,
+    dataUserCorp,
+    emailId: emailRef.id,
+    userCorpId: store.loginUserCorporation.id,
+    type: 'Code'
+  }
+
+  // add doc. The server will be listening
+  setDoc(pdfRef, data)
 }
-// #endregion
 
-/************** 
-Consent: Generate PDF And email it
- **************/
-// #region
-
-// Begin PDF Creation and send email
-async function onSigningConsent() {
-  // Init
+async function onCreatingEmailingConsent() {
   consentEditing.value = false
-  emailPending.value = true
-  message.value = 'Creating PDF...'
-  showMessage.value = true
 
-  // Timers
-  const { stop: stop1 } = useTimeoutFn(() => {
-    message.value = "It's taking longer than expected..."
-  }, 30000)
-  const { stop: stop2 } = useTimeoutFn(() => {
-    message.value = "Sorry, the email couldn't be delivered."
-    emailPending.value = false
-  }, 60000)
+  // lets get ref in pdfs
+  const pdfRef = doc(collection(db, 'pdfs'))
 
-  // Create doc in pdfs collection to Trigger PDF Creation
-  await addDoc(collection(db, 'pdfs'), {
+  // message: Preparing pdf and sending email
+  const emailRef = await addDoc(collection(db, `Users/${store.loginUserId}/MessagesPending`), {
+    accepted: [],
+    error: '',
+    message: 'Preparing pdf and sending email',
+    rejected: [],
+    state: 'PENDING',
+    type: 'Email'
+  })
+
+  // info needed to send attachment to user and corporation
+  const dataEmail = {
+    to: [loginUser.value.Email, store.loginCorporation.EmailFiles],
+    bcc: [],
+    cc: [],
+    template: {
+      name: 'ConsentInfo',
+      data: {
+        Nickname: store.loginUser.Nickname,
+        file_link: '',
+        corp: store.loginCorporation.Name,
+        corpShort: store.loginCorporation.Short,
+        secEmail: store.loginCorporation.EmailFiles
+      }
+    },
+    userId: store.loginUserId
+  }
+
+  // info needed to generate pdf
+  const dataPDFTemplate = {
     Name: signatureConsent.value,
     Corp: store.loginCorporation.Name,
     _pdfplum_config: {
-      outputFileName: `Consent-Forms/${store.loginUserCorporation.id}.pdf`,
+      outputFileName: `${store.loginUserId}/${pdfRef.id}.pdf`,
+      templatePath: 'vue-safe-env-pdfs/consent.zip',
       chromiumPdfOptions: {
         format: 'Letter',
         margin: {
@@ -304,159 +255,41 @@ async function onSigningConsent() {
         }
       }
     }
-  })
-
-  // Listener to Bucket for PDF file Created => Send email
-  if (unsubConsentPdf) {
-    unsubConsentPdf()
   }
-  unsubConsentPdf = onSnapshot(doc(db, 'UsersCorporations', store.loginUserCorporation.id), (d) => {
-    const consent = d.data().ScreeningReqFlagConsent
-    if (consent) {
-      message.value = 'Sending email...'
-      unsubConsentPdf()
-      updateDoc(doc(db, 'UsersCorporations', store.loginUserCorporation.id), {
-        'ScreeningReq.Consent': [
-          {
-            name: 'Consent-Form.pdf',
-            by: '',
-            byName: 'User',
-            path: `gs://vue-safe-env-pdfs/Consent-Forms/${store.loginUserCorporation.id}.pdf`,
-            Date: new Date().toISOString()
-          }
-        ]
-      })
-      getDownloadURL(
-        storageRef(
-          storage,
-          `gs://vue-safe-env-pdfs/Consent-Forms/${store.loginUserCorporation.id}.pdf`
-        )
-      ).then((url) => {
-        sentEmailConsent(url, stop1, stop2)
-      })
-    }
-  })
-}
 
-// Send email with PDF attachment
-function sentEmailConsent(url, stop1, stop2) {
-  // Create doc to Trigger email
-  addDoc(collection(db, 'mail-triggers'), {
-    template: {
-      name: 'ConsentInfo',
-      data: {
-        Nickname: store.loginUser.Nickname,
-        file_link: url,
-        corp: store.loginCorporation.Name,
-        corpShort: store.loginCorporation.Short,
-        secEmail: store.loginCorporation.EmailFiles
-      }
-    },
-    to: [loginUser.value.Email, store.loginCorporation.EmailFiles]
-  }).then((res) => {
-    const idEmail = res.id
-
-    // Listener to SUCCESS state in doc
-    if (unsubEmail) {
-      unsubEmail()
-    }
-    unsubEmail = onSnapshot(doc(db, 'mail-triggers', idEmail), (d) => {
-      const delivery = d.data().delivery
-      if (delivery?.state == 'SUCCESS') {
-        message.value = 'Email has been sent'
-        emailPending.value = false
-        stop1()
-        stop2()
-        unsubEmail()
-        return
-      }
-      if (delivery?.state == 'ERROR') {
-        message.value = delivery.error
-        emailPending.value = false
-        stop1()
-        stop2()
-        unsubEmail()
-      }
+  // info needed to update UserCorp
+  const dataUserCorp = {
+    ScreeningReqFlagConsent: true,
+    ScreeningConsentDate: dayjs().format('YYYY-MM-DD'),
+    'ScreeningReq.Consent': arrayUnion({
+      Date: new Date().toISOString(),
+      name: 'Consent Form.pdf',
+      path: `gs://vue-safe-env-pdfs/${store.loginUserId}/${pdfRef.id}.pdf`,
+      by: '',
+      byName: 'User'
     })
-  })
+  }
+
+  // all data
+  const data = {
+    ...dataPDFTemplate,
+    dataEmail,
+    dataUserCorp,
+    emailId: emailRef.id,
+    userCorpId: store.loginUserCorporation.id,
+    type: 'Consent'
+  }
+
+  // add doc. The server will be listening
+  setDoc(pdfRef, data)
 }
-// #endregion
+
 
 function showFile(file) {
   getDownloadURL(storageRef(storage, file)).then((url) => {
     window.open(url)
   })
 }
-
-const urlTest = ref(null)
-function test() {
-  getDownloadURL(
-    storageRef(storage, 'gs://vue-safe-env-pdfs/Code/07b482ba-720c-47f9-a3b9-efe2ce0b4eab.pdf')
-  ).then((url) => {
-    urlTest.value = url
-  })
-}
-test()
-
-function sortTraining() {
-  console.log('Sorting...')
-  trainingDueDate.value = JSON.parse(JSON.stringify(training.value))
-  trainingDueDate.value.forEach((t) => {
-    t.isCompleted = loginUser.value.Training?.[t.id]?.length > 0
-    t.dueDate = t.isCompleted
-      ? dayjs(loginUser.value.Training[t.id].at(-1).date)
-          .add(t.Expiration, 'months')
-          .format('YYYY-MM-DD')
-      : dayjs(loginUserCorporation.value.ApprovedOn).add(t.Complete, 'days').format('YYYY-MM-DD')
-    t.isLate = dayjs(t.dueDate).endOf('day').isBefore(dayjs())
-    t.isDueNextWeek = dayjs(t.dueDate).subtract(10, 'd').endOf('day').isBefore(dayjs())
-    t.isDueNextMonth = dayjs(t.dueDate).subtract(90, 'd').endOf('day').isBefore(dayjs())
-  })
-
-  trainingDueDate.value.sort((a, b) => {
-    if (dayjs(a.dueDate).isAfter(b.dueDate)) {
-      return 1
-    }
-    if (dayjs(a.dueDate).isBefore(b.dueDate)) {
-      return -1
-    }
-    return 0
-  })
-}
-
-function getCorpTrainig(a) {
-  training.value = []
-  trainingDueDate.value = []
-  const q = query(
-    collection(db, `Corporations/${store.loginCorporationId}/Initial Training`),
-    where('Functions', 'array-contains-any', a)
-  )
-
-  if (unsubTraining) {
-    unsubTraining()
-  }
-
-  unsubTraining = onSnapshot(q, (res) => {
-    res.docChanges().forEach((change) => {
-      const { newIndex, oldIndex, doc: tDoc } = change
-      const t = tDoc.data()
-      t.id = tDoc.id
-      if (change.type === 'added') {
-        training.value.splice(newIndex, 0, t)
-      }
-      if (change.type === 'modified') {
-        training.value.splice(oldIndex, 1)
-        training.value.splice(newIndex, 0, t)
-      }
-      if (change.type === 'removed') {
-        training.value.splice(oldIndex, 1)
-      }
-    })
-    sortTraining()
-  })
-}
-
-const trainingToEdit = ref({})
 </script>
 
 <template>
@@ -464,7 +297,7 @@ const trainingToEdit = ref({})
     class="content-height thinsb h-full justify-between overflow-auto p-2 text-slate-700"
     v-if="store.loginUser && store.loginUserCorporation"
   >
-    <h1 class="select-none text-center" @click="testCol">
+    <h1 class="select-none text-center">
       {{ store.loginUser.Nickname }} {{ store.loginUser.LastName }}
     </h1>
     <h2>{{ store.loginUserCorporation.Status }}</h2>
@@ -501,12 +334,12 @@ const trainingToEdit = ref({})
           <div>
             Your background check is expiring on
             <span class="font-semibold">
-              {{ dayjs(loginUser.ScreeningBackgroundDate).add(1, 'y').format('MMMM D') }}
+              {{
+                dayjs(loginUser.ScreeningBackgroundDate)
+                  .add(store.loginCorporation?.BackgroundCheckValidFor, 'y')
+                  .format('MMMM D')
+              }}
             </span>
-          </div>
-          <div class="mx-auto mt-5 w-fit text-slate-500">Request a new background check:</div>
-          <div class="mx-auto w-fit">
-            <MyButton class="bg-sky-700">Background Check Request</MyButton>
           </div>
         </div>
       </div>
@@ -548,15 +381,8 @@ const trainingToEdit = ref({})
       </div>
     </div>
 
-    <!-- Training -->
-    <div class="mt-10">
-      <!-- List of Training -->
-      <div v-if="trainingDueDate.length > 0" class="mx-auto w-fit text-left">
-        <div class="rounded-t bg-sky-700 p-2 text-center text-lg font-semibold text-white">
-          My Training
-        </div>
-        <UsersTrainingApprovedStatus :training="trainingDueDate" :user="loginUser" />
-      </div>
+    <div class="my-5">
+      <UsersViewTrainingList :user="user" />
     </div>
 
     <!-- Screen to Read and Sign the Code of Conduct -->
@@ -584,7 +410,10 @@ const trainingToEdit = ref({})
       </div>
       <div class="mt-5 text-center">
         <MyButton class="bg-slate-600" @click="codeEditing = false">Close</MyButton>
-        <MyButton class="bg-green-600" @click="onSigningCode" :disabled="signature.length < 3"
+        <MyButton
+          class="bg-green-600"
+          @click="onCreatingEmailingCode"
+          :disabled="signature.length < 3"
           >Accept</MyButton
         >
       </div>
@@ -629,7 +458,7 @@ const trainingToEdit = ref({})
         <MyButton class="bg-slate-600" @click="consentEditing = false">Close</MyButton>
         <MyButton
           class="bg-green-600"
-          @click="onSigningConsent"
+          @click="onCreatingEmailingConsent"
           :disabled="signatureConsent.length < 3"
           >Accept</MyButton
         >
@@ -652,16 +481,6 @@ const trainingToEdit = ref({})
       </div>
     </div>
 
-    <!-- Training Modal -->
-    <TrainingInputDate
-      v-if="showEditingTraining"
-      v-model="showEditingTraining"
-      :training="trainingToEdit"
-      :user="store.loginUser"
-    />
-
-    <!-- Message -->
-    <MyMessage v-model="showMessage" :message="message" :spinner="emailPending" />
   </div>
 </template>
 

@@ -4,17 +4,16 @@ import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import MyInputTextArea from '@/components/MyInputs/MyInputTextArea.vue'
 import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 import { useGeneralStore } from '@/stores/general'
-import axios from 'axios'
 import dayjs from 'dayjs'
-import jsPDF from 'jspdf'
-import { computed, ref } from 'vue'
-import { ref as storageRef, uploadBytesResumable } from 'firebase/storage'
-import { useFirebaseStorage, useFirestore } from 'vuefire'
-import { doc, setDoc } from 'firebase/firestore'
+import LocalizedFormat from 'dayjs/plugin/localizedFormat'
+import { ref } from 'vue'
+import { useFirestore } from 'vuefire'
+import { addDoc, collection, doc, setDoc } from 'firebase/firestore'
+import { getEmailSECPrelature } from '@/stores/datadb'
 
 const store = useGeneralStore()
-const storage = useFirebaseStorage()
 const db = useFirestore()
+dayjs.extend(LocalizedFormat)
 
 const typesIncident = ref([
   '(1) General Policy Violation',
@@ -37,7 +36,7 @@ const description = ref('')
 const response = ref('')
 
 function resetForm() {
-  time.value = ref(dayjs().format('HH:mm'))
+  time.value = dayjs().format('HH:mm')
   typeIncident.value = ''
   location.value = ''
   other.value = ''
@@ -45,111 +44,59 @@ function resetForm() {
   witness.value = ''
   description.value = ''
   response.value = ''
-  statusCreatingPdf.value = ''
+  statusCreatingPdf.value = false
 }
 
-const pdfContent = computed(
-  () => `
-    <p style='font-weight: 700'>Incident Report</p>
-    <p></p>
-    <p><span style='font-weight: 700'>Date: </span>${dayjs(date.value).format('MMMM D, YYYY')} @ ${
-      time.value
-    }</p>
-    <p><span style='font-weight: 700'>Location: </span>${location.value}</p>
-    <p><span style='font-weight: 700'>Type of Incident: </span>${typeIncident.value}</p>
-    <p><span style='font-weight: 700'>Other information: </span>${other.value}</p>
-    <p><span style='font-weight: 700'>Staff involved: </span>${staffName.value}</p>
-    <p><span style='font-weight: 700'>Witness: </span>${witness.value}</p>
-    <p><span style='font-weight: 700'>Description of the Incident: </span>${description.value}</p>
-    <p><span style='font-weight: 700'>Resposne from Staff: </span>${response.value}</p>
-    <p><span style='font-weight: 700'>Sent by </span>${store.loginUser.Nickname} ${
-      store.loginUser.LastName
-    } from ${store.loginCorporation.Name} </p>
-        `
-)
+const statusCreatingPdf = ref(false)
 
-const statusCreatingPdf = ref('')
-const b = ref()
-let idFile = ''
-const successEmail = ref(false)
-const errorEmail = ref(false)
-
-function createPDF() {
-  successEmail.value = false
-  errorEmail.value = false
-  statusCreatingPdf.value = 'Creating PDF...'
-  const pdfDoc = new jsPDF({ format: 'letter', unit: 'px', hotfixes: ['px_scaling'] })
-  pdfDoc.html(pdfContent.value, {
-    callback: function (pdfDoc) {
-      // The pdf has been created
-      b.value = pdfDoc.output('blob')
-      idFile = self.crypto.randomUUID()
-      const fileRef = storageRef(storage, `IncidentReports/${idFile}.pdf`)
-
-      // Uploading File to the Server
-      statusCreatingPdf.value = 'Saving Report Info...'
-      store.isUploadingFiles = true
-      store.isUploadingFilesPercentage = 0
-      const uploadTask = uploadBytesResumable(fileRef, b.value)
-      uploadTask.on(
-        'state_changed',
-        (snapshot) => {
-          // progress uploading the file
-          store.isUploadingFilesPercentage = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-        },
-        (error) => {
-          statusCreatingPdf.value = 'Error Uploading File: ' + error
-          // error uploading the file
-          store.isUploadingFiles = false
-          console.log('ERROR', error)
-          errorEmail.value.true
-        },
-        () => {
-          // the file has been uploaded
-          sentEmail()
-          console.log('DONE')
-          store.isUploadingFiles = false
-        }
-      )
-    },
-    x: 0,
-    y: 0,
-    margin: [24, 24, 24, 24],
-    autoPaging: 'text',
-    width: 768, // letter width: 8.5 * 96 = 816; Margins: 2 * 24 = 48; Content width: 816 - 48 = 768
-    windowWidth: 768
+async function createSentReport() {
+  statusCreatingPdf.value = true
+  const pdfRef = doc(collection(db, 'pdfs'))
+  const emailSECPrelature = await getEmailSECPrelature();
+  const emailId = await addDoc(collection(db, `Users/${store.loginUserId}/MessagesPending`), {
+    accepted:[],
+    error: '',
+    message: 'Preparing pdf and sending email',
+    rejected: [],
+    state: 'PENDING',
+    type: 'Email',
   })
-}
-
-function sentEmail() {
-  const formData = new FormData()
-  formData.append('email1', store.loginCorporation.EmailFiles)
-  formData.append('email2', store.loginUser.Email)
-  formData.append('content', pdfContent.value)
-  formData.append('idFile', idFile)
-  formData.append('file', b.value, `${idFile}.pdf`)
-  axios
-    .post('https://mynetcalendar.org/safeenv-email-incident-report.php', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
+  const data = {
+    type: 'Incident',
+    emailId: emailId.id,
+    userId: store.loginUserId,
+    userCorpId: store.loginCurrentUsersCorporationsId,
+    corpId: store.loginCorporationId,
+    to: [store.loginUser.Email],
+    bcc: [emailSECPrelature],
+    date: `${date.value}T${time.value}`,
+    stDate: dayjs(`${date.value}T${time.value}`).format('LLL'),
+    location: location.value,
+    typeIncident: typeIncident.value,
+    otherInfo: other.value,
+    staffName: staffName.value,
+    witnessName: witness.value,
+    description: description.value,
+    staffResponse: response.value,
+    sentName: store.loginUser.Nickname + ' ' + store.loginUser.LastName,
+    corpName: store.loginCorporation.Name,
+    branch: store.currentBranch,
+    _pdfplum_config: {
+      outputFileName: `${store.loginUserId}/${pdfRef.id}.pdf`,
+      templatePath: 'vue-safe-env-pdfs/incident.zip',
+      chromiumPdfOptions: {
+        format: 'Letter',
+        margin: {
+          top: '0.5in',
+          bottom: '0.5in',
+          right: '0.5in',
+          left: '0.5in'
+        }
       }
-    })
-    .then((res) => {
-      console.log('Email REsult: ', res.data)
-      if (res.data.success) {
-        successEmail.value = true
-        statusCreatingPdf.value = 'Email has been Sent'
-        setDoc(doc(db, 'IncidentReports', idFile), {
-          Date: dayjs().toISOString(),
-          Corporation: store.loginCorporation.Name,
-          UserId: store.loginUserId,
-          UserName: store.loginUser.Nickname + ' ' + store.loginUser.LastName
-        })
-      } else {
-        statusCreatingPdf.value = 'Error sending email: ' + res.data.message
-        errorEmail.value = true
-      }
-    })
+    }
+  }
+  console.log('Data ', data);
+  setDoc(pdfRef, data)
 }
 </script>
 
@@ -187,33 +134,28 @@ function sentEmail() {
         v-model="response"
       />
       <div class="text-center">
-        <MyButton class="" @click="createPDF">Submitt</MyButton>
+        <MyButton class="" @click="createSentReport">Submitt</MyButton>
       </div>
     </div>
 
     <!-- Creating pdf -->
     <div
-      v-if="statusCreatingPdf != ''"
+      v-if="statusCreatingPdf"
       class="absolute inset-0 z-20 flex place-items-center bg-slate-600/70"
     >
       <!-- Window wiht creating pdf status -->
-      <div class="m-2 w-full rounded bg-slate-50 p-4 text-slate-600">
+      <div class="mx-auto rounded bg-orange-100 max-w-lg p-4 text-slate-600">
         <div class="text-center">
-          <div>{{ statusCreatingPdf }}</div>
-          <div v-if="successEmail">
+          <div>
             <div class="mt-2">
-              You should promptly received a copy of the email sent with the Incident Report
-              information
+              You should receive an email with a copy of the incident report shortly. Please save
+              the report for your records
             </div>
             <div class="mt-2">
-              Also, You should recive a reply from the Safe Environment Coordinator shortly. In case
-              you don't get a reply in the next couple of hours please call to
-              <a href="tel:+646-742-2741">646-742-2741</a> without further delay
+              If you do not hear from the Safe Environment Coordinator within the next 7 days,
+              please call
+              <a href="tel:+646-742-2741">646-742-2741</a>
             </div>
-          </div>
-          <div v-if="errorEmail" class="mt-2 text-red-700">
-            <div>Sorry, your email couldn't be sent. Please call to
-              <a href="tel:+646-742-2741">646-742-2741</a> without further delay</div>
           </div>
           <MyButton class="mt-5" @click="resetForm">Close</MyButton>
         </div>

@@ -80,7 +80,10 @@ import {
   faList,
   faTableList,
   faFilePen,
-  faGauge
+  faGauge,
+  faCircleCheck,
+  faTriangleExclamation,
+  faUserSlash,
 } from '@fortawesome/free-solid-svg-icons'
 import { faWindowClose, faCheckSquare, faSquare } from '@fortawesome/free-regular-svg-icons'
 
@@ -157,7 +160,10 @@ library.add(
   faList,
   faTableList,
   faFilePen,
-  faGauge
+  faGauge,
+  faCircleCheck,
+  faTriangleExclamation,
+  faUserSlash,
 )
 
 const app = createApp(App)

@@ -18,7 +18,7 @@
             <!-- Outter Box -->
             <div
               class="mb-2 rounded text-emerald-900 shadow"
-              :class="[userIsAllSet(p) ? 'bg-emerald-100' : 'bg-stone-100']"
+              :class="[userHasAllScreening(p) ? 'bg-emerald-100' : 'bg-stone-100']"
             >
               <!-- Header Row -->
               <div class="flex place-items-center justify-between gap-5 rounded-t p-1">
@@ -28,7 +28,7 @@
                 <div
                   class="flex min-w-[160px] grow cursor-pointer place-items-center rounded"
                   :class="[
-                    userIsAllSet(p)
+                    userHasAllScreening(p)
                       ? 'bg-emerald-100 hover:bg-emerald-300'
                       : 'bg-stone-100 hover:bg-stone-300'
                   ]"
@@ -43,30 +43,31 @@
                       {{ p.UserData.LastName }}</span
                     >
                   </h3>
+                  <div v-if="p.CorpShort" class="pl-1"> @ {{ p.CorpShort }}</div>
                 </div>
                 <!-- Right Header: Icons -->
                 <div class="flex gap-x-1">
-                  <!-- <div class="click-icon text-slate-500" @click="editUserInfo(p)">
-                    <FontAwesomeIcon icon="pen" />
-                  </div> -->
                   <div
-                    class="click-icon"
+                    class="click-icon cursor-pointer"
                     @click="editUsersScreening(p)"
                     :class="[userHasAllScreening(p) ? 'text-green-700' : 'text-red-700']"
                   >
                     <FontAwesomeIcon icon="chalkboard-user" />
                   </div>
                   <div
-                    class="click-icon"
+                    class="click-icon cursor-pointer text-stone-600"
                     @click="editUsersTrainning(p)"
-                    :class="[userHasAllTraining(p) ? 'text-green-700' : 'text-red-700']"
                   >
                     <FontAwesomeIcon icon="list-check" />
                   </div>
                   <div
                     class="click-icon"
                     @click="openUsersViewVote(index)"
-                    :class="[userHasAllScreening(p) ? 'text-green-700' : 'text-red-700']"
+                    :class="[
+                      userHasAllScreening(p)
+                        ? 'cursor-pointer text-green-700'
+                        : 'cursor-not-allowed text-red-700'
+                    ]"
                   >
                     <FontAwesomeIcon icon="check-to-slot" />
                   </div>
@@ -129,6 +130,17 @@
             <div>{{ store.USER_STATUS_APPROVED }}</div>
           </div>
         </div>
+        <!-- Tab 3: Inactive -->
+        <div
+          class="tab"
+          :class="{ 'tab-active': currentTab == store.USER_STATUS_INACTIVE }"
+          @click="currentTab = store.USER_STATUS_INACTIVE"
+        >
+          <div>
+            <FontAwesomeIcon icon="user-slash" size="2x" />
+            <div>{{ store.USER_STATUS_INACTIVE }}</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -163,7 +175,7 @@
       <UsersViewVote
         :show-modal="showUsersViewVote"
         :user-corp="personnel[indexSelected]"
-        :is-user-all-set="userIsAllSet(personnel[indexSelected])"
+        :is-user-all-set="true"
         @onClose="showUsersViewVote = false"
         @onUpdate="showUsersViewVote = false"
       />
@@ -176,11 +188,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watchEffect } from 'vue'
+import { ref, computed, watchEffect, onMounted, watch, onUnmounted } from 'vue'
 import MyFab from '@/components/MyFab.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { useCollection, useDocument, useFirestore } from 'vuefire'
-import { collection, doc, query, where } from 'firebase/firestore'
+import { useDocument, useFirestore } from 'vuefire'
+import { collection, doc, getDoc, onSnapshot, where } from 'firebase/firestore'
 import UsersViewAdd from '../Users/UsersViewAdd.vue'
 import { useGeneralStore } from '@/stores/general'
 import UsersViewScreening from '../Users/UsersViewScreening.vue'
@@ -188,8 +200,9 @@ import UsersViewTrainning from '../Users/UsersViewTrainning.vue'
 import MySelectCorporation from '@/components/MySelect/MySelectCorporation.vue'
 import { storeToRefs } from 'pinia'
 import UserAndCorpEdit from '@/components/UserAndCorpEdit.vue'
-import { initUserCorp, getUsersByCorp } from '@/stores/datadb'
+import { initUserCorp, initUser } from '@/stores/datadb'
 import UsersViewVote from '../Users/UsersViewVote.vue'
+import { query } from 'firebase/database'
 
 const db = useFirestore()
 const store = useGeneralStore()
@@ -204,25 +217,83 @@ watchEffect(() => {
 const corpDocRef = computed(() => doc(db, 'Corporations', currentCorpId.value))
 const corp = useDocument(corpDocRef)
 
-const initialTrainingColRef = computed(() =>
-  query(
-    collection(db, `Corporations/${currentCorpId.value}/Initial Training`),
-    where('Complete', '==', 0)
-  )
-)
-const initialTrainingCol = useCollection(initialTrainingColRef)
-
-const personnel = ref([])
 const currentTab = ref(store.USER_STATUS_PENDING)
 
-getUsersByCorp(
-  personnel,
-  [currentCorpId, currentTab],
-  [
-    ['CorporationId', '==', currentCorpId],
-    ['Status', '==', currentTab]
-  ]
-)
+const personnel = ref([])
+let unsubPersonnel = null
+let unsubUsers = []
+
+onMounted(() => {
+  getPersonnel()
+})
+
+onUnmounted(() => {
+  if (unsubPersonnel) {
+    unsubPersonnel()
+  }
+  unsubUsers.forEach((unsub) => unsub())
+})
+
+watch([currentCorpId, currentTab], () => {
+  getPersonnel()
+})
+
+async function getPersonnel() {
+  personnel.value = []
+  let q = null
+
+  q = query(
+    collection(db, 'UsersCorporations'),
+    where('Status', '==', currentTab.value),
+    where('CorporationId', '==', currentCorpId.value)
+  )
+
+  const corpRef = await getDoc(doc(db, 'Corporations', currentCorpId.value))
+  if (corpRef.data().Short == 'Prelature') {
+    q = query(collection(db, 'UsersCorporations'), where('Status', '==', currentTab.value))
+  }
+
+  if (unsubPersonnel) {
+    unsubPersonnel()
+  }
+  unsubUsers.forEach((unsub) => unsub())
+
+  unsubPersonnel = onSnapshot(q, (res) => {
+    res.docChanges().forEach(async (change) => {
+      const { newIndex, oldIndex, doc: tDoc } = change
+      const t = tDoc.data()
+      t.id = tDoc.id
+      t.UserData = initUser({})
+      if (['added', 'modified'].includes(change.type)) {
+        t.IsUserAllSet = userHasAllScreening(t)
+      }
+      if (corpRef.data().Short == 'Prelature') {
+        const corpRef = await getDoc(doc(db, 'Corporations', t.CorporationId))
+        t.CorpName = corpRef.data().Name
+        t.CorpShort = corpRef.data().Short
+      }
+
+      if (change.type === 'added') {
+        personnel.value.splice(newIndex, 0, t)
+        unsubUsers[newIndex] = onSnapshot(doc(db, 'Users', t.UserId), (res) => {
+          personnel.value[newIndex].UserData = res.data()
+        })
+      }
+      if (change.type === 'modified') {
+        personnel.value.splice(oldIndex, 1)
+        unsubUsers[oldIndex]()
+        personnel.value.splice(newIndex, 0, t)
+        unsubUsers[newIndex] = onSnapshot(doc(db, 'Users', t.UserId), (res) => {
+          personnel.value[newIndex].UserData = res.data()
+        })
+      }
+      if (change.type === 'removed') {
+        personnel.value.splice(oldIndex, 1)
+        unsubUsers[oldIndex]()
+      }
+    })
+  })
+}
 
 const showUsersViewAdd = ref(false)
 const showUsersViewScreening = ref(false)
@@ -249,39 +320,9 @@ function userHasAllScreening(user) {
   const req = getScreeningReqType(typeScreening)
   let b = true
   req.forEach((item) => {
-    switch (item) {
-      case 'Consent':
-      case 'Code':
-        b = b && user[`ScreeningReqFlag${item}`]
-        break // TODO add code to work
-      default:
-        b = b && user.UserData[`ScreeningReqFlag${item}`]
-        break
-    }
+    b = b && user[`ScreeningReqFlag${item}`]
   })
   return b
-}
-
-function userHasAllTraining(user) {
-  let count = 0
-  let totInitialTrainingReq = 0
-  initialTrainingCol.value.forEach((el) => {
-    if (
-      el.Functions.includes(user.Function) ||
-      (el.Functions.includes(store.FUNCTION_BOARD) && user.Board) ||
-      el.Functions.includes(store.FUNCTION_SCREENING && user.Screening)
-    ) {
-      totInitialTrainingReq++
-    }
-    if (user.UserData.Training?.[el.id]) {
-      count++
-    }
-  })
-  return count >= totInitialTrainingReq
-}
-
-function userIsAllSet(user) {
-  return userHasAllScreening(user) && userHasAllTraining(user)
 }
 
 function addNewUser() {
@@ -337,7 +378,7 @@ function openUsersViewVote(index) {
   height: calc(100vh - 48px);
 }
 .click-icon {
-  @apply rounded px-1.5 py-1 hover:cursor-pointer hover:bg-emerald-800 hover:text-emerald-100;
+  @apply rounded px-1.5 py-1 hover:bg-emerald-800 hover:text-emerald-100;
 }
 .v-enter-active,
 .v-leave-active {

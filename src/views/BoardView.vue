@@ -43,6 +43,8 @@ const isScreening = ref(true)
 
 const votesNeeded = ref(0)
 const emailFiles = ref('')
+const backgroundCheckValidFor = ref(2)
+const codeOfConductValidFor = ref(2)
 
 const itemRefs = ref([])
 const divuser = ref()
@@ -125,6 +127,8 @@ function getCorporationInfo() {
     currentCorpData.value = doc.data()
     votesNeeded.value = doc.data().VotesNeeded || 0
     emailFiles.value = doc.data().EmailFiles || ''
+    backgroundCheckValidFor.value = doc.data().BackgroundCheckValidFor
+    codeOfConductValidFor.value = doc.data().CodeOfConductValidFor
   })
 }
 
@@ -137,6 +141,7 @@ watch(
   (nv) => {
     if (nv != 'xxx') {
       getCorporationInfo()
+      getReportsList()
     }
   },
   { immediate: true }
@@ -169,6 +174,16 @@ function saveVotesNeeded() {
 function savesEmailFiles() {
   updateDoc(doc(db, 'Corporations', currentCorpId.value), { EmailFiles: emailFiles.value })
 }
+function savesBackgroundCheckValidFor() {
+  updateDoc(doc(db, 'Corporations', currentCorpId.value), {
+    BackgroundCheckValidFor: backgroundCheckValidFor.value
+  })
+}
+function savesCodeOfConductValidFor() {
+  updateDoc(doc(db, 'Corporations', currentCorpId.value), {
+    CodeOfConductValidFor: codeOfConductValidFor.value
+  })
+}
 
 function acceptSEC(p) {
   if (p.VotedBy?.length == 2) {
@@ -181,17 +196,27 @@ function acceptSEC(p) {
 
 function getReportsList() {
   reportsList.value = []
-  const q = query(collection(db, 'IncidentReports'), orderBy('Date', 'desc'))
+  let q = null
+  q = query(
+    collection(db, 'IncidentReports'),
+    where('CorporationId', '==', currentCorpId.value),
+    orderBy('DateFiled', 'desc')
+  )
 
   if (unsubReportsList) {
     unsubReportsList()
   }
 
   unsubReportsList = onSnapshot(q, (res) => {
-    res.docChanges().forEach((change) => {
+    res.docChanges().forEach(async(change) => {
       const { newIndex, oldIndex, doc: tDoc } = change
       const t = tDoc.data()
       t.id = tDoc.id
+      const corpRef = await getDoc(doc(db, 'Corporations', t.CorporationId))
+      const userREf = await getDoc(doc(db, 'Users', t.UserId))
+      t.CorpData = corpRef.data()
+      t.UserData = userREf.data()
+      
       if (change.type === 'added') {
         reportsList.value.splice(newIndex, 0, t)
       }
@@ -205,10 +230,9 @@ function getReportsList() {
     })
   })
 }
-getReportsList()
 
-function getUrlReport(id) {
-  getDownloadURL(storageRef(storage, `IncidentReports/${id}.pdf`)).then((url) => {
+function getUrlReport(path) {
+  getDownloadURL(storageRef(storage, `gs://vue-safe-env-pdfs/${path}`)).then((url) => {
     window.open(url, '_blank')
   })
 }
@@ -225,17 +249,18 @@ function getUrlReport(id) {
       <MySelectCorporation v-model="currentCorpId" />
     </div>
 
-    <!-- List of Board members -->
     <div class="mx-auto mt-3 grow">
+      <!-- List of Board members -->
       <Transition>
         <div v-if="personnel.length > 0">
           <div v-for="p in personnel" :key="p.id">
+            <!-- Each Row -->
             <div class="mx-auto flex max-w-md justify-between gap-2 p-1 hover:bg-slate-200">
               <div class="min-w-[150px] grow pr-10 text-left">
                 {{ p.UserData.Nickname }} {{ p.UserData.LastName }}
               </div>
               <div>
-                {{ p.SEC ? 'S. E. Coordinator' : p.Board ? 'Board Memeber' : 'Screening Staff ' }}
+                {{ p.SEC ? 'S. E. Coordinator' : p.Board ? 'Board Member' : 'Screening Staff ' }}
               </div>
               <div
                 class="cursor-pointer px-1 text-slate-500 hover:bg-slate-700 hover:text-slate-200"
@@ -275,7 +300,7 @@ function getUrlReport(id) {
       <div ref="divuser" v-show="showUser" class="absolute rounded bg-green-300 p-2 shadow"></div>
 
       <!-- Voters needed -->
-      <div class="mx-auto mt-12 max-w-xs text-slate-700">
+      <div class="mx-auto mt-6 max-w-xs text-slate-700">
         Votes needed from board members and selection staff for personnel to be approved
       </div>
       <MyInputText
@@ -283,32 +308,61 @@ function getUrlReport(id) {
         v-model="votesNeeded"
         type-input="number"
         @on-change="saveVotesNeeded"
+        :deactivated="store.accessLevel < 3"
       ></MyInputText>
 
       <!-- Email address -->
-      <div class="mx-auto mt-12 max-w-xs text-slate-700">
-        All reportes and files will be emailed to
+      <div class="mx-auto mt-6 max-w-xs text-slate-700">
+        All reports and files will be emailed to
       </div>
       <MyInputText
         class="mx-auto mt-1 w-80"
         v-model="emailFiles"
         type-input="email"
         @on-change="savesEmailFiles"
+        :deactivated="store.accessLevel < 3"
       ></MyInputText>
 
+      <!--Background Ckeck Valid For -->
+      <div class="mx-auto mt-6 flex flex-wrap place-items-center text-slate-700">
+        Background Check Valid For
+        <MyInputText
+          class="mx-2 w-12"
+          v-model="backgroundCheckValidFor"
+          type-input="number"
+          @on-change="savesBackgroundCheckValidFor"
+          :deactivated="store.accessLevel < 3"
+        ></MyInputText>
+        years
+      </div>
+
+      <!-- Code of Conduct Valid For -->
+      <div class="mx-auto mt-6 flex flex-wrap place-items-center text-slate-700">
+        Code of Conduct Valid For
+        <MyInputText
+          class="mx-2 w-12"
+          v-model="codeOfConductValidFor"
+          type-input="number"
+          @on-change="savesCodeOfConductValidFor"
+          :deactivated="store.accessLevel < 3"
+        ></MyInputText>
+        years
+      </div>
+
       <!-- Code of Conduct -->
-      <div class="mt-5 text-center">
-        <MyButton class="bg-green-600" @click="openCodeEditor">Update Code Of Conduct</MyButton>
+      <div class="mt-6 text-center">
+        <MyButton :disabled="store.accessLevel < 3" class="bg-green-600" @click="openCodeEditor"
+          >Update Code Of Conduct</MyButton
+        >
       </div>
 
       <!-- List of reports -->
-      <div class="mt-10" v-if="store.accessLevel == 5">
+      <div class="mt-10">
         <div>List of Reports</div>
-        <table class="mt-5">
+        <table v-if="reportsList.length > 0" class="mt-3 mx-auto">
           <thead>
             <tr>
               <th>Date</th>
-              <th>Corporation</th>
               <th>By</th>
             </tr>
           </thead>
@@ -316,15 +370,15 @@ function getUrlReport(id) {
             <tr
               v-for="r in reportsList"
               :key="r.id"
-              @click="getUrlReport(r.id)"
-              class="m-2 cursor-pointer hover:bg-slate-200"
+              @click="getUrlReport(r.Filepath)"
+              class="cursor-pointer hover:bg-slate-200"
             >
-              <td class="p-3 py-1">{{ dayjs(r.Date).format('LL') }}</td>
-              <td class="py-1 pr-3">{{ r.Corporation }}</td>
-              <td class="py-1 pr-3">{{ r.UserName }}</td>
+              <td class="p-1">{{ dayjs(r.DateFiled).format('LL') }}</td>
+              <td class="p-1">{{ r.UserData.Name }} {{ r.UserData.LastName }}</td>
             </tr>
           </tbody>
         </table>
+        <div v-else class="mt-4 text-center text-slate-500">No reports yet</div>
       </div>
 
       <div
@@ -337,7 +391,9 @@ function getUrlReport(id) {
             class="code-input thinsb relative w-full resize-none rounded border-0 bg-white px-1 py-1 placeholder-gray-400 shadow outline-none hover:shadow-md focus:outline-none focus:ring-1 focus:ring-blue-300"
           ></textarea>
           <div class="mt-6 px-2">
-            I, __________________________________, have read the above guidelines and agree to abide by them in connection with all Activities and Programs involving Minors. I understand that I will be asked to review and sign my agreement with these guidelines annually.
+            I, __________________________________, have read the above guidelines and agree to abide
+            by them in connection with all Activities and Programs involving Minors. I understand
+            that I will be asked to review and sign my agreement with these guidelines annually.
           </div>
         </div>
         <div class="mt-5 text-center">

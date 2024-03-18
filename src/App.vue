@@ -4,11 +4,11 @@ import { useGeneralStore } from './stores/general'
 import { storeToRefs } from 'pinia'
 import SideMenu from './components/SideMenu.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { getCurrentUser, useFirestore } from 'vuefire'
+import { getCurrentUser, useCollection, useFirestore } from 'vuefire'
 import router from './router'
 import MyListBox from './components/MyInputs/MyListBox.vue'
-import { ref, watchEffect } from 'vue'
-import { doc, updateDoc } from 'firebase/firestore'
+import { computed, ref, watchEffect } from 'vue'
+import { collection, deleteDoc, doc, updateDoc } from 'firebase/firestore'
 import { useMediaQuery } from '@vueuse/core'
 import MyInfoMessage from './components/MyInfoMessage.vue'
 
@@ -41,6 +41,15 @@ function saveNuewLoginCorp() {
   updateDoc(userDocRef, {
     CurrentUsersCorporationsId: selUserCorp.value.id
   })
+}
+
+const messagesPendingRef = computed(() =>
+  collection(db, 'Users', loginUserId.value, 'MessagesPending')
+)
+const messagesPending = useCollection(messagesPendingRef)
+
+function deleteMessage(id) {
+  deleteDoc(doc(db, 'Users', loginUserId.value, 'MessagesPending', id))
 }
 </script>
 
@@ -86,11 +95,58 @@ function saveNuewLoginCorp() {
         class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-300 px-3 text-slate-800 print:hidden"
       >
         <div>v.3.8.5</div>
-        <div class="flex">
-          {{ accessLevelName }}
-        </div>
+        <div class="flex">{{ accessLevelName }} [{{ storeGeneral.accessLevel }}]</div>
       </div>
     </div>
+
+    <!-- Email Messages -->
+    <div class="absolute bottom-20 z-50 flex w-full justify-center">
+      <div class="">
+        <TransitionGroup name="bounce">
+          <div v-for="message in messagesPending" :key="message.id">
+            <div class="my-2 rounded bg-slate-100/40 p-1 text-left shadow-lg backdrop-blur">
+              <div
+                class="mx-auto w-full max-w-xl rounded bg-green-700 text-white"
+                :class="{
+                  'bg-slate-600': message.state == 'PENDING',
+                  'bg-green-700': message.state == 'SUCCESS',
+                  'bg-red-700': message.state == 'ERROR'
+                }"
+              >
+                <div class="flex place-items-center justify-between">
+                  <div class="px-3">
+                    <FontAwesomeIcon
+                      size="2x"
+                      :icon="
+                        ['circle-check', 'triangle-exclamation', 'spinner'].at(
+                          ['SUCCESS', 'ERROR', 'PENDING'].indexOf(message.state)
+                        )
+                      "
+                      :spin="message.state == 'PENDING'"
+                    />
+                  </div>
+                  <div class="py-3 pl-1">
+                    <div>
+                      {{ message.message
+                      }}<span v-if="message.accepted.length > 0">
+                        [{{ message.accepted.join(', ') }}]</span
+                      >
+                    </div>
+                    <div v-if="message.rejected.length > 0">
+                      Rejected: {{ message.rejected.join(', ') }}
+                    </div>
+                  </div>
+                  <div class="ml-3 cursor-pointer px-3 py-2" @click="deleteMessage(message.id)">
+                    <FontAwesomeIcon icon="times" size="xl" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </TransitionGroup>
+      </div>
+    </div>
+
     <MyInfoMessage
       v-model="storeGeneral.infoMessage.show"
       :class="storeGeneral.infoMessage.colorClass"
@@ -206,6 +262,22 @@ textarea {
     left: 100%;
     right: 0%;
     width: 0%;
+  }
+}
+.bounce-enter-active {
+  animation: bounce-in 0.2s;
+}
+.bounce-leave-active {
+  animation: bounce-in 0.2s reverse;
+}
+@keyframes bounce-in {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 </style>

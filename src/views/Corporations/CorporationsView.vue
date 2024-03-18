@@ -86,6 +86,7 @@ function editCorporation(corporation) {
 function onUpdate() {
   showEditPlaceModal.value = false
 }
+
 </script>
 
 <style scoped></style>

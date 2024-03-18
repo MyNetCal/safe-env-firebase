@@ -48,7 +48,7 @@ const storage = useFirebaseStorage()
 const actToEdit = ref({ id: '' })
 
 const tabActive = ref(0)
-const tabTitles = ['General info', 'Check List', 'Staff', 'Participants']
+const tabTitles = ['General info', 'Checklist', 'Staff', 'Participants']
 
 const tabHasErrorChecklist = computed(() => {
   if (actToEdit.value.id == '') {
@@ -334,7 +334,7 @@ const photoSize = ref({ h: 0, w: 0 })
 const photoLoaded = ref(false)
 const selectingFileFor = ref('')
 
-const { files, open, onChange } = useFileDialog()
+const { files, open, onChange } = useFileDialog({ accept: 'image/*' })
 
 function selectFile() {
   selectingFileFor.value = 'CheckList'
@@ -494,7 +494,7 @@ function getStaffGroup() {
       const { newIndex, oldIndex, doc: staffDoc } = change
       const staff = staffDoc.data()
       if (change.type === 'added') {
-        staffGroup.value.splice(newIndex, 0, { UserCorpId: staff.id, UserId: staff.UserId })
+        staffGroup.value.splice(newIndex, 0, { UserCorpId: staffDoc.id, UserId: staff.UserId })
         getDoc(doc(db, 'Users', staffDoc.data().UserId)).then((userDoc) => {
           const user = userDoc.data()
           staffGroup.value[newIndex] = {
@@ -507,7 +507,7 @@ function getStaffGroup() {
       }
       if (change.type === 'modified') {
         staffGroup.value.splice(oldIndex, 1)
-        staffGroup.value.splice(newIndex, 0, { UserCorpId: staff.id, UserId: staff.UserId })
+        staffGroup.value.splice(newIndex, 0, { UserCorpId: staffDoc.id, UserId: staff.UserId })
         getDoc(doc(db, 'Users', staffDoc.data().UserId)).then((userDoc) => {
           const user = userDoc.data()
           staffGroup.value[newIndex] = {
@@ -605,7 +605,7 @@ function getAllStaff() {
       const staff = staffDoc.data()
       if (change.type === 'added') {
         allStaff.value.splice(newIndex, 0, {
-          UserCorpId: staff.id,
+          UserCorpId: staffDoc.id,
           UserId: staff.UserId,
           Role: staff.Role,
           Function: staff.Function
@@ -624,7 +624,7 @@ function getAllStaff() {
       if (change.type === 'modified') {
         allStaff.value.splice(oldIndex, 1)
         allStaff.value.splice(newIndex, 0, {
-          UserCorpId: staff.id,
+          UserCorpId: staffDoc.id,
           UserId: staff.UserId,
           Role: staff.Role,
           Function: staff.Function
@@ -957,7 +957,7 @@ function deleteSlip(id) {
       })
     })
     .catch((error) => {
-      console.log('Dleteting slip: ', error);
+      console.log('Dleteting slip: ', error)
     })
 }
 
@@ -1968,7 +1968,7 @@ async function createPDF() {
               color="bg-green-600"
               :disabled="!allTabsOK"
             >
-              Preview PDF
+              Preview PDF and End Activity
             </MyButton>
           </div>
           <div class="my-1 flex justify-between">

@@ -187,7 +187,7 @@ function showOriginalPhoto(photo) {
             class="bg-green-700"
             :disabled="(site.ApprovedBy?.length || 0) < votesNeeded || !hasSECVoted"
             @click="approved"
-            >Click to be Approved</MyButton
+            >Click to approve</MyButton
           >
         </div>
       </div>
@@ -288,7 +288,7 @@ function showOriginalPhoto(photo) {
         <div class="relative text-center" v-if="site.CreatedByCorp == corpId">
           <MyButton class="bg-orange-500" @click="moveToReview">Move to Draft</MyButton>
           <div class="relative -top-2 text-sm text-slate-500">
-            By clicking in this button all votes will be deleted
+            Clicking this button will delete all votes
           </div>
         </div>
 

@@ -36,6 +36,14 @@ function initUser(user) {
     CurrentUsersCorporationsId: '',
     DOB: '', // format: 'yyyy-mm-dd'
     Branch: store.loginUser.Branch, // values: men, women, both
+    EmailSent: false,
+    LastLogin: '',
+    ScreeningReqFilesApplication:[],
+    ScreeningReqFilesInterview:[],
+    ScreeningReqFilesReference:[],
+    ScreeningReqFilesBackground:[],
+    CorpsActiveAtLeastOne: false,
+    CorpsActiveIds: [],
     ...newUser
   }
 }
@@ -118,12 +126,8 @@ function initUserCorp(user, corp) {
     Screening: false,
     Status: store.USER_STATUS_PENDING,
     ScreeningReq: {
-      Application: false,
-      Interview: false,
-      Reference: false,
-      Background: false,
-      Code: false,
-      Consent: false
+      Code: [],
+      Consent: []
     },
     UserId: user?.id || '',
     UserRef: initUser(user),
@@ -131,17 +135,49 @@ function initUserCorp(user, corp) {
     SEC: false,
     id: '',
     ApprovedBy: [],
-    ActivityGroups: []
+    ApprovedOn: '',
+    ActivityGroups: [],
+    ScreeningReqFlagBackground: false,
+    ScreeningReqFlagConsent: false,
+    ScreeningReqFlagCode: false,
+    ScreeningReqFlagApplication: false,
+    ScreeningReqFlagInterview: false,
+    ScreeningReqFlagReference: false,
+    AllFunctions: [],
+    BackgroundCheckExpiresOn: '',
+    CodeOfConductExpiresOn: '',
+    ScreeningCodeDate: '',
+    ScreeningConsentDate: '',
+    StatusRquiringAttentionReasons: []
   }
 }
 
-function createUserCorp(userCorp, userId) {
+async function createUserCorp(userCorp, userId) {
   const userRef = doc(db, 'Users', userId)
   userCorp.UserRef = userRef
   userCorp.UserId = userId
   delete userCorp.UserData
+  userCorp["AllFunctions"] = [userCorp.Function]
+  if (userCorp.Board && userCorp.Function != "Board") {
+    userCorp["AllFunctions"].push("Board")
+  }
+  if (userCorp.Screening) {
+    userCorp["AllFunctions"].push("Screening and Selection Staff")
+  }
+  const q = query(
+    collection(db, 'UsersCorporations'),
+    where('CorporationId', '==', userCorp.CorporationId),
+    where('SEC', '==', true)
+  )
+  const querySnapshot = await getDocs(q)
+  if (querySnapshot.empty) {
+    userCorp.SEC = true
+  }
+
   return new Promise((res, err) => {
     addDoc(collection(db, 'UsersCorporations'), userCorp).then(
+      // TODO check if there is a SEC in the corporation
+      // If not then assign this user as SEC of the Corporation
       async (d) => {
         updateUser({ id: userId, CurrentUsersCorporationsId: d.id })
         await updateDoc(doc(db, 'Users', userId), {
@@ -162,12 +198,31 @@ function createUserCorp(userCorp, userId) {
   })
 }
 
-function updateUserCorp(userCorp) {
+async function updateUserCorp(userCorp) {
   const corpId = userCorp.CorporationId
   delete userCorp.CorporationId
   delete userCorp.CorporationName
   delete userCorp.UserRef
   delete userCorp.UserData
+  userCorp["AllFunctions"] = [userCorp.Function]
+  if (userCorp.Board && userCorp.Function != "Board") {
+    userCorp["AllFunctions"].push("Board")
+  }
+  if (userCorp.Screening) {
+    userCorp["AllFunctions"].push("Screening and Selection Staff")
+  }
+  // is there a SEC in that corporation
+  const q = query(
+    collection(db, 'UsersCorporations'),
+    where('CorporationId', '==', corpId),
+    where('SEC', '==', true)
+  )
+  const querySnapshot = await getDocs(q)
+  if (querySnapshot.empty) {
+    userCorp.SEC = true
+  }
+
+
   return new Promise((res, err) => {
     updateDoc(doc(db, 'UsersCorporations', userCorp.id), userCorp).then(
       async (d) => {

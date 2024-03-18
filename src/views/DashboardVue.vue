@@ -1,20 +1,35 @@
 <script setup>
 import dayjs from 'dayjs'
-import { collection, doc, getDoc, getDocs, onSnapshot, query, where, updateDoc } from 'firebase/firestore'
-import { useFirestore } from 'vuefire'
+import {
+  collection,
+  doc,
+  getDoc,
+  onSnapshot,
+  query,
+  where,
+  updateDoc,
+  orderBy
+} from 'firebase/firestore'
+import { useFirebaseStorage, useFirestore } from 'vuefire'
 import { ref, onUnmounted } from 'vue'
 import { useGeneralStore } from '@/stores/general'
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
-import MyButton from '@/components/MyButton.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { getEmailsAllSEC, getEmailSECPrelature } from '@/stores/datadb'
+import { ref as storageRef, getDownloadURL } from 'firebase/storage'
+import LocalizedFormat from 'dayjs/plugin/localizedFormat'
 
 const db = useFirestore()
 const store = useGeneralStore()
+const storage = useFirebaseStorage()
+
+dayjs.extend(LocalizedFormat)
 
 const needBackgroundRequest = ref([])
 
 let unsubNeedBackgroundRequest = null
+
+const includeRequested = ref(true)
 
 onUnmounted(() => {
   if (unsubNeedBackgroundRequest) {
@@ -22,135 +37,79 @@ onUnmounted(() => {
   }
 })
 
-async function testEmail() {
-  const allUsers = []
-
-  // Get all users need renew
-  const q = query(
-    collection(db, 'Users'),
-    where('ScreeningBackgroundDate', 'in', [
-      dayjs().subtract(2, 'years').add(30, 'days').format('YYYY-MM-DD'),
-      dayjs().subtract(2, 'years').add(20, 'days').format('YYYY-MM-DD'),
-      dayjs().subtract(2, 'years').add(10, 'days').format('YYYY-MM-DD')
-    ]),
-    where('ScreeningBackgroundCheckRenewalRequested', '==', false),
-    where('CorpsActiveAtLeastOne', '==', true)
-  )
-  const users = await getDocs(q)
-
-  users.forEach((userData) => {
-    const u = userData.data()
-
-    allUsers.push({
-      id: u.id,
-      Name: u.Name,
-      LastName: u.LastName,
-      Nickname: u.Nickname,
-      Email: u.Email,
-      ScreeningBackgroundDate: u.ScreeningBackgroundDate,
-      ExpiresOn: dayjs(u.ScreeningBackgroundDate).add(2, 'years').format('MMMM D, YYYY')
-    })
-  })
-
-  //get all usercoprorotions per user
-  for (let index = 0; index < allUsers.length; index++) {
-    const user = allUsers[index]
-    user.userCorps = []
-    const userCorps = await getDocs(
-      query(
-        collection(db, 'UsersCorporations'),
-        where('UserId', '==', user.id),
-        where('Active', '==', true)
-      )
-    )
-    userCorps.forEach((userCorp) => {
-      const uc = userCorp.data()
-      user.userCorps.push({
-        id: userCorp.id,
-        Activity: store.activities[uc.Activity].Name,
-        Board: uc.Board ? 'Yes' : 'No',
-        Entity: uc.Entity,
-        Function: uc.Function,
-        Role: uc.Role,
-        Screening: uc.Screening ? 'Yes' : 'No',
-        CorporationId: uc.CorporationId
-      })
-    })
-    for (let index = 0; index < user.userCorps.length; index++) {
-      const userCorp = user.userCorps[index]
-      const corp = await getDoc(doc(db, 'Corporations', userCorp.CorporationId))
-      userCorp.Name = corp.data().Name
-      userCorp.Short = corp.data().Short
-    }
-    console.log('User: ', user)
-  }
-}
-
 function getBackgroundChecksNeedRequest() {
+  if (unsubNeedBackgroundRequest) {
+    unsubNeedBackgroundRequest()
+  }
   const q = query(
-    collection(db, 'Users'),
-    where(
-      'ScreeningBackgroundDate',
-      '<=',
-      dayjs().subtract(2, 'years').add(30, 'days').format('YYYY-MM-DD')
-    ),
-    where('ScreeningBackgroundDate', '>=', dayjs().subtract(2, 'years').format('YYYY-MM-DD')),
-    where('ScreeningBackgroundCheckRenewalRequested', '==', false),
-    where('CorpsActiveAtLeastOne', '==', true)
+    collection(db, 'UsersCorporations'),
+    where('BackgroundCheckExpiresOn', '<=', dayjs().add(30, 'days').format('YYYY-MM-DD')),
+    where('BackgroundCheckExpiresOn', '>=', dayjs().format('YYYY-MM-DD')),
+    where('Active', '==', true)
   )
-  needBackgroundRequest.value = []
-  unsubNeedBackgroundRequest = onSnapshot(q, (res) => {
+  needBackgroundRequest.value = {}
+  const userCorps = []
+  unsubNeedBackgroundRequest = onSnapshot(q, async (res) => {
     res.docChanges().forEach((change) => {
       const { newIndex, oldIndex, doc: userDoc } = change
-      const user = userDoc.data()
-
-      // get userCorp and corp info
-      if (change.type === 'added' || change.type === 'modified') {
-        getDocs(
-          query(
-            collection(db, 'UsersCorporations'),
-            where('UserId', '==', user.id),
-            where('Active', '==', true)
-          )
-        ).then((snapshot) => {
-          user.Corps = []
-          snapshot.forEach((d) => {
-            const userCorp = d.data()
-
-            getDoc(doc(db, 'Corporations', userCorp.CorporationId)).then((c) => {
-              userCorp.CorpInfo = c.data()
-              needBackgroundRequest.value[newIndex].Corps.push(userCorp)
-            })
-          })
-        })
-      }
+      const userCorp = userDoc.data()
 
       // user added to the list
       if (change.type === 'added') {
-        needBackgroundRequest.value.splice(newIndex, 0, user)
+        userCorps.splice(newIndex, 0, userCorp)
       }
       // user info changed
       if (change.type === 'modified') {
-        needBackgroundRequest.value.splice(oldIndex, 1)
-        needBackgroundRequest.value.splice(newIndex, 0, user)
+        userCorps.splice(oldIndex, 1)
+        userCorps.splice(newIndex, 0, userCorp)
       }
       // user removed
       if (change.type === 'removed') {
-        needBackgroundRequest.value.splice(oldIndex, 1)
+        userCorps.splice(oldIndex, 1)
       }
     })
+    needBackgroundRequest.value = {}
+    for (let index = 0; index < userCorps.length; index++) {
+      const userCorp = userCorps[index]
+      const userRef = await getDoc(doc(db, 'Users', userCorp.UserId))
+      const corpRef = await getDoc(doc(db, 'Corporations', userCorp.CorporationId))
+      const user = userRef.data()
+      const corp = corpRef.data()
+      userCorp.CorpInfo = corp
+      needBackgroundRequest.value[user.id] = {
+        id: user.id,
+        Name: user.Name,
+        LastName: user.LastName,
+        Nickname: user.Nickname,
+        Email: user.Email,
+        ExpiresOn: userCorp.BackgroundCheckExpiresOn,
+        ScreeningBackgroundCheckRenewalRequested: user.ScreeningBackgroundCheckRenewalRequested
+      }
+      if (!needBackgroundRequest.value[user.id].Corps) {
+        needBackgroundRequest.value[user.id].Corps = []
+      }
+      needBackgroundRequest.value[user.id].Corps.push(userCorp)
+      // Updated array
+    }
   })
 }
 
 getBackgroundChecksNeedRequest()
 
 async function backgroundRequested(user) {
+  if (user.ScreeningBackgroundCheckRenewalRequested) {
+    await updateDoc(doc(db, 'Users', user.id), {
+      ScreeningBackgroundCheckRenewalRequested: false
+    })
+    getBackgroundChecksNeedRequest()
+    return
+  }
   console.log(user)
   const allSECEmails = await getEmailsAllSEC()
-  const emailSECPrelature =  await getEmailSECPrelature()
+  const emailSECPrelature = await getEmailSECPrelature()
   const data = {
     Nickname: user.Nickname,
-    ExpirationDate: dayjs(user.ScreeningBackgroundDate).add(2, 'y').format('MMMM D, YYYY'),
+    ExpirationDate: dayjs(user.ExpiresOn).format('MMMM D, YYYY'),
     userCorps: []
   }
 
@@ -167,7 +126,7 @@ async function backgroundRequested(user) {
       Email: emailSEC
     }
     data.userCorps.push(corp)
-    store.triggerEmailTemplate(
+    store.createDocTriggerEmailTemplate(
       'Background-Check-Renewal-AllSEC-Notification',
       {
         Nickname: user.Nickname,
@@ -180,9 +139,61 @@ async function backgroundRequested(user) {
     )
   }
   console.log('data: ', data)
-  store.triggerEmailTemplate('Background-Check-Renewal-Instructions', data, user.Email)
-  updateDoc(doc(db, 'Users', user.id), {
+  store.createDocTriggerEmailTemplate('Background-Check-Renewal-Instructions', data, user.Email)
+  await updateDoc(doc(db, 'Users', user.id), {
     ScreeningBackgroundCheckRenewalRequested: true
+  })
+  getBackgroundChecksNeedRequest()
+}
+
+const reportsList = ref([])
+let unsubReportsList = null
+
+onUnmounted(() => {
+  if (unsubReportsList) {
+    unsubReportsList()
+  }
+})
+
+function getReportsList() {
+  reportsList.value = []
+  let q = null
+  q = query(collection(db, 'IncidentReports'), orderBy('DateFiled', 'desc'))
+
+  if (unsubReportsList) {
+    unsubReportsList()
+  }
+
+  unsubReportsList = onSnapshot(q, (res) => {
+    res.docChanges().forEach(async (change) => {
+      const { newIndex, oldIndex, doc: tDoc } = change
+      const t = tDoc.data()
+      t.id = tDoc.id
+     
+      const corpRef = await getDoc(doc(db, 'Corporations', t.CorporationId))
+      t.CorpData = corpRef.data()
+      const userRef = await getDoc(doc(db, 'Users', t.UserId))
+      t.UserData = userRef.data()
+      
+      if (change.type === 'added') {
+        reportsList.value.splice(newIndex, 0, t)
+      }
+      if (change.type === 'modified') {
+        reportsList.value.splice(oldIndex, 1)
+        reportsList.value.splice(newIndex, 0, t)
+      }
+      if (change.type === 'removed') {
+        reportsList.value.splice(oldIndex, 1)
+      }
+    })
+  })
+}
+
+getReportsList()
+
+function getUrlReport(path) {
+  getDownloadURL(storageRef(storage, `gs://vue-safe-env-pdfs/${path}`)).then((url) => {
+    window.open(url, '_blank')
   })
 }
 </script>
@@ -191,20 +202,35 @@ async function backgroundRequested(user) {
   <div
     class="content-height thinsb h-full justify-between overflow-auto overflow-y-scroll p-2 text-slate-700"
   >
-    <h1 @click="testEmail">Dashboard</h1>
+    <h1>Dashboard</h1>
 
     <!-- People requiring Background Check Renewal -->
     <div class="mx-auto mt-5 w-fit">
       <!-- Title -->
       <div class="rounded-t bg-slate-700 px-5 py-3 text-white">
         <div>Background Check about to Expire</div>
+
+        <div
+          class="mt-2 cursor-pointer rounded p-1 text-sm hover:bg-slate-600"
+          @click.prevent="includeRequested = !includeRequested"
+        >
+          Including alrady requested:
+          <FontAwesomeIcon
+            class="ml-3"
+            size="xl"
+            :icon="includeRequested ? ['far', 'check-square'] : ['far', 'square']"
+          />
+        </div>
       </div>
       <!-- body -->
-      <div class="text-left">
+      <div class="text-left text-slate-700">
         <div v-for="user in needBackgroundRequest" :key="user.id">
-          <Disclosure>
+          <Disclosure
+            v-slot="{ open }"
+            v-if="includeRequested || !user.ScreeningBackgroundCheckRenewalRequested"
+          >
             <div class="my-2 rounded shadow">
-              <DisclosureButton>
+              <div>
                 <div class="bg-slate-200 px-2 py-2">
                   <!-- Name and Date -->
                   <div class="flex place-items-center justify-between">
@@ -212,24 +238,42 @@ async function backgroundRequested(user) {
                     <div>
                       Expires on
                       <div class="font-semibold">
-                        {{ dayjs(user.ScreeningBackgroundDate).add(1, 'y').format('MMM D, YYYY') }}
+                        {{ dayjs(user.ExpiresOn).format('MMM D, YYYY') }}
                       </div>
                     </div>
+                    <DisclosureButton>
+                      <div class="p-2">
+                        <FontAwesomeIcon
+                          size="xl"
+                          icon="fa-caret-down"
+                          :class="open ? '-rotate-90 transform' : ''"
+                        />
+                      </div>
+                    </DisclosureButton>
                   </div>
 
                   <!-- Email -->
-                  <div class="mt-2 flex justify-between">
+                  <div class="mt-2">
                     <div>Email: {{ user.Email }}</div>
-                    <FontAwesomeIcon icon="fa-caret-down" />
                   </div>
 
-                  <div class="mt-2">
-                    <MyButton @click.prevent="backgroundRequested(user)" class="bg-stone-600"
-                      >Background Check has been Requested</MyButton
-                    >
+                  <div
+                    class="mt-2 cursor-pointer rounded py-1 text-sm hover:bg-slate-300"
+                    @click.prevent="backgroundRequested(user)"
+                  >
+                    Background Check has been Requested:
+                    <FontAwesomeIcon
+                      class="ml-3"
+                      size="xl"
+                      :icon="
+                        user.ScreeningBackgroundCheckRenewalRequested
+                          ? ['far', 'check-square']
+                          : ['far', 'square']
+                      "
+                    />
                   </div>
                 </div>
-              </DisclosureButton>
+              </div>
               <Transition
                 enter-active-class="transition duration-100 ease-out"
                 enter-from-class="transform scale-95 opacity-0"
@@ -263,6 +307,33 @@ async function backgroundRequested(user) {
           </Disclosure>
         </div>
       </div>
+    </div>
+
+    <!-- List of reports -->
+    <div class="mt-10">
+      <div>List of Reports</div>
+      <table v-if="reportsList.length > 0" class="mx-auto mt-3">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Corporation</th>
+            <th>By</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            v-for="r in reportsList"
+            :key="r.id"
+            @click="getUrlReport(r.Filepath)"
+            class="cursor-pointer hover:bg-slate-200"
+          >
+            <td class="p-1">{{ dayjs(r.DateFiled).format('LL') }}</td>
+            <td>{{ r.CorpData.Short }}</td>
+            <td class="p-1">{{ r.UserData.Name }} {{ r.UserData.LastName }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <div v-else class="mt-4 text-center text-slate-500">No reports yet</div>
     </div>
   </div>
 </template>

@@ -4,7 +4,7 @@ import MyButton from '@/components/MyButton.vue'
 import { toRefs, ref} from 'vue'
 import UserInfoEdit from './UserInfoEdit.vue'
 import UserCorporationEdit from './UserCorporationEdit.vue'
-import { createUserAndCorp, updateUser, saveUserCorp } from '@/stores/datadb'
+import { createUserAndCorp, updateUser, saveUserCorp, createUserCorp } from '@/stores/datadb'
 
 const emit = defineEmits(['onClose', 'onUpdate'])
 const props = defineProps({ showModal: Boolean, userCorp: Object })
@@ -15,8 +15,20 @@ const userToEdit = ref({})
 const isAllValid = ref(false)
 
 function onOpenModal() {
+  console.log('Oppening usercorp edit');
   userCorpToEdit.value = JSON.parse(JSON.stringify(userCorp.value))
   userToEdit.value = {...JSON.parse(JSON.stringify(userCorp.value.UserData)), id: userCorp.value.UserId}
+}
+
+function manuallyCreateUserCorp() {
+  // Ed UserId = VbOW7fJc28mfni8FPVEw
+  // Justin = fxkTYyvVsINHXIWTUQac
+  // Prelature = Dx1ZhwwCjgmbfU2gkIps
+  userCorpToEdit.value.UserId = 'VbOW7fJc28mfni8FPVEw'
+  userCorpToEdit.value.CorporationId = 'Dx1ZhwwCjgmbfU2gkIps'
+  userCorpToEdit.value.CorporationName = 'Prelature'
+  createUserCorp(userCorpToEdit.value,'VbOW7fJc28mfni8FPVEw')
+  emit('onClose')
 }
 
 function onSave() {
@@ -49,6 +61,7 @@ function onSave() {
         <div class="mb-4 mt-3 flex justify-center">
           <MyButton @click="$emit('onClose')" color="bg-blue-600"> Close </MyButton>
           <MyButton @click="onSave" color="bg-green-600" :disabled="!isAllValid"> Save </MyButton>
+          <MyButton v-if="false" @click="manuallyCreateUserCorp" color="bg-red-600"> Manually Create </MyButton>
         </div>
       </div>
     </MyModal>

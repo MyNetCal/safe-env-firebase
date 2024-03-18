@@ -2,8 +2,9 @@ import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { useCollection, useDocument, useFirebaseAuth, useFirestore } from 'vuefire'
 import { onAuthStateChanged } from 'firebase/auth'
-import { addDoc, collection, doc, onSnapshot, query, updateDoc, where } from 'firebase/firestore'
+import { addDoc, collection, doc, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore'
 import dayjs from 'dayjs'
+import router from '@/router'
 
 // import { useFirestore, useCollection } from 'vuefire'
 // import { collection, orderBy, query } from 'firebase/firestore'
@@ -39,7 +40,7 @@ export const useGeneralStore = defineStore('general', () => {
     }
   })
 
-
+  const currentBranch = computed(() => loginUser.value?.Branch || 'men')
 
   watch(loginUserId, (id) => {
     console.log('New loginID: ', id);
@@ -116,32 +117,7 @@ export const useGeneralStore = defineStore('general', () => {
     }
     return 'xxx'
   })
-  const accessLevel = computed(() => {
-    if (loginUserCorporation.value?.CorporationName == 'Prelature') {
-      if (loginUserCorporation.value?.SEC) {
-        return 5
-      }
-      if (loginUserCorporation.value?.Board) {
-        return 4
-      }
-    }
-    if (loginUserCorporation.value?.SEC) {
-      return 3
-    }
-    if (loginUserCorporation.value?.Board) {
-      return 2
-    }
-    if (loginUserCorporation.value?.Function == FUNCTION_DIRECTOR) {
-      return 1
-    }
-    if (loginUserCorporation.value?.Function == FUNCTION_PERSONNEL) {
-      return 0
-    }
-    if (loginUserCorporation.value?.Function == FUNCTION_JUNIOR_COUNSELOR || loginUserCorporation?.Function == FUNCTION_LOW_ACCESS) {
-      return -1
-    }
-    return -2
-  })
+
 
   const ROLE_PRIEST = 'Priest'
   const ROLE_DIRECTOR = 'Director'
@@ -173,6 +149,7 @@ export const useGeneralStore = defineStore('general', () => {
   const USER_STATUS_PENDING = 'Pending Approval'
   const USER_STATUS_ATTENTION = 'Requiring Attention'
   const USER_STATUS_APPROVED = 'Approved'
+  const USER_STATUS_INACTIVE = 'Inactive'
 
   const USER_STATUS = [USER_STATUS_PENDING, USER_STATUS_ATTENTION, USER_STATUS_APPROVED]
 
@@ -260,6 +237,39 @@ export const useGeneralStore = defineStore('general', () => {
   const SCREENING_LOW_ACCESS = 'Low_Access'
   const SCREENING_JUNIOR_COUNSELOR = 'Junior_Counselor'
   const SCREENING_TYPES = [SCREENING_STAFF, SCREENING_LOW_ACCESS, SCREENING_JUNIOR_COUNSELOR]
+
+  const accessLevel = computed(() => {
+    if (loginUserCorporation.value?.CorporationName == 'Prelature') {
+      if (loginUserCorporation.value?.SEC) {
+        return 5
+      }
+      if (loginUserCorporation.value?.Board) {
+        return 4
+      }
+    }
+    if (loginUserCorporation.value?.SEC) {
+      return 3
+    }
+    if (loginUserCorporation.value?.Board) {
+      return 2
+    }
+    if (loginUserCorporation.value?.Function == FUNCTION_DIRECTOR) {
+      return 1
+    }
+    if (loginUserCorporation.value?.Function == FUNCTION_PERSONNEL) {
+      return 0
+    }
+    if (loginUserCorporation.value?.Function == FUNCTION_JUNIOR_COUNSELOR || loginUserCorporation?.Function == FUNCTION_LOW_ACCESS) {
+      return -1
+    }
+    return -2
+  })
+
+  watch(accessLevel, (nv, ov) => {
+    if (nv < ov) {
+      router.push('/')
+    }
+  })
 
   function getFunction(role) {
     switch (role) {
@@ -349,7 +359,7 @@ export const useGeneralStore = defineStore('general', () => {
     return new Promise((res, err) => {
       addDoc(collection(db, 'mail-triggers'), {
         to,
-        message: { subject, html }
+        message: { subject, html },
       }).then((emailDoc) => {
         const unsub = onSnapshot(doc(db, 'mail-triggers', emailDoc.id), (d) => {
           const delivery = d.data().delivery
@@ -366,8 +376,53 @@ export const useGeneralStore = defineStore('general', () => {
         })
       })
     })
+  }
 
+  function createDocTriggerEmail(subject, html, to=[], bcc=[], cc=[]) {
+    return new Promise(() => {
+      addDoc(collection(db, 'mail-triggers'), {
+        to,
+        bcc,
+        cc,
+        message: { subject, html },
+        userId: loginUserId.value
+      }).then((d) => {
+        const emailId = d.id
+        setDoc(doc(db, `Users/${loginUserId.value}/MessagesPending/${emailId}`), {
+          type: "Email",
+          message: "Sending Email",
+          state: "PENDING",
+          error: "",
+          accepted: [],
+          rejected: [],
+        })
+        })
+    })
+  }
 
+  function createDocTriggerEmailTemplate(template, data, to=[], bcc=[], cc=[]) {
+    return new Promise(() => {
+      addDoc(collection(db, 'mail-triggers'), {
+        to,
+        bcc,
+        cc,
+        template: {
+          name: template,
+          data
+        },
+        userId: loginUserId.value
+      }).then((d) => {
+        const emailId = d.id
+        setDoc(doc(db, `Users/${loginUserId.value}/MessagesPending/${emailId}`), {
+          type: "Email",
+          message: "Sending Email",
+          state: "PENDING",
+          error: "",
+          accepted: [],
+          rejected: [],
+        })
+        })
+    })
   }
 
   // StatusRquiringAttentionReasons: []
@@ -384,6 +439,7 @@ export const useGeneralStore = defineStore('general', () => {
     loginCorporation,
     loginUserId,
     loginUser,
+    currentBranch,
     isUserBoard,
     isUserBoardPrelature,
     isUserBoardScreening,
@@ -424,6 +480,7 @@ export const useGeneralStore = defineStore('general', () => {
     USER_STATUS_PENDING,
     USER_STATUS_ATTENTION,
     USER_STATUS_APPROVED,
+    USER_STATUS_INACTIVE,
     SCREENING_TYPES,
     SCREENING_REQ,
     SCREENING_REQ_TITLES,
@@ -434,6 +491,8 @@ export const useGeneralStore = defineStore('general', () => {
     showMessage,
     triggerEmailTemplate,
     triggerEmail,
+    createDocTriggerEmail,
+    createDocTriggerEmailTemplate,
     REQ_ATT_BACKGROUND,
     REQ_ATT_CODE,
     REQ_ATT_INACTIVE,

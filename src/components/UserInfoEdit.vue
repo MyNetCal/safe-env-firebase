@@ -18,6 +18,7 @@ import MyButton from './MyButton.vue'
 import { useTimeoutFn } from '@vueuse/core'
 import MyMessage from './MyMessage.vue'
 import { useGeneralStore } from '@/stores/general'
+import MySelectAuto from './MyInputs/MySelectAuto.vue'
 
 const props = defineProps({ modelValue: Object, isAllValidInfo: Boolean })
 const emit = defineEmits(['update:modelValue', 'update:isAllValidInfo'])
@@ -44,23 +45,32 @@ const isAllValid = computed({
 })
 
 const searchBoxIsClosed = ref(false)
-const searchDate = ref(dayjs().format('YYYY-MM-DD'))
 
-const searchUsersDocs = ref([])
-watchEffect(() => {
-  searchUsersDocs.value = []
-  if (dayjs(searchDate.value).isValid()) {
-    const q = query(collection(db, 'Users'), where('DOB', '==', searchDate.value))
-    getDocs(q).then((res) => {
-      res.forEach((doc) => {
-        searchUsersDocs.value.push(doc.data())
-      })
+const allusers = ref([])
+const userSelected = ref({})
+async function getAllUsersNames() {
+  allusers.value = []
+  const snapshot = await getDocs(
+    query(collection(db, 'Users'), where('Branch', '==', store.currentBranch))
+  )
+  snapshot.forEach((d) => {
+    allusers.value.push({
+      id: d.id,
+      Name: d.data().Name,
+      LastName: d.data().LastName,
+      Nickname: d.data().Nickname,
+      FullName: d.data().Name + ' ' + d.data().LastName,
+      Middle: d.data().Middle,
+      Email: d.data().Email,
+      DOB: d.data().DOB,
+      EmailSent: d.data().EmailSent
     })
-  }
-})
+  })
+}
+getAllUsersNames()
 
-function onClickUserFromOtherCorporation(user) {
-  userToEdit.value = JSON.parse(JSON.stringify(user))
+function onClickUserFromOtherCorporation() {
+  userToEdit.value = JSON.parse(JSON.stringify(userSelected.value))
 }
 
 const isValidEmail = ref(true)
@@ -173,11 +183,16 @@ onUnmounted(() => {
     >
       <!-- Title and DOB Input -->
       <div class="flex justify-between">
-        <div class="flex place-items-center">
-          <div class="mr-5">Search for Personnel in other Corporations - DOB:</div>
-          <div class="w-fit">
-            <MyInputText type-input="date" v-model="searchDate" />
-          </div>
+        <div class="w-fit">
+          <MySelectAuto
+            v-model="userSelected"
+            class="max-h-44"
+            label="Search for Personnel in other Corporations"
+            :items="allusers"
+            items-label="FullName"
+            is-fussy
+            @update:model-value="onClickUserFromOtherCorporation"
+          />
         </div>
         <!-- Close Search Box -->
         <div
@@ -187,22 +202,7 @@ onUnmounted(() => {
           <FontAwesomeIcon icon="times" />
         </div>
       </div>
-
-      <!-- List of Found Users -->
-      <div class="mt-2 rounded bg-slate-200 shadow-md">
-        <div v-if="searchUsersDocs.length > 0" class="cursor-pointer text-blue-800">
-          <template v-for="user in searchUsersDocs" :key="user.id">
-            <div
-              class="mb-1 flex rounded bg-blue-200 px-3 py-1 shadow hover:bg-blue-600 hover:text-blue-100"
-              @click="onClickUserFromOtherCorporation(user)"
-            >
-              {{ user.Name }} {{ user.LastName }}
-            </div>
-          </template>
-        </div>
-        <!-- Legend if nobody found -->
-        <div v-else class="mt-2 text-center text-red-500">No Users Found</div>
-      </div>
+     
     </div>
 
     <!-- Name, Last Name -->
@@ -213,6 +213,7 @@ onUnmounted(() => {
         v-model="userToEdit.Name"
         :isError="isErrorName"
         @on-focus="searchBoxIsClosed = true"
+        :deactivated="userToEdit.id != ''"
       >
       </MyInputText>
       <MyInputText label="Middle" class="w-20" v-model="userToEdit.Middle"> </MyInputText>
@@ -221,6 +222,7 @@ onUnmounted(() => {
         class="grow"
         v-model="userToEdit.LastName"
         :isError="isErrorLastName"
+        :deactivated="userToEdit.id != ''"
       >
       </MyInputText>
       <MyInputText label="Nickname" class="w-28" v-model="userToEdit.Nickname"> </MyInputText>
@@ -234,6 +236,7 @@ onUnmounted(() => {
           v-model="userToEdit.Email"
           type-input="email"
           v-model:isValid="isValidEmail"
+          :deactivated="userToEdit.id != ''"
         >
         </MyInputText>
       </div>
