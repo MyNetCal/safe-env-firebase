@@ -43,7 +43,7 @@
                       {{ p.UserData.LastName }}</span
                     >
                   </h3>
-                  <div v-if="p.CorpShort" class="pl-1"> @ {{ p.CorpShort }}</div>
+                  <div v-if="p.CorpShort" class="pl-1">@ {{ p.CorpShort }}</div>
                 </div>
                 <!-- Right Header: Icons -->
                 <div class="flex gap-x-1">
@@ -249,6 +249,9 @@ async function getPersonnel() {
   )
 
   const corpRef = await getDoc(doc(db, 'Corporations', currentCorpId.value))
+  if (!corpRef.data()) {
+    return
+  }
   if (corpRef.data().Short == 'Prelature') {
     q = query(collection(db, 'UsersCorporations'), where('Status', '==', currentTab.value))
   }
@@ -266,6 +269,8 @@ async function getPersonnel() {
       t.UserData = initUser({})
       if (['added', 'modified'].includes(change.type)) {
         t.IsUserAllSet = userHasAllScreening(t)
+        const userRef = await getDoc(doc(db, 'Users', t.UserId))
+        t.UserData = userRef.data()
       }
       if (corpRef.data().Short == 'Prelature') {
         const corpRef = await getDoc(doc(db, 'Corporations', t.CorporationId))
@@ -275,21 +280,21 @@ async function getPersonnel() {
 
       if (change.type === 'added') {
         personnel.value.splice(newIndex, 0, t)
-        unsubUsers[newIndex] = onSnapshot(doc(db, 'Users', t.UserId), (res) => {
-          personnel.value[newIndex].UserData = res.data()
-        })
+        // unsubUsers[newIndex] = onSnapshot(doc(db, 'Users', t.UserId), (res) => {
+        //   personnel.value[newIndex].UserData = res.data()
+        // })
       }
       if (change.type === 'modified') {
         personnel.value.splice(oldIndex, 1)
-        unsubUsers[oldIndex]()
+        //        unsubUsers[oldIndex]()
         personnel.value.splice(newIndex, 0, t)
-        unsubUsers[newIndex] = onSnapshot(doc(db, 'Users', t.UserId), (res) => {
-          personnel.value[newIndex].UserData = res.data()
-        })
+        // unsubUsers[newIndex] = onSnapshot(doc(db, 'Users', t.UserId), (res) => {
+        //   personnel.value[newIndex].UserData = res.data()
+        // })
       }
       if (change.type === 'removed') {
         personnel.value.splice(oldIndex, 1)
-        unsubUsers[oldIndex]()
+        //    unsubUsers[oldIndex]()
       }
     })
   })
