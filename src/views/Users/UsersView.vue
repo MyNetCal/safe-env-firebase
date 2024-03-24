@@ -12,13 +12,13 @@
     <!-- List of Users by cards -->
     <div class="mx-auto mt-3 grow">
       <!-- Users loop -->
-      <Transition>
-        <div v-if="personnel.length > 0">
-          <template v-for="(p, index) in personnel" :key="p.id">
+      <TransitionGroup name="list">
+        <template v-if="personnelOrder.length > 0">
+          <template v-for="(p, index) in personnelOrder" :key="p.id">
             <!-- Outter Box -->
             <div
               class="mb-2 rounded text-emerald-900 shadow"
-              :class="[userHasAllScreening(p) ? 'bg-emerald-100' : 'bg-stone-100']"
+              :class="[p.userHasAllScreening ? 'bg-emerald-100' : 'bg-stone-100']"
             >
               <!-- Header Row -->
               <div class="flex place-items-center justify-between gap-5 rounded-t p-1">
@@ -28,7 +28,7 @@
                 <div
                   class="flex min-w-[160px] grow cursor-pointer place-items-center rounded"
                   :class="[
-                    userHasAllScreening(p)
+                    p.userHasAllScreening
                       ? 'bg-emerald-100 hover:bg-emerald-300'
                       : 'bg-stone-100 hover:bg-stone-300'
                   ]"
@@ -50,7 +50,7 @@
                   <div
                     class="click-icon cursor-pointer"
                     @click="editUsersScreening(p)"
-                    :class="[userHasAllScreening(p) ? 'text-green-700' : 'text-red-700']"
+                    :class="[p.userHasAllScreening ? 'text-green-700' : 'text-red-700']"
                   >
                     <FontAwesomeIcon icon="chalkboard-user" />
                   </div>
@@ -64,7 +64,7 @@
                     class="click-icon"
                     @click="openUsersViewVote(index)"
                     :class="[
-                      userHasAllScreening(p)
+                      p.userHasAllScreening
                         ? 'cursor-pointer text-green-700'
                         : 'cursor-not-allowed text-red-700'
                     ]"
@@ -89,8 +89,8 @@
               </div>
             </div>
           </template>
-        </div>
-      </Transition>
+        </template>
+      </TransitionGroup>
     </div>
 
     <!-- Tabs: Titles -->
@@ -174,7 +174,7 @@
     <div v-if="showUsersViewVote">
       <UsersViewVote
         :show-modal="showUsersViewVote"
-        :user-corp="personnel[indexSelected]"
+        :user-corp="personnelOrder[indexSelected]"
         :is-user-all-set="true"
         @onClose="showUsersViewVote = false"
         @onUpdate="showUsersViewVote = false"
@@ -192,7 +192,7 @@ import { ref, computed, watchEffect, onMounted, watch, onUnmounted } from 'vue'
 import MyFab from '@/components/MyFab.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { useDocument, useFirestore } from 'vuefire'
-import { collection, doc, getDoc, onSnapshot, where } from 'firebase/firestore'
+import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore'
 import UsersViewAdd from '../Users/UsersViewAdd.vue'
 import { useGeneralStore } from '@/stores/general'
 import UsersViewScreening from '../Users/UsersViewScreening.vue'
@@ -202,7 +202,6 @@ import { storeToRefs } from 'pinia'
 import UserAndCorpEdit from '@/components/UserAndCorpEdit.vue'
 import { initUserCorp, initUser } from '@/stores/datadb'
 import UsersViewVote from '../Users/UsersViewVote.vue'
-import { query } from 'firebase/database'
 
 const db = useFirestore()
 const store = useGeneralStore()
@@ -220,26 +219,56 @@ const corp = useDocument(corpDocRef)
 const currentTab = ref(store.USER_STATUS_PENDING)
 
 const personnel = ref([])
+const personnelOrder = ref([])
+
 let unsubPersonnel = null
-let unsubUsers = []
+let unsubUsers = {}
+
+function unsubscribeAll() {
+  if (unsubPersonnel) {
+    unsubPersonnel()
+    Object.values(unsubUsers).forEach((u) => {
+      u()
+    })
+  }
+}
 
 onMounted(() => {
   getPersonnel()
 })
 
 onUnmounted(() => {
-  if (unsubPersonnel) {
-    unsubPersonnel()
-  }
-  unsubUsers.forEach((unsub) => unsub())
+  unsubscribeAll()
 })
 
 watch([currentCorpId, currentTab], () => {
   getPersonnel()
 })
 
+function orderPersonnel() {
+  personnelOrder.value = JSON.parse(JSON.stringify(personnel.value))
+  personnelOrder.value.sort((a, b) => {
+    if (a.userHasAllScreening && !b.userHasAllScreening) {
+      return -1
+    }
+    if (!a.userHasAllScreening && b.userHasAllScreening) {
+      return 1
+    }
+
+    if (a.UserData.LastName < b.UserData.LastName) {
+      return -1
+    }
+    if (a.UserData.LastName > b.UserData.LastName) {
+      return 1
+    }
+    return 0
+  })
+}
+
 async function getPersonnel() {
   personnel.value = []
+  personnelOrder.value = []
+
   let q = null
 
   q = query(
@@ -253,13 +282,15 @@ async function getPersonnel() {
     return
   }
   if (corpRef.data().Short == 'Prelature') {
-    q = query(collection(db, 'UsersCorporations'), where('Status', '==', currentTab.value))
+    q = query(
+      collection(db, 'UsersCorporations'),
+      where('Status', '==', currentTab.value),
+      where('Entity', '==', 'Prelature')
+    )
   }
 
-  if (unsubPersonnel) {
-    unsubPersonnel()
-  }
-  unsubUsers.forEach((unsub) => unsub())
+  unsubscribeAll()
+  unsubUsers = {}
 
   unsubPersonnel = onSnapshot(q, (res) => {
     res.docChanges().forEach(async (change) => {
@@ -268,7 +299,7 @@ async function getPersonnel() {
       t.id = tDoc.id
       t.UserData = initUser({})
       if (['added', 'modified'].includes(change.type)) {
-        t.IsUserAllSet = userHasAllScreening(t)
+        t.userHasAllScreening = userHasAllScreening(t)
         const userRef = await getDoc(doc(db, 'Users', t.UserId))
         t.UserData = userRef.data()
       }
@@ -279,22 +310,23 @@ async function getPersonnel() {
       }
 
       if (change.type === 'added') {
+        // Add Listner
+        unsubUsers[t.id] = onSnapshot(doc(db, 'Users', t.UserId), (res) => {
+          const index = personnel.value.findIndex((el) => el.id == t.id)
+          personnel.value[index].UserData = res.data()
+          orderPersonnel()
+        })
         personnel.value.splice(newIndex, 0, t)
-        // unsubUsers[newIndex] = onSnapshot(doc(db, 'Users', t.UserId), (res) => {
-        //   personnel.value[newIndex].UserData = res.data()
-        // })
       }
       if (change.type === 'modified') {
         personnel.value.splice(oldIndex, 1)
-        //        unsubUsers[oldIndex]()
         personnel.value.splice(newIndex, 0, t)
-        // unsubUsers[newIndex] = onSnapshot(doc(db, 'Users', t.UserId), (res) => {
-        //   personnel.value[newIndex].UserData = res.data()
-        // })
+        orderPersonnel()
+        // Add Listner
       }
       if (change.type === 'removed') {
         personnel.value.splice(oldIndex, 1)
-        //    unsubUsers[oldIndex]()
+        unsubUsers[t.id]()
       }
     })
   })
@@ -355,7 +387,7 @@ function editUserInfo(userInfo) {
   showUserCorpEdit.value = true
 }
 
-function editUsersScreening(userInfo) {
+function editUsersScreening(userInfo) { 
   userSelected.value = userInfo
   userSelectedId.value = userInfo.id
   showUsersViewScreening.value = true
@@ -369,10 +401,6 @@ function editUsersTrainning(userInfo) {
 const showUsersViewVote = ref(false)
 const indexSelected = ref(0)
 function openUsersViewVote(index) {
-  //userSelected.value = p
-  if (!userHasAllScreening(personnel.value[index])) {
-    return
-  }
   indexSelected.value = index
   showUsersViewVote.value = true
 }
@@ -387,11 +415,9 @@ function openUsersViewVote(index) {
 }
 .v-enter-active,
 .v-leave-active {
-  transition: opacity 0.5s ease;
+  transition: opacity 0.2s ease;
 }
 
-.v-enter-from,
-.v-leave-to {
-  opacity: 0;
-}
+
+
 </style>

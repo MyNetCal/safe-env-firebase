@@ -308,10 +308,10 @@ function onSave() {
 
 <style scoped>
 .pdf-height {
-  max-height: calc(100vh - 80px);
+  max-height: calc(100vh - 120px);
   overflow-y: auto;
 }
 .code-input {
-  height: calc(100vh - 200px);
+  height: calc(100vh - 240px);
 }
 </style>

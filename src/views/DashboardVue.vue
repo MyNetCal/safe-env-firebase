@@ -78,9 +78,9 @@ function getBackgroundChecksNeedRequest() {
       userCorp.CorpInfo = corp
       needBackgroundRequest.value[user.id] = {
         id: user.id,
-        Name: user.Name,
-        LastName: user.LastName,
-        Nickname: user.Nickname,
+        Name: user?.Name,
+        LastName: user?.LastName,
+        Nickname: user?.Nickname,
         Email: user.Email,
         ExpiresOn: userCorp.BackgroundCheckExpiresOn,
         ScreeningBackgroundCheckRenewalRequested: user.ScreeningBackgroundCheckRenewalRequested
@@ -121,7 +121,7 @@ async function backgroundRequested(user) {
       continue
     }
     const corp = {
-      Name: userCorp.CorpInfo.Name,
+      Name: userCorp.CorpInfo?.Name,
       Short: userCorp.CorpInfo.Short,
       Email: emailSEC
     }
@@ -130,8 +130,8 @@ async function backgroundRequested(user) {
       'Background-Check-Renewal-AllSEC-Notification',
       {
         Nickname: user.Nickname,
-        Name: user.Name,
-        LastName: user.LastName,
+        Name: user?.Name,
+        LastName: user?.LastName,
         ExpirationDate: dayjs(user.ScreeningBackgroundDate).add(2, 'y').format('MMMM D, YYYY'),
         EmailSECPrelature: emailSECPrelature
       },
@@ -234,7 +234,7 @@ function getUrlReport(path) {
                 <div class="bg-slate-200 px-2 py-2">
                   <!-- Name and Date -->
                   <div class="flex place-items-center justify-between">
-                    <div class="pr-5 font-semibold">{{ user.Nickname }} {{ user.LastName }}</div>
+                    <div class="pr-5 font-semibold">{{ user?.Nickname }} {{ user?.LastName }}</div>
                     <div>
                       Expires on
                       <div class="font-semibold">
@@ -329,7 +329,7 @@ function getUrlReport(path) {
           >
             <td class="p-1">{{ dayjs(r.DateFiled).format('LL') }}</td>
             <td>{{ r.CorpData.Short }}</td>
-            <td class="p-1">{{ r.UserData.Name }} {{ r.UserData.LastName }}</td>
+            <td class="p-1">{{ r.UserData?.Name }} {{ r.UserData?.LastName }}</td>
           </tr>
         </tbody>
       </table>

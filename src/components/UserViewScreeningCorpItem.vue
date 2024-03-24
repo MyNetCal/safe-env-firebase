@@ -121,13 +121,9 @@ const isClickable = computed(() => {
 const lastFileExpiring = computed(() => {
   switch (item.value) {
     case 'Code':
-      return dayjs(userCorp.value?.CodeOfConductExpiresOn)
-        .subtract(30, 'days')
-        .isBefore(dayjs())
+      return dayjs(userCorp.value?.CodeOfConductExpiresOn).subtract(30, 'days').isBefore(dayjs())
     case 'Background':
-      return dayjs(user.value?.BackgroundCheckExpiresOn)
-        .subtract(30, 'days')
-        .isBefore(dayjs())
+      return dayjs(user.value?.BackgroundCheckExpiresOn).subtract(30, 'days').isBefore(dayjs())
     default:
       return false
   }
@@ -136,11 +132,9 @@ const lastFileExpiring = computed(() => {
 const lastFileExpired = computed(() => {
   switch (item.value) {
     case 'Code':
-      return dayjs(userCorp.value?.CodeOfConductExpiresOn)
-        .isBefore(dayjs())
+      return dayjs(userCorp.value?.CodeOfConductExpiresOn).isBefore(dayjs())
     case 'Background':
-      return dayjs(user.value?.BackgroundCheckExpiresOn)
-        .isBefore(dayjs())
+      return dayjs(user.value?.BackgroundCheckExpiresOn).isBefore(dayjs())
     default:
       return false
   }
@@ -374,10 +368,7 @@ function uploadFile() {
             ScreeningBackgroundCheckRequested: '',
             ScreeningBackgroundCheckRenewalRequested: false
           })
-          toggleRequiringStatusReasons(
-            store.REQ_ATT_BACKGROUND,
-            dayjs().format('YYYY-MM-DD')
-          )
+          toggleRequiringStatusReasons(store.REQ_ATT_BACKGROUND, dayjs().format('YYYY-MM-DD'))
         }
       }
     )
@@ -525,7 +516,10 @@ function deleteFile(e, f, index) {
         </div>
 
         <!-- No files Uploaded: Request Buttons available -->
-        <div v-if="!thereAreFilesUploaded" class="mb-1 flex">
+        <div
+          v-if="!thereAreFilesUploaded && !user.ScreeningBackgroundCheckRequested"
+          class="mb-1 flex"
+        >
           <div class="small-button" @click="sentEmailRequestingBacground('Background Check')">
             Request Background Check Only
           </div>
@@ -547,17 +541,9 @@ function deleteFile(e, f, index) {
           </div>
           <div class="mb-1 text-xs text-slate-600">
             <span v-if="lastFileExpired" class="font-semibold text-red-700"
-              >Expired
-              {{
-                dayjs(userCorp.CodeOfConductExpiresOn).fromNow()
-              }}</span
+              >Expired {{ dayjs(userCorp.CodeOfConductExpiresOn).fromNow() }}</span
             >
-            <span v-else
-              >Expires
-              {{
-                dayjs(userCorp.CodeOfConductExpiresOn).fromNow()
-              }}</span
-            >
+            <span v-else>Expires {{ dayjs(userCorp.CodeOfConductExpiresOn).fromNow() }}</span>
           </div>
         </div>
       </div>
