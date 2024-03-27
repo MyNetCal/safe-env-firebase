@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div v-if="userCorp?.UserData">
     <MyModal
       :showModal="showModal"
       :title="
@@ -159,9 +159,6 @@
               Click to be Aprroved
             </MyButton>
           </div>
-          <div v-if="!isUserAllSet" class="relative -top-2 text-sm text-red-600">
-            [Some Screening/Training still missing for {{ userCorp.UserData.Nickname }}]
-          </div>
         </div>
         <div
           v-else
@@ -196,7 +193,7 @@
 <script setup>
 import MyModal from '@/components/MyModal.vue'
 import MyButton from '@/components/MyButton.vue'
-import { computed, ref, toRefs, watch } from 'vue'
+import { computed, ref, toRefs, watch, onUnmounted } from 'vue'
 import {
   arrayUnion,
   collection,
@@ -205,7 +202,8 @@ import {
   getDocs,
   query,
   updateDoc,
-  where
+  where,
+  onSnapshot
 } from 'firebase/firestore'
 import { useFirestore } from 'vuefire'
 import { useGeneralStore } from '@/stores/general'
@@ -213,8 +211,8 @@ import dayjs from 'dayjs'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 const emit = defineEmits(['onClose', 'onUpdate'])
-const props = defineProps({ showModal: Boolean, userCorp: Object, isUserAllSet: Boolean })
-const { showModal, userCorp } = toRefs(props)
+const props = defineProps({ showModal: Boolean, userCorpId: String })
+const { showModal, userCorpId } = toRefs(props)
 
 const db = useFirestore()
 const store = useGeneralStore()
@@ -230,8 +228,10 @@ const voteFromSFCPrelature = ref(false)
 const voteFromSFCCorporation = ref(false)
 const alreadyVoted = ref(false)
 
+const userCorp = ref(null)
+
 watch(
-  () => userCorp.value.ApprovedBy,
+  () => userCorp.value?.ApprovedBy,
   (nv) => {
     if (!nv) {
       totVotesPrelature.value = 0
@@ -266,9 +266,36 @@ watch(
         }
       })
     })
+  }
+)
+
+let unsubUserCorp = null
+
+function getUserCorp() {
+  unsubUserCorp = onSnapshot(doc(db, 'UsersCorporations', userCorpId.value), (d) => {
+    userCorp.value = d.data()
+    getDoc(doc(db, 'Users', userCorp.value.UserId)).then((d) => {
+      userCorp.value.UserData = d.data()
+    })
+    getVotesNeeded()
+  })
+}
+
+getUserCorp()
+
+watch(
+  userCorpId,
+  () => {
+    if (userCorpId.value) {
+      getUserCorp()
+    }
   },
   { immediate: true }
 )
+
+onUnmounted(() => {
+  if (unsubUserCorp) unsubUserCorp()
+})
 
 const hasAllVotesNeeded = computed(
   () =>
@@ -299,10 +326,6 @@ function addVote() {
       date: dayjs().toISOString()
     })
   })
-}
-getVotesNeeded()
-function onOpenModal() {
-  console.log('oppening Modal: ')
 }
 
 function onApprove() {

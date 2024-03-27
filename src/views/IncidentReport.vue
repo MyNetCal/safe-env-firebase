@@ -115,8 +115,8 @@ async function createSentReport() {
     <!-- Form -->
     <div class="mx-auto mt-5 max-w-xl text-left">
       <div class="mb-3 flex flex-wrap gap-2">
-        <MyInputText typeInput="date" label="Date of Incidente" v-model="date" />
-        <MyInputText typeInput="time" label="Aprox. Time" v-model="time" />
+        <MyInputText typeInput="date" label="Date of incidente" v-model="date" />
+        <MyInputText typeInput="time" label="Aprox. time" v-model="time" />
       </div>
       <MyInputText label="Location" class="mb-3" v-model="location" />
       <div class="max-w-sm">
@@ -125,12 +125,12 @@ async function createSentReport() {
       <div v-if="typeIncident == '(8) Other'" class="mb-3">
         <MyInputTextArea label="Specify" v-model="other" />
       </div>
-      <MyInputText class="mb-3" label="Name / Role of Program Staff Involved" v-model="staffName" />
-      <MyInputText class="mb-3" label="Name/ Role of Witness" v-model="witness" />
-      <MyInputTextArea class="" label="Describe the Incident" v-model="description" />
+      <MyInputText class="mb-3" label="Name / role of program staff involved" v-model="staffName" />
+      <MyInputText class="mb-3" label="Name/ role of witness" v-model="witness" />
+      <MyInputTextArea class="" label="Describe the incident" v-model="description" />
       <MyInputTextArea
         class="mb-3"
-        label="Describe the Response of Program Staff"
+        label="Describe the response of program staff"
         v-model="response"
       />
       <div class="text-center">

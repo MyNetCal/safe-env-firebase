@@ -1,6 +1,6 @@
 <script setup>
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { computed, onUnmounted, ref, watchEffect } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 import MyInputText from './MyInputs/MyInputText.vue'
 import dayjs from 'dayjs'
 import {
@@ -8,15 +8,9 @@ import {
   getDocs,
   query,
   where,
-  addDoc,
-  onSnapshot,
-  doc,
-  updateDoc
 } from 'firebase/firestore'
 import { useFirestore } from 'vuefire'
 import MyButton from './MyButton.vue'
-import { useTimeoutFn } from '@vueuse/core'
-import MyMessage from './MyMessage.vue'
 import { useGeneralStore } from '@/stores/general'
 import MySelectAuto from './MyInputs/MySelectAuto.vue'
 
@@ -107,65 +101,19 @@ watchEffect(() => {
     !isErrorDOB.value.formula
 })
 
-let unsub = null
-const message = ref('Sending Email...')
-const emailPending = ref(false)
-const showMessage = ref(false)
 function emailAppLink() {
-  emailPending.value = true
-  showMessage.value = true
-  const { stop: stop1 } = useTimeoutFn(() => {
-    message.value = "It's taking longer than expected..."
-  }, 5000)
-  const { stop: stop2 } = useTimeoutFn(() => {
-    message.value = "Sorry, the email couldn't be delivered"
-    emailPending.value = false
-  }, 10000)
-  addDoc(collection(db, 'mail-triggers'), {
-    template: {
-      name: 'SignUpInfo',
-      data: {
-        Nickname: userToEdit.value.Nickname,
-        corp: store.loginCorporation.Name,
-        corpShort: store.loginCorporation.Short,
-        idUser: userToEdit.value.id,
-        secEmail: store.loginCorporation.EmailFiles
-      }
+  store.createDocTriggerEmailTemplate(
+    'SignUpInfo',
+    {
+      Nickname: userToEdit.value.Nickname,
+      corp: store.loginCorporation.Name,
+      corpShort: store.loginCorporation.Short,
+      idUser: userToEdit.value.id,
+      secEmail: store.loginCorporation.EmailFiles
     },
-    to: userToEdit.value.Email
-  }).then((res) => {
-    const idEmail = res.id
-    if (unsub) {
-      unsub()
-    }
-    unsub = onSnapshot(doc(db, 'mail-triggers', idEmail), (d) => {
-      const delivery = d.data().delivery
-      if (delivery?.state == 'SUCCESS') {
-        message.value = 'Email has been sent'
-        emailPending.value = false
-        stop1()
-        stop2()
-        userToEdit.value.EmailSent = true
-        updateDoc(doc(db, 'Users', userToEdit.value.id), {
-          EmailSent: true
-        })
-        return
-      }
-      if (delivery?.state == 'ERROR') {
-        message.value = delivery.error
-        emailPending.value = false
-        stop1()
-        stop2()
-      }
-    })
-  })
+    [userToEdit.value.Email]
+  )
 }
-
-onUnmounted(() => {
-  if (unsub) {
-    unsub()
-  }
-})
 </script>
 
 <template>
@@ -202,7 +150,6 @@ onUnmounted(() => {
           <FontAwesomeIcon icon="times" />
         </div>
       </div>
-     
     </div>
 
     <!-- Name, Last Name -->
@@ -261,7 +208,6 @@ onUnmounted(() => {
         Invitation Email
       </MyButton>
     </div>
-    <MyMessage v-model="showMessage" :message="message" :spinner="emailPending" />
   </div>
 </template>
 

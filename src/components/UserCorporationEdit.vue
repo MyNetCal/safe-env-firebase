@@ -209,7 +209,7 @@ async function reactivateUser() {
       </div>
       <div v-if="corpToEdit.id" class="my-2 text-center">
         <MyButton v-if="corpToEdit.Active" class="bg-red-600" @click="showDialogDeactivate = true"
-          >No Active anymore</MyButton
+          >Not active anymore</MyButton
         >
         <MyButton v-else class="bg-grean-600" @click="showDialogReactivate = true"
           >Re-activate</MyButton

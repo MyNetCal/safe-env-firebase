@@ -14,14 +14,7 @@ import MyButton from '@/components/MyButton.vue'
 import dayjs from 'dayjs'
 import localizedFormat from 'dayjs/plugin/localizedFormat'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import {
-  doc,
-  arrayUnion,
-  collection,
-  addDoc,
-  setDoc,
-  arrayRemove,
-} from 'firebase/firestore'
+import { doc, arrayUnion, collection, addDoc, setDoc, arrayRemove } from 'firebase/firestore'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 import { useGeneralStore } from '@/stores/general'
@@ -81,19 +74,19 @@ const codeExpired = computed(
 const codeCardText = computed(() => {
   if (validCode.value && codeExpiring.value) {
     return (
-      'Your Signed Code of Conduct is Expiring on ' +
+      'Your Signed Code of Conduct is expiring on ' +
       dayjs(store.loginUserCorporation.CodeOfConductExpiresOn).format('LL') +
-      '. Please Re-sign the '
+      '. Please re-sign the '
     )
   }
   if (!validCode.value && codeExpired.value) {
-    return 'Your Signed Code of Conduct Expired! Please Re-sign the '
+    return 'Your signed Code of Conduct expired! Please re-sign the '
   }
   if (!validCode.value && store.loginUserCorporation?.ScreeningReq?.Code?.length > 0) {
-    return 'Please Read and Sign the Updated '
+    return 'Please read and sign the updated '
   }
   if (!validCode.value) {
-    return 'Please Read and Sign the '
+    return 'Please read and sign the '
   }
   return null
 })
@@ -107,7 +100,6 @@ const user = computed(() => {
 const validConsent = computed(() => store.loginUserCorporation?.ScreeningReqFlagConsent || false)
 
 const seeSignature = ref(false)
-
 
 const isCheckBackgroundExpiring = computed(
   () =>
@@ -284,7 +276,6 @@ async function onCreatingEmailingConsent() {
   setDoc(pdfRef, data)
 }
 
-
 function showFile(file) {
   getDownloadURL(storageRef(storage, file)).then((url) => {
     window.open(url)
@@ -308,30 +299,33 @@ function showFile(file) {
     <!-- Pending Screening and Code of Conduct -->
     <div class="mx-auto my-5 w-fit max-w-lg shadow-md" v-if="codeCardText || !validConsent">
       <div class="pb-3">
-        <div class="rounded-t bg-red-700 p-2 text-lg font-semibold text-white">Pending Tasks</div>
+        <div class="rounded-t bg-red-700 p-2 text-lg font-semibold text-white">Pending tasks</div>
         <div v-if="codeCardText" class="px-2 pt-3 text-left">
           &bull; {{ codeCardText }}
           <span class="cursor-pointer text-blue-600 underline" @click="codeEditing = true">
-            Code of Conduct
+            Code of conduct
           </span>
         </div>
         <div v-if="!validConsent" class="px-2 pt-3 text-left">
           &bull; Please Sign the
           <span class="cursor-pointer text-blue-600 underline" @click="consentEditing = true"
-            >Consent to Release and Share Information</span
+            >Consent to release and share information</span
           >
         </div>
       </div>
     </div>
 
     <!-- Renew Background Check -->
-    <div class="mx-auto my-5 w-fit shadow-md" v-if="isCheckBackgroundExpiring">
+    <div
+      class="mx-auto my-5 w-fit shadow-md"
+      v-if="isCheckBackgroundExpiring || loginUser.ScreeningBackgroundCheckRenewalRequested"
+    >
       <div class="pb-3">
         <div class="rounded-t bg-yellow-700 p-2 text-lg font-semibold text-white">
-          Background Check
+          Background check
         </div>
         <div class="px-2 pt-3 text-left">
-          <div>
+          <div v-if="isCheckBackgroundExpiring">
             Your background check is expiring on
             <span class="font-semibold">
               {{
@@ -341,6 +335,7 @@ function showFile(file) {
               }}
             </span>
           </div>
+          <div>Awaiting background check</div>
         </div>
       </div>
     </div>
@@ -350,7 +345,7 @@ function showFile(file) {
       <!-- List of Code of Counduct Signed -->
       <div v-if="validCode || codeExpired" class="w-fit p-5 shadow-md">
         <div class="font-semibold">
-          <FontAwesomeIcon icon="check" class="text-green-700" /> Code of Conduct Signed
+          <FontAwesomeIcon icon="check" class="text-green-700" /> Code of conduct signed
         </div>
         <div class="pt-2">
           <template
@@ -367,8 +362,8 @@ function showFile(file) {
       <!-- Card with Consent Date -->
       <div v-if="validConsent" class="w-fit p-5 shadow-md">
         <div class="font-semibold">
-          <FontAwesomeIcon icon="check" class="text-green-700" /> Consent to Release and Share
-          Information
+          <FontAwesomeIcon icon="check" class="text-green-700" /> Consent to release and share
+          information
         </div>
         <div
           @click="showFile(store.loginUserCorporation?.ScreeningReq?.Consent?.[0].path)"
@@ -385,7 +380,7 @@ function showFile(file) {
       <UsersViewTrainingList :user="user" />
     </div>
 
-    <!-- Screen to Read and Sign the Code of Conduct -->
+    <!-- Screen to read and sign the Code of Conduct -->
     <div
       v-if="codeEditing && store.loginCorporation"
       class="absolute inset-0 z-50 justify-between bg-slate-200/95 p-2 text-left"
@@ -480,7 +475,6 @@ function showFile(file) {
         </div>
       </div>
     </div>
-
   </div>
 </template>
 

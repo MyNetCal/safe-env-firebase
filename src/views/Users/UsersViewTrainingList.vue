@@ -155,7 +155,7 @@ function getUrl(p) {
             <div class="p-2">
               <!-- Functions -->
               <div class="test-slate-500 flex text-sm">
-                Requiered for: {{ t.Functions.join(', ') }}
+                Required for: {{ t.Functions.join(', ') }}
               </div>
 
               <!-- Completed on -->
@@ -180,7 +180,7 @@ function getUrl(p) {
                     activity with minors
                   </div>
                   <div v-else>
-                    Should be Completed in <span class="font-semibold">{{ t.Complete }} </span> days
+                    Should be completed in <span class="font-semibold">{{ t.Complete }} </span> days
                     after being approved
                   </div>
                 </div>

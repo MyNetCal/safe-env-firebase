@@ -47,11 +47,9 @@ import {
 } from 'firebase/storage'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
 import {
-  addDoc,
   arrayUnion,
   collection,
   doc,
-  onSnapshot,
   updateDoc,
   getDocs,
   query,
@@ -59,8 +57,6 @@ import {
   arrayRemove,
   getDoc
 } from 'firebase/firestore'
-import { useTimeoutFn } from '@vueuse/core'
-import MyMessage from './MyMessage.vue'
 import dayjs from 'dayjs'
 import { getEmailSECPrelature } from '@/stores/datadb'
 import relativeTime from 'dayjs/plugin/relativeTime'
@@ -121,9 +117,15 @@ const isClickable = computed(() => {
 const lastFileExpiring = computed(() => {
   switch (item.value) {
     case 'Code':
-      return dayjs(userCorp.value?.CodeOfConductExpiresOn).subtract(30, 'days').isBefore(dayjs())
+      return (
+        userCorp.value?.CodeOfConductExpiresOn &&
+        dayjs(userCorp.value?.CodeOfConductExpiresOn).subtract(30, 'days').isBefore(dayjs())
+      )
     case 'Background':
-      return dayjs(user.value?.BackgroundCheckExpiresOn).subtract(30, 'days').isBefore(dayjs())
+      return (
+        user.value?.BackgroundCheckExpiresOn &&
+        dayjs(user.value?.BackgroundCheckExpiresOn).subtract(30, 'days').isBefore(dayjs())
+      )
     default:
       return false
   }
@@ -209,9 +211,7 @@ onKeyStroke(
   },
   { target: inputDateBackground }
 )
-const message = ref('Sending Email...')
-const emailPending = ref(false)
-const showMessage = ref(false)
+
 const bacgkroundNewDate = ref(user.value.ScreeningBackgroundDate)
 
 watch(
@@ -221,65 +221,22 @@ watch(
   }
 )
 
-async function sentEmailRequestingBacground(type) {
-  // Create doc to Trigger email
-  message.value = 'Sending Email'
-  showMessage.value = true
-
-  //  Create counters just in case it doesnt work
-  const { stop: stop1 } = useTimeoutFn(() => {
-    message.value = "It's taking longer than expected..."
-  }, 30000)
-  const { stop: stop2 } = useTimeoutFn(() => {
-    message.value = "Sorry, the email couldn't be delivered."
-    emailPending.value = false
-  }, 60000)
-
-  // triger email to SEC prelature
+async function sentEmailRequestingBackground(type) {
   const emailSECPrelature = await getEmailSECPrelature()
-  console.log('emailSECPrelature: ', emailSECPrelature)
-  const resSECPrelature = await addDoc(collection(db, 'mail-triggers'), {
-    to: [emailSECPrelature],
-    message: {
-      subject: `${type} Requested`,
-      html: `<p>${type} Requested for ${user.value.Name} ${user.value.LastName}</p>
+  store.createDocTriggerEmail(
+    `${type} Requested`,
+    `<p>${type} Requested for ${user.value.Name} ${user.value.LastName}</p>
               <p>Email: ${user.value.Email}</p>
               <p>Corporation: ${corp.value.Name}</p>
               <p>Activity: ${store.activities[userCorp.value.Activity].Name}</p>
               <p>Role: ${userCorp.value.Role}</p>
               <p>Entity: ${userCorp.value.Entity}</p>
               <p>Board: ${userCorp.value.Board ? 'Yes' : 'No'}</p>
-              <p>Screening: ${userCorp.value.Screening ? 'Yes' : 'No'}</p>`
-    }
-  })
-
-  const idEmailSECPrelature = resSECPrelature.id
-  let unsubEmailSECPrelature = null
-
-  // Listener to SUCCESS state in doc
-  if (unsubEmailSECPrelature) {
-    unsubEmailSECPrelature()
-  }
-  unsubEmailSECPrelature = onSnapshot(doc(db, 'mail-triggers', idEmailSECPrelature), (d) => {
-    const delivery = d.data().delivery
-    if (delivery?.state == 'SUCCESS') {
-      updateDoc(doc(db, 'Users', user.value.id), {
-        ScreeningBackgroundCheckRequested: type
-      })
-      message.value = 'Email has been sent'
-      emailPending.value = false
-      stop1()
-      stop2()
-      unsubEmailSECPrelature()
-      return
-    }
-    if (delivery?.state == 'ERROR') {
-      message.value = delivery.error
-      emailPending.value = false
-      stop1()
-      stop2()
-      unsubEmailSECPrelature()
-    }
+              <p>Screening: ${userCorp.value.Screening ? 'Yes' : 'No'}</p>`,
+    [emailSECPrelature]
+  )
+  updateDoc(doc(db, 'Users', user.value.id), {
+    ScreeningBackgroundCheckRequested: type
   })
 }
 
@@ -324,9 +281,6 @@ async function toggleRequiringStatusReasons(reason = '', newDate) {
   })
 }
 
-// **********************
-// #region - Upload Files
-// **********************
 function uploadFile() {
   const data = files.value?.item(0)
 
@@ -383,12 +337,7 @@ onChange(() => {
 function openFileDiologAndUpload() {
   open({ multiple: false })
 }
-// #endregion - Upload Files
-// -------------------------
 
-// *********************
-// #region Download File
-// *********************
 function downloadFile(f) {
   getDownloadURL(storageRef(storage, f))
     .then((url) => {
@@ -398,12 +347,7 @@ function downloadFile(f) {
       console.log('Error: ', error)
     })
 }
-// #endregion Download File
-// ^^^^^^^^^^^^^^^^^^^^^^^^
 
-// *******************
-// #region Delete File
-// *******************
 function deleteFile(e, f, index) {
   e.stopPropagation()
 
@@ -419,8 +363,6 @@ function deleteFile(e, f, index) {
       console.log('Error: ', error)
     })
 }
-// #endregion Delete File
-// ^^^^^^^^^^^^^^^^^^^^^^
 </script>
 
 <template>
@@ -493,41 +435,57 @@ function deleteFile(e, f, index) {
 
           <!-- Expiers On -->
           <div class="mb-1 text-xs text-slate-600">
-            <span v-if="lastFileExpired" class="font-semibold text-red-700"
-              >Expired
-              {{ dayjs(bacgkroundNewDate).add(corp.BackgroundCheckValidFor, 'y').fromNow() }}</span
-            >
-            <span v-else
-              >Expires
-              {{ dayjs(bacgkroundNewDate).add(corp.BackgroundCheckValidFor, 'y').fromNow() }}</span
-            >
+            <!-- BC already Expired -->
+            <div v-if="lastFileExpired" class="font-semibold text-red-700">
+              Expired
+              {{ dayjs(bacgkroundNewDate).add(corp.BackgroundCheckValidFor, 'y').fromNow() }}
+            </div>
+
+            <!-- BC is Valid -->
+            <div v-else>
+              <!-- Expires on -->
+              <div>
+                Expires
+                {{ dayjs(bacgkroundNewDate).add(corp.BackgroundCheckValidFor, 'y').fromNow() }}
+              </div>
+
+              <!-- if is about to expire -->
+              <div v-if="lastFileExpiring">
+                <!-- SEC Prelature needs to request BC to Presidium -->
+                <div v-if="user?.ScreeningBackgroundCheckRenewalRequested">Renewal pending</div>
+                <!-- User has to follow email from presidium and load the file -->
+                <div v-else>Awaiting renewal request</div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <!-- Requested First Background Check Legend -->
-        <div v-if="user?.ScreeningBackgroundCheckRequested" class="my-2 text-sm text-red-700">
-          {{ user?.ScreeningBackgroundCheckRequested }} Requested
-        </div>
-
-        <!-- Requested Renewal Background Check Legend -->
-        <div v-if="lastFileExpiring" class="mb-1 text-sm text-red-700">
-          <span v-if="user?.ScreeningBackgroundCheckRenewalRequested">Renewal pending</span>
-          <span v-else>Awaiting renewal request</span>
-        </div>
-
-        <!-- No files Uploaded: Request Buttons available -->
-        <div
-          v-if="!thereAreFilesUploaded && !user.ScreeningBackgroundCheckRequested"
-          class="mb-1 flex"
-        >
-          <div class="small-button" @click="sentEmailRequestingBacground('Background Check')">
-            Request Background Check Only
+        <!-- There are no files uploaded -->
+        <div v-else>
+          <!-- BC has not been requested to SEC Prelature for first time -->
+          <div v-if="!user?.ScreeningBackgroundCheckRequested" class="flex">
+            <div class="small-button" @click="sentEmailRequestingBackground('Background Check')">
+              Request Background Check Only
+            </div>
+            <div
+              class="small-button"
+              @click="sentEmailRequestingBackground('Background Check & Training')"
+            >
+              Request Background Check & Training
+            </div>
           </div>
-          <div
-            class="small-button"
-            @click="sentEmailRequestingBacground('Background Check & Training')"
-          >
-            Request Background Check & Training
+
+          <!-- BC Has been Requested to SEC Prelature -->
+          <div v-else>
+            <!-- BC Has not been requested by SEC Prelature to Presidium -->
+            <div v-if="!user?.ScreeningBackgroundCheckRenewalRequested">
+              {{ user?.ScreeningBackgroundCheckRequested }} requested
+            </div>
+
+            <!-- BC has been requested to Presidium. File has to be uploaded -->
+            <div v-else>
+              Awaiting background check
+            </div>
           </div>
         </div>
       </div>
@@ -574,9 +532,6 @@ function deleteFile(e, f, index) {
         </div>
       </div>
     </div>
-
-    <!-- Message -->
-    <MyMessage v-model="showMessage" :message="message" :spinner="emailPending" />
 
     <!-- New Background Expired Date Confirmation  -->
     <Dialog

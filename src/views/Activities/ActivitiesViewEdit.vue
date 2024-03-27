@@ -1382,7 +1382,7 @@ async function createPDF() {
                 class="text-sm text-slate-500"
                 v-if="isValidStarts && isValidEnds && !isOvernightActivity"
               >
-                This is a {{ actDuration }} hrs. long activity
+                This is a {{ actDuration }} hr long activity
               </div>
 
               <!-- Comments -->

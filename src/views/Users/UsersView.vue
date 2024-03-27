@@ -10,11 +10,11 @@
     </div>
 
     <!-- List of Users by cards -->
-    <div class="mx-auto mt-3 grow">
+    <div class="mx-auto mt-3 grow thinsb overflow-auto mb-5">
       <!-- Users loop -->
       <TransitionGroup name="list">
         <template v-if="personnelOrder.length > 0">
-          <template v-for="(p, index) in personnelOrder" :key="p.id">
+          <template v-for="p in personnelOrder" :key="p.id">
             <!-- Outter Box -->
             <div
               class="mb-2 rounded text-emerald-900 shadow"
@@ -62,7 +62,7 @@
                   </div>
                   <div
                     class="click-icon"
-                    @click="openUsersViewVote(index)"
+                    @click="openUsersViewVote(p.id)"
                     :class="[
                       p.userHasAllScreening
                         ? 'cursor-pointer text-green-700'
@@ -174,8 +174,7 @@
     <div v-if="showUsersViewVote">
       <UsersViewVote
         :show-modal="showUsersViewVote"
-        :user-corp="personnelOrder[indexSelected]"
-        :is-user-all-set="true"
+        :userCorpId="userCorpIdSelected"
         @onClose="showUsersViewVote = false"
         @onUpdate="showUsersViewVote = false"
       />
@@ -327,6 +326,7 @@ async function getPersonnel() {
       if (change.type === 'removed') {
         personnel.value.splice(oldIndex, 1)
         unsubUsers[t.id]()
+        orderPersonnel()
       }
     })
   })
@@ -387,7 +387,7 @@ function editUserInfo(userInfo) {
   showUserCorpEdit.value = true
 }
 
-function editUsersScreening(userInfo) { 
+function editUsersScreening(userInfo) {
   userSelected.value = userInfo
   userSelectedId.value = userInfo.id
   showUsersViewScreening.value = true
@@ -399,17 +399,14 @@ function editUsersTrainning(userInfo) {
 }
 
 const showUsersViewVote = ref(false)
-const indexSelected = ref(0)
-function openUsersViewVote(index) {
-  indexSelected.value = index
+const userCorpIdSelected = ref('')
+function openUsersViewVote(id) {
+  userCorpIdSelected.value = id
   showUsersViewVote.value = true
 }
 </script>
 
 <style scoped>
-.modal-height {
-  height: calc(100vh - 48px);
-}
 .click-icon {
   @apply rounded px-1.5 py-1 hover:bg-emerald-800 hover:text-emerald-100;
 }
@@ -417,7 +414,4 @@ function openUsersViewVote(index) {
 .v-leave-active {
   transition: opacity 0.2s ease;
 }
-
-
-
 </style>

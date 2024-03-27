@@ -94,7 +94,7 @@ function deleteMessage(id) {
       <div
         class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-300 px-3 text-slate-800 print:hidden"
       >
-        <div>v.4.4</div>
+        <div>v.4.5</div>
         <div class="flex">{{ accessLevelName }} [{{ storeGeneral.accessLevel }}]</div>
       </div>
     </div>
@@ -190,7 +190,7 @@ function deleteMessage(id) {
 }
 @media (min-width: 640px) {
   .app-layout-grid {
-    grid-template-columns: [panel] 40px [main] 1fr [end];
+    grid-template-columns: [panel] 46px [main] 1fr [end];
     grid-template-areas:
       'header header'
       'sidebar content'
@@ -202,7 +202,26 @@ function deleteMessage(id) {
   }
   .app-layout-content {
     grid-area: content;
-    width: calc(100vw - 40px);
+    width: calc(100vw - 46px);
+    max-height: calc(100vh - 36px - 24px);
+    overflow: hidden;
+  }
+}
+@media (max-height: 600px) {
+  .app-layout-grid {
+    grid-template-columns: [panel] 46px [main] 1fr [end];
+    grid-template-areas:
+      'header header'
+      'sidebar content'
+      'footer footer';
+  }
+  .app-layout-sidebar {
+    grid-area: sidebar;
+    max-height: calc(100vh - 36px - 24px);
+  }
+  .app-layout-content {
+    grid-area: content;
+    width: calc(100vw - 46px);
     max-height: calc(100vh - 36px - 24px);
     overflow: hidden;
   }

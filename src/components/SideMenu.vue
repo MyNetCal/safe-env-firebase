@@ -3,7 +3,7 @@
     ref="sidebar"
     @pointerenter="onEnterMenu"
     @pointerleave="onLeaveMenu"
-    class="h-full overflow-x-hidden bg-slate-200/90 text-left transition-all backdrop:blur print:hidden"
+    class="h-full overflow-x-hidden bg-slate-200/90 text-left transition-all backdrop:blur print:hidden thinsb-menu"
     :class="[showSidemenu ? 'w-64' : 'w-full']"
   >
     <div v-if="!showSidemenu && !isLargeScreen" class="fixed left-2 top-1" @click="onClickShowOpen">
@@ -197,4 +197,25 @@ function onClickDisclosureButton(close, name) {
 } */
 </script>
 
-<style scoped></style>
+<style scoped>
+  .thinsb-menu::-webkit-scrollbar {
+    width: 4px;
+    height: 8px;
+  }
+
+  /* Track */
+  .thinsb-menu::-webkit-scrollbar-track {
+    background: #e1e1e1;
+  }
+
+  /* Handle */
+  .thinsb-menu::-webkit-scrollbar-thumb {
+    background: #aaa;
+    @apply rounded-md;
+  }
+
+  /* Handle on hover */
+  .thinsb-menu::-webkit-scrollbar-thumb:hover {
+    background: #555;
+  }
+</style>

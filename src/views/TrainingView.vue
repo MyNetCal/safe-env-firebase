@@ -239,7 +239,7 @@ function deleteTraining() {
                 </div>
                 <div class="rounded-b px-3 py-2">
                   <div class="mb-1">
-                    <span class="text-slate-600">Requiered for: </span>
+                    <span class="text-slate-600">Required for: </span>
                     <span v-for="(f, index) in req.Functions" :key="f" class="font-semibold">
                       <span v-if="index > 0">, </span>
                       {{ f }}
@@ -288,7 +288,7 @@ function deleteTraining() {
                 </div>
                 <div class="rounded-b px-3 py-2">
                   <div class="mb-1">
-                    <span class="text-slate-600">Requiered for: </span>
+                    <span class="text-slate-600">Required for: </span>
                     <span v-for="(f, index) in req.Functions" :key="f" class="font-semibold">
                       <span v-if="index > 0">, </span>
                       {{ f }}

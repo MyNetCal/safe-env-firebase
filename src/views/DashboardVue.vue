@@ -8,7 +8,9 @@ import {
   query,
   where,
   updateDoc,
-  orderBy
+  orderBy,
+  and,
+  or
 } from 'firebase/firestore'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
 import { ref, onUnmounted } from 'vue'
@@ -43,9 +45,17 @@ function getBackgroundChecksNeedRequest() {
   }
   const q = query(
     collection(db, 'UsersCorporations'),
-    where('BackgroundCheckExpiresOn', '<=', dayjs().add(30, 'days').format('YYYY-MM-DD')),
-    where('BackgroundCheckExpiresOn', '>=', dayjs().format('YYYY-MM-DD')),
-    where('Active', '==', true)
+    and(
+      or(
+        and(
+          where('BackgroundCheckExpiresOn', '<=', dayjs().add(30, 'days').format('YYYY-MM-DD')),
+          where('BackgroundCheckExpiresOn', '>=', dayjs().format('YYYY-MM-DD'))
+        ),
+        where('BackgroundCheckExpiresOn', '==', '')
+      ),
+
+      where('Active', '==', true)
+    )
   )
   needBackgroundRequest.value = {}
   const userCorps = []
@@ -76,6 +86,7 @@ function getBackgroundChecksNeedRequest() {
       const user = userRef.data()
       const corp = corpRef.data()
       userCorp.CorpInfo = corp
+      if (!user.ScreeningBackgroundCheckRequested) continue
       needBackgroundRequest.value[user.id] = {
         id: user.id,
         Name: user?.Name,
@@ -83,7 +94,8 @@ function getBackgroundChecksNeedRequest() {
         Nickname: user?.Nickname,
         Email: user.Email,
         ExpiresOn: userCorp.BackgroundCheckExpiresOn,
-        ScreeningBackgroundCheckRenewalRequested: user.ScreeningBackgroundCheckRenewalRequested
+        ScreeningBackgroundCheckRenewalRequested: user.ScreeningBackgroundCheckRenewalRequested,
+        ScreeningBackgroundCheckRequested: user.ScreeningBackgroundCheckRequested
       }
       if (!needBackgroundRequest.value[user.id].Corps) {
         needBackgroundRequest.value[user.id].Corps = []
@@ -169,12 +181,12 @@ function getReportsList() {
       const { newIndex, oldIndex, doc: tDoc } = change
       const t = tDoc.data()
       t.id = tDoc.id
-     
+
       const corpRef = await getDoc(doc(db, 'Corporations', t.CorporationId))
       t.CorpData = corpRef.data()
       const userRef = await getDoc(doc(db, 'Users', t.UserId))
       t.UserData = userRef.data()
-      
+
       if (change.type === 'added') {
         reportsList.value.splice(newIndex, 0, t)
       }
@@ -208,13 +220,13 @@ function getUrlReport(path) {
     <div class="mx-auto mt-5 w-fit">
       <!-- Title -->
       <div class="rounded-t bg-slate-700 px-5 py-3 text-white">
-        <div>Background Check about to Expire</div>
+        <div>Background Check needed</div>
 
         <div
           class="mt-2 cursor-pointer rounded p-1 text-sm hover:bg-slate-600"
           @click.prevent="includeRequested = !includeRequested"
         >
-          Including alrady requested:
+          Including already requested:
           <FontAwesomeIcon
             class="ml-3"
             size="xl"
@@ -234,34 +246,39 @@ function getUrlReport(path) {
                 <div class="bg-slate-200 px-2 py-2">
                   <!-- Name and Date -->
                   <div class="flex place-items-center justify-between">
-                    <div class="pr-5 font-semibold">{{ user?.Nickname }} {{ user?.LastName }}</div>
                     <div>
-                      Expires on
-                      <div class="font-semibold">
-                        {{ dayjs(user.ExpiresOn).format('MMM D, YYYY') }}
+                      <div class="pr-5 font-semibold">
+                        {{ user?.Nickname }} {{ user?.LastName }}
+                      </div>
+                      <div v-if="user.ExpiresOn">
+                        Background check expires on
+                        <div class="font-semibold">
+                          {{ dayjs(user.ExpiresOn).format('MMM D, YYYY') }}
+                        </div>
+                      </div>
+                      <div v-else>
+                        {{ user.ScreeningBackgroundCheckRequested }}
                       </div>
                     </div>
+
                     <DisclosureButton>
                       <div class="p-2">
                         <FontAwesomeIcon
                           size="xl"
                           icon="fa-caret-down"
-                          :class="open ? '-rotate-90 transform' : ''"
+                          :class="open ? '' : '-rotate-90 transform'"
                         />
                       </div>
                     </DisclosureButton>
                   </div>
 
-                  <!-- Email -->
-                  <div class="mt-2">
-                    <div>Email: {{ user.Email }}</div>
-                  </div>
+                 
 
                   <div
                     class="mt-2 cursor-pointer rounded py-1 text-sm hover:bg-slate-300"
                     @click.prevent="backgroundRequested(user)"
                   >
-                    Background Check has been Requested:
+                    Done:
                     <FontAwesomeIcon
                       class="ml-3"
                       size="xl"
@@ -285,6 +302,10 @@ function getUrlReport(path) {
                 <DisclosurePanel>
                   <!-- gray title -->
                   <div class="thinsb max-h-60 overflow-auto">
+                     <!-- Email -->
+                  <div class="mt-2">
+                    <div>Email: {{ user.Email }}</div>
+                  </div>
                     <div v-for="userCorp in user.Corps" :key="userCorp.id">
                       <div class="ml-3">&bull; {{ userCorp.CorpInfo?.Short }}</div>
 

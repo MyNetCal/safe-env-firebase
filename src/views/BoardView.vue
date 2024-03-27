@@ -325,7 +325,7 @@ function getUrlReport(path) {
 
       <!--Background Ckeck Valid For -->
       <div class="mx-auto mt-6 flex flex-wrap place-items-center text-slate-700">
-        Background Check Valid For
+        Background check valid for
         <MyInputText
           class="mx-2 w-12"
           v-model="backgroundCheckValidFor"
@@ -338,7 +338,7 @@ function getUrlReport(path) {
 
       <!-- Code of Conduct Valid For -->
       <div class="mx-auto mt-6 flex flex-wrap place-items-center text-slate-700">
-        Code of Conduct Valid For
+        Code of conduct valid for
         <MyInputText
           class="mx-2 w-12"
           v-model="codeOfConductValidFor"
