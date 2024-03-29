@@ -3,14 +3,8 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { computed, ref, watchEffect } from 'vue'
 import MyInputText from './MyInputs/MyInputText.vue'
 import dayjs from 'dayjs'
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-} from 'firebase/firestore'
+import { collection, getDocs, query, where } from 'firebase/firestore'
 import { useFirestore } from 'vuefire'
-import MyButton from './MyButton.vue'
 import { useGeneralStore } from '@/stores/general'
 import MySelectAuto from './MyInputs/MySelectAuto.vue'
 
@@ -67,6 +61,35 @@ function onClickUserFromOtherCorporation() {
   userToEdit.value = JSON.parse(JSON.stringify(userSelected.value))
 }
 
+async function checkEmailStatus() {
+  console.log(' New email: ', userToEdit.value.Email)
+  // eslint-disable-next-line no-useless-escape
+  if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(userToEdit.value.Email)) {
+    console.log('Email is Valid')
+    const userQuery = query(collection(db, 'Users'), where('Email', '==', userToEdit.value.Email))
+    const userRef = await getDocs(userQuery)
+    if (userRef.size > 0) {
+      const user = userRef.docs[0].data()
+      userToEdit.value = {
+        id: user.id,
+        Name: user.Name,
+        LastName: user.LastName,
+        Nickname: user.Nickname,
+        FullName: user.Name + ' ' + user.LastName,
+        Middle: user.Middle,
+        Email: user.Email,
+        DOB: user.DOB,
+        EmailSent: user.EmailSent
+      }
+
+      return
+    }
+    console.log('User does not exist...')
+    return
+  }
+  console.log('Email is not valid')
+}
+
 const isValidEmail = ref(true)
 
 const isErrorName = computed(() => {
@@ -100,20 +123,6 @@ watchEffect(() => {
     isValidEmail.value &&
     !isErrorDOB.value.formula
 })
-
-function emailAppLink() {
-  store.createDocTriggerEmailTemplate(
-    'SignUpInfo',
-    {
-      Nickname: userToEdit.value.Nickname,
-      corp: store.loginCorporation.Name,
-      corpShort: store.loginCorporation.Short,
-      idUser: userToEdit.value.id,
-      secEmail: store.loginCorporation.EmailFiles
-    },
-    [userToEdit.value.Email]
-  )
-}
 </script>
 
 <template>
@@ -124,6 +133,7 @@ function emailAppLink() {
     <div class="mb-2 text-center text-sm text-slate-500">
       [This information is shared among all corporations]
     </div>
+
     <!-- Search User Outer Box -->
     <div
       v-if="userToEdit.id == '' && !searchBoxIsClosed"
@@ -184,6 +194,7 @@ function emailAppLink() {
           type-input="email"
           v-model:isValid="isValidEmail"
           :deactivated="userToEdit.id != ''"
+          @update:model-value="checkEmailStatus"
         >
         </MyInputText>
       </div>
@@ -195,18 +206,6 @@ function emailAppLink() {
           :isError="isErrorDOB"
         ></MyInputText>
       </div>
-    </div>
-
-    <!-- Email Link -->
-    <div
-      v-if="(!userToEdit.LastLogin || !userToEdit.EmailSent) && userToEdit.id != ''"
-      class="mx-auto mt-3 w-fit"
-    >
-      <MyButton class="bg-orange-600" @click="emailAppLink">
-        <span v-if="userToEdit.EmailSent">Resend</span>
-        <span v-else>Send</span>
-        Invitation Email
-      </MyButton>
     </div>
   </div>
 </template>

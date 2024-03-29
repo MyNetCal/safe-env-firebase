@@ -217,6 +217,7 @@ async function reactivateUser() {
       </div>
     </div>
 
+    <!-- Warning: Deactivating a User -->
     <Dialog
       :open="showDialogDeactivate"
       @close="showDialogDeactivate = false"
@@ -250,6 +251,7 @@ async function reactivateUser() {
       </DialogPanel>
     </Dialog>
 
+    <!-- Warning: Activating a User -->
     <Dialog
       :open="showDialogReactivate"
       @close="showDialogReactivate = false"

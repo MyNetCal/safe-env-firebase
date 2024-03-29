@@ -13,8 +13,9 @@
           <MyInputText
             label="Email"
             v-model="user"
-            placeholder="Username"
+            placeholder="Email"
             autocomplete="autocomplete"
+            class="mb-2"
           >
           </MyInputText>
           <MyInputPassword
@@ -23,8 +24,9 @@
             placeholder="Password"
             autocomplete="current-password"
             :isError="isError"
-            class="mb-6"
+            class=""
           />
+          
         </div>
         <MyInputCheckBox v-model="checkKeepLogin">Keep me logged in</MyInputCheckBox>
         <MyButton color="bg-blue-600" @click="signInWithEmail">Login</MyButton>

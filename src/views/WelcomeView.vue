@@ -2,10 +2,10 @@
 import MyButton from '@/components/MyButton.vue'
 import MyInputPassword from '@/components/MyInputs/MyInputPassword.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
-import { toRefs, ref, watchEffect, computed } from 'vue'
+import { toRefs, ref, computed } from 'vue'
 import { useScreenOrientation } from '@vueuse/core'
-import { useDocument, useFirebaseAuth, useFirestore } from 'vuefire'
-import { doc } from 'firebase/firestore'
+import { useFirebaseAuth, useFirestore } from 'vuefire'
+import { doc, getDoc } from 'firebase/firestore'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
 import router from '@/router'
 
@@ -22,10 +22,14 @@ const password2 = ref('')
 const { orientation } = useScreenOrientation()
 
 const userRef = doc(db, 'Users', id.value)
-const user = useDocument(userRef)
-
-watchEffect(() => {
+const user = ref(null)
+getDoc(userRef).then((u) => {
+  user.value = u.data()
   userEmail.value = user.value?.Email || ''
+  if (user.value?.LastLogin) {
+    console.log('User has already login! Redirecting to Login page ', user.value?.Name);
+    router.push('/')
+  }
 })
 
 const loginFailed = ref(false)
@@ -85,6 +89,7 @@ function createNewUser() {
             placeholder="Username"
             autocomplete="autocomplete"
             deactivated
+            class="mb-6"
           >
           </MyInputText>
           <MyInputPassword
@@ -92,9 +97,9 @@ function createNewUser() {
             v-model="password"
             placeholder="Password"
             autocomplete="current-password"
-            :isError="isError"
-            class="mt-4"
+            class=""
           />
+          <div class="relative -top-4 text-xs text-slate-500">At least 8 characters</div>
           <MyInputPassword
             label="Re-enter Password"
             v-model="password2"

@@ -4,7 +4,7 @@ import dayjs from 'dayjs'
 import localizedFormat from 'dayjs/plugin/localizedFormat'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
-import { onUnmounted, ref, toRefs } from 'vue'
+import { onUnmounted, ref, toRefs, watch } from 'vue'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
 import UsersViewTrainingListEdit from './UsersViewTrainingListEdit.vue'
 import { getDownloadURL } from 'firebase/storage'
@@ -26,8 +26,8 @@ let unsubTraining = null
 
 function getClassTitle(t) {
   if (
-    (dayjs().isAfter(dayjs(t.ExpiresOn)) && user.value.Status != 'Pending Approval') ||
-    (user.value.Status == 'Pending Approval' && t.Complete == 0)
+    (t.ExpiresOn && dayjs().isAfter(dayjs(t.ExpiresOn))) ||
+    (user.value.Status == 'Pending Approval' && t.Complete == 0 && !t.ExpiresOn)
   ) {
     return 'bg-red-700'
   }
@@ -112,8 +112,15 @@ function getTraining() {
     allTrainingIds.value = training.value.map((t) => t.id)
   })
 }
-getTraining()
-getUserTrainingCompleted()
+
+watch(
+  () => user.value.id,
+  () => {
+    getTraining()
+    getUserTrainingCompleted()
+  },
+  { immediate: true }
+)
 
 onUnmounted(() => {
   if (unsubTraining) {

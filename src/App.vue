@@ -94,7 +94,7 @@ function deleteMessage(id) {
       <div
         class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-300 px-3 text-slate-800 print:hidden"
       >
-        <div>v.4.5</div>
+        <div>v.4.6</div>
         <div class="flex">{{ accessLevelName }} [{{ storeGeneral.accessLevel }}]</div>
       </div>
     </div>
@@ -127,10 +127,7 @@ function deleteMessage(id) {
                   </div>
                   <div class="py-3 pl-1">
                     <div>
-                      {{ message.message
-                      }}<span v-if="message.accepted.length > 0">
-                        [{{ message.accepted.join(', ') }}]</span
-                      >
+                      {{ message.message }}
                     </div>
                     <div v-if="message.rejected.length > 0">
                       Rejected: {{ message.rejected.join(', ') }}

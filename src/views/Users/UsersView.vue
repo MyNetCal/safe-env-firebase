@@ -35,7 +35,7 @@
                   @click="editUserInfo(p)"
                 >
                   <h3 class="font-semibold">
-                    <span v-if="!p.UserData.LastLogin" class="mr-1 font-bold text-orange-600"
+                    <span v-if="!p.LastLogin" class="mr-1 font-bold text-orange-600"
                       >&bull;</span
                     >
                     <span

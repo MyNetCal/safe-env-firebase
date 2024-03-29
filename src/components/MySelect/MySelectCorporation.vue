@@ -15,7 +15,7 @@ const db = useFirestore()
 const store = useGeneralStore()
 
 const branch = computed(
-  () => store.loginUser.Branch.charAt(0).toUpperCase() + store.loginUser.Branch.slice(1)
+  () => (store.loginUser.Branch?.charAt(0).toUpperCase() + store.loginUser.Branch?.slice(1)) || 'Men'
 )
 
 const queryCorp = computed(() =>

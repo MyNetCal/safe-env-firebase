@@ -230,58 +230,49 @@ const alreadyVoted = ref(false)
 
 const userCorp = ref(null)
 
-watch(
-  () => userCorp.value?.ApprovedBy,
-  (nv) => {
-    if (!nv) {
-      totVotesPrelature.value = 0
-      totVotesOther.value = 0
-      voteFromSFCPrelature.value = false
-      voteFromSFCCorporation.value = false
-      alreadyVoted.value = false
-      return
+function calcVotes() {
+  console.log('Claclutating votes: ', userCorp.value?.ApprovedBy)
+  totVotesPrelature.value = 0
+  totVotesOther.value = 0
+  voteFromSFCPrelature.value = false
+  voteFromSFCCorporation.value = false
+  alreadyVoted.value = false
+  userCorp.value?.ApprovedBy?.forEach(async (el, index) => {
+    console.log('Each vote: ', el)
+    if (el.idUserCorp == store.loginCurrentUsersCorporationsId) {
+      alreadyVoted.value = true
     }
-    totVotesPrelature.value = 0
-    totVotesOther.value = 0
-    voteFromSFCPrelature.value = false
-    voteFromSFCCorporation.value = false
-    alreadyVoted.value = false
-    nv.forEach((el, index) => {
-      if (el.isSEC) {
-        voteFromSFCPrelature.value = true
-      }
-      if (el.idUserCorp == store.loginCurrentUsersCorporationsId) {
-        alreadyVoted.value = true
-      }
-      getDoc(doc(db, 'Users', el.idUser)).then((d) => (dataVotesUsers.value[index] = d.data()))
-      getDoc(doc(db, 'Corporations', el.idCorp)).then((d) => {
-        dataVotesCorps.value[index] = d.data()
-        if (d.data().Short == 'Prelature') {
-          voteFromSFCPrelature.value = voteFromSFCPrelature.value || el.isSEC
-          totVotesPrelature.value++
-        }
-        if (d.data().Short != 'Prelature' || userCorp.value.CorporationName == 'Prelature') {
-          totVotesOther.value++
-          voteFromSFCCorporation.value = voteFromSFCCorporation.value || el.isSEC
-        }
-      })
-    })
-  }
-)
+    const userData = await getDoc(doc(db, 'Users', el.idUser))
+    dataVotesUsers.value[index] = userData.data()
+    const corpData = await getDoc(doc(db, 'Corporations', el.idCorp))
+
+    dataVotesCorps.value[index] = corpData.data()
+    if (corpData.data().Short == 'Prelature') {
+      voteFromSFCPrelature.value = voteFromSFCPrelature.value || el.isSEC
+      totVotesPrelature.value++
+    }
+    if (corpData.data().Short != 'Prelature' || userCorp.value.CorporationName == 'Prelature') {
+      totVotesOther.value++
+      voteFromSFCCorporation.value = voteFromSFCCorporation.value || el.isSEC
+    }
+  })
+}
 
 let unsubUserCorp = null
 
 function getUserCorp() {
   unsubUserCorp = onSnapshot(doc(db, 'UsersCorporations', userCorpId.value), (d) => {
-    userCorp.value = d.data()
+    userCorp.value = { ...d.data(), id: d.id }
+    console.log('Just got ApprovedBy: ', userCorp.value.ApprovedBy)
     getDoc(doc(db, 'Users', userCorp.value.UserId)).then((d) => {
       userCorp.value.UserData = d.data()
     })
-    getVotesNeeded()
+    getDoc(doc(db, 'Corporations', userCorp.value.CorporationId)).then((doc) => {
+      votesNeededFromCorp.value = doc.data().VotesNeeded || 0
+    })
+    calcVotes()
   })
 }
-
-getUserCorp()
 
 watch(
   userCorpId,
@@ -311,10 +302,9 @@ function getVotesNeeded() {
       votesNeededFromPrelature.value = doc.data().VotesNeeded
     })
   })
-  getDoc(doc(db, 'Corporations', userCorp.value.CorporationId)).then((doc) => {
-    votesNeededFromCorp.value = doc.data().VotesNeeded || 0
-  })
 }
+
+getVotesNeeded()
 
 function addVote() {
   updateDoc(doc(db, 'UsersCorporations', userCorp.value.id), {

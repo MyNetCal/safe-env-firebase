@@ -58,9 +58,18 @@ export const useGeneralStore = defineStore('general', () => {
         loginUser.value = d.data()
         loginUserId.value = d.data().id
         loginCurrentUsersCorporationsId.value = d.data().CurrentUsersCorporationsId
+        if (loginCurrentUsersCorporationsId.value) {
+          updateDoc(doc(db, 'UsersCorporations', loginCurrentUsersCorporationsId.value), { LastLogin: dayjs().toISOString() })
+        }
       })
     })
   }
+
+  watch(loginCurrentUsersCorporationsId, () => {
+    if (loginCurrentUsersCorporationsId.value) {
+      updateDoc(doc(db, 'UsersCorporations', loginCurrentUsersCorporationsId.value), { LastLogin: dayjs().toISOString() })
+    }
+  })
 
   const loginCurrentUsersCorporationsRef = computed(() =>
     doc(db, 'UsersCorporations', loginCurrentUsersCorporationsId.value)
@@ -378,7 +387,7 @@ export const useGeneralStore = defineStore('general', () => {
     })
   }
 
-  function createDocTriggerEmail(subject, html, to=[], bcc=[], cc=[]) {
+  function createDocTriggerEmail(subject, html, to = [], bcc = [], cc = []) {
     return new Promise(() => {
       addDoc(collection(db, 'mail-triggers'), {
         to,
@@ -396,11 +405,11 @@ export const useGeneralStore = defineStore('general', () => {
           accepted: [],
           rejected: [],
         })
-        })
+      })
     })
   }
 
-  function createDocTriggerEmailTemplate(template, data, to=[], bcc=[], cc=[]) {
+  function createDocTriggerEmailTemplate(template, data, to = [], bcc = [], cc = []) {
     return new Promise(() => {
       addDoc(collection(db, 'mail-triggers'), {
         to,
@@ -421,7 +430,7 @@ export const useGeneralStore = defineStore('general', () => {
           accepted: [],
           rejected: [],
         })
-        })
+      })
     })
   }
 
