@@ -101,7 +101,7 @@ async function createSentReport() {
 </script>
 
 <template>
-  <div class="p-1">
+  <div class="p-1 flex flex-col h-full">
     <h1>Incident Report</h1>
     <div class="mx-auto mt-3 max-w-xl rounded-md border border-red-300 bg-red-200 p-2">
       To report an instance of <span class="font-bold">sexual abuse of a minor</span> by personnel
@@ -113,7 +113,7 @@ async function createSentReport() {
     </div>
 
     <!-- Form -->
-    <div class="mx-auto mt-5 max-w-xl text-left">
+    <div class="mx-auto my-5 px-5 max-w-xl text-left overflow-auto">
       <div class="mb-3 flex flex-wrap gap-2">
         <MyInputText typeInput="date" label="Date of incidente" v-model="date" />
         <MyInputText typeInput="time" label="Aprox. time" v-model="time" />

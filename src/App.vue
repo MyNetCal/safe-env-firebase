@@ -4,8 +4,7 @@ import { useGeneralStore } from './stores/general'
 import { storeToRefs } from 'pinia'
 import SideMenu from './components/SideMenu.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { getCurrentUser, useCollection, useFirestore } from 'vuefire'
-import router from './router'
+import { useCollection, useFirestore } from 'vuefire'
 import MyListBox from './components/MyInputs/MyListBox.vue'
 import { computed, ref, watchEffect } from 'vue'
 import { collection, deleteDoc, doc, updateDoc } from 'firebase/firestore'
@@ -26,11 +25,6 @@ const db = useFirestore()
 
 const isLargeScreen = useMediaQuery('(min-width: 640px)')
 
-getCurrentUser().then((user) => {
-  if (!user) {
-    router.push('/login')
-  }
-})
 const selUserCorp = ref('')
 watchEffect(() => {
   selUserCorp.value = loginUserCorporation.value || ''
@@ -94,7 +88,7 @@ function deleteMessage(id) {
       <div
         class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-300 px-3 text-slate-800 print:hidden"
       >
-        <div>v.4.6</div>
+        <div>v.4.6.1</div>
         <div class="flex">{{ accessLevelName }} [{{ storeGeneral.accessLevel }}]</div>
       </div>
     </div>

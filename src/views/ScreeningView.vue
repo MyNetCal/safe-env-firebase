@@ -45,7 +45,7 @@ function saveChanges(type) {
 </script>
 
 <template>
-  <div class="m-2">
+  <div class="m-2 flex flex-col justify-center items-center h-full">
     <h1>Screening</h1>
 
     <!-- Selector: Corporation -->
@@ -54,7 +54,7 @@ function saveChanges(type) {
     </div>
 
     <!-- Tabs -->
-    <div class="tabs mx-auto max-w-md">
+    <div class="tabs mx-auto max-w-md w-full">
       <div
         class="tab border-b border-b-slate-400"
         :class="{ 'tab-active': currentScreeningType == store.SCREENING_STAFF }"
@@ -79,7 +79,7 @@ function saveChanges(type) {
     </div>
 
     <!-- List -->
-    <div v-if="!(editingValues == null)" class="mt-5 flex justify-center">
+    <div v-if="!(editingValues == null)" class="mt-5 flex justify-center overflow-auto mb-8">
       <div class="w-80">
         <MyInputCheckBox
           v-model="editingValues[currentScreeningType].Application"

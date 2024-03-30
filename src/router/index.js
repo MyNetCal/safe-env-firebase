@@ -86,11 +86,13 @@ const router = createRouter({
 
 router.beforeEach(async (to) => {
   const currentUser = await getCurrentUser()
+  console.log('Name: ', to.name);
   if (to.query.id) {
     console.log('Should go to the Welcome Page!', to.query.id)
     return '/welcome/' + to.query.id
   }
   if (!currentUser && to.name !== 'Login' && to.name !== 'Welcome') {
+    console.log('Lets go to login!!! to.name= ', to.name);
     return { name: 'Login' }
   }
 })

@@ -551,8 +551,8 @@ function deleteFile(e, f, index) {
         </DialogTitle>
         <div class="p-4">
           <p class="mb-4">
-            The new Background Check date, {{ dayjs(bacgkroundNewDate).format('MMMM D, YYYY') }},
-            expires for
+            The new background check date, {{ dayjs(bacgkroundNewDate).format('MMMM D, YYYY') }},
+            will be expired for
             <span class="font-semibold">{{ backgroundCheckExpiredFor.join(', ') }}</span> . This
             action will make
             <span class="font-semibold">{{ user?.Nickname }} {{ user?.LastName }}</span> no longer

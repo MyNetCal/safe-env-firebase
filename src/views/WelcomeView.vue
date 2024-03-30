@@ -23,6 +23,7 @@ const { orientation } = useScreenOrientation()
 
 const userRef = doc(db, 'Users', id.value)
 const user = ref(null)
+console.log('We are in welcome!');
 getDoc(userRef).then((u) => {
   user.value = u.data()
   userEmail.value = user.value?.Email || ''

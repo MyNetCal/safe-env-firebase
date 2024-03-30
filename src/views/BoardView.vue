@@ -239,7 +239,7 @@ function getUrlReport(path) {
 </script>
 
 <template>
-  <div class="flex h-full flex-col">
+  <div class="flex h-full flex-col overflow-auto">
     <h1 class="mt-3 text-blue-800">Board</h1>
     <div class="text-sm text-slate-500">
       This page can be edited only by the Safe Environment Coordinator

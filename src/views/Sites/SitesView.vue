@@ -131,7 +131,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Content -->
-    <div class="grow">
+    <div class="grow overflow-auto">
       <!-- List of Sites -->
       <table class="mx-auto">
         <thead>

@@ -83,7 +83,7 @@ async function emailAppLink() {
       idUser: corpToEdit.value.UserId,
       secEmail: userSEC.Email
     },
-    [userSEC.Email]
+    [corpToEdit.value.UserRef.Email]
   )
   updateDoc(doc(db, 'UsersCorporations', corpToEdit.value.id), {
     EmailSent: true

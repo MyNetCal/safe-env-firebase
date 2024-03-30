@@ -67,7 +67,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div>
+  <div class="flex flex-col h-full">
     <!-- Header -->
     <div>
       <h1 class="mb-6 mt-2 text-blue-700">Participants</h1>
@@ -79,7 +79,7 @@ onUnmounted(() => {
     </div>
 
     <!-- List -->
-    <div>
+    <div class="overflow-auto mb-6">
       <table class="mx-auto">
         <thead>
           <tr>
