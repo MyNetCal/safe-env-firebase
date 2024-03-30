@@ -19,7 +19,7 @@ const store = useGeneralStore()
 const { isUserBoardPrelature } = storeToRefs(store)
 
 const collref = computed(() =>
-  query(collection(db, 'UsersCorporations'), where('UserId', '==', userId.value))
+  query(collection(db, 'UsersCorporations'), where('UserId', '==', userId?.value || ''))
 )
 const corps = useCollection(collref)
 

@@ -105,7 +105,6 @@ const thereAreFilesUploaded = computed(() => filesData.value?.length > 0)
 
 const isClickable = computed(() => {
   switch (item.value) {
-    case 'Background':
     case 'Code':
     case 'Consent':
       return false
