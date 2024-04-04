@@ -56,7 +56,7 @@ export const useGeneralStore = defineStore('general', () => {
     unsubUser = onSnapshot(q, (res) => {
       res.forEach((d) => {
         loginUser.value = d.data()
-        loginUserId.value = d.data().id
+        loginUserId.value = d.id
         loginCurrentUsersCorporationsId.value = d.data().CurrentUsersCorporationsId
         if (loginCurrentUsersCorporationsId.value) {
           updateDoc(doc(db, 'UsersCorporations', loginCurrentUsersCorporationsId.value), { LastLogin: dayjs().toISOString() })

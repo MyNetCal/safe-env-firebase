@@ -63,6 +63,7 @@ function getBackgroundChecksNeedRequest() {
     res.docChanges().forEach((change) => {
       const { newIndex, oldIndex, doc: userDoc } = change
       const userCorp = userDoc.data()
+      userCorp.id = userDoc.id
 
       // user added to the list
       if (change.type === 'added') {
@@ -119,6 +120,9 @@ async function backgroundRequested(user) {
   console.log(user)
   const allSECEmails = await getEmailsAllSEC()
   const emailSECPrelature = await getEmailSECPrelature()
+  const files = user.ScreeningReqFilesBackground && user.ScreeningReqFilesBackground.length > 0
+  const templateSEC = files ? 'Background-Check-Renewal-AllSEC-Notification' : 'Background-Check-New-AllSEC-Notification'
+  const templateGuy = files ? 'Background-Check-Renewal-Instructions' : 'Background-Check-New-Instructions'
   const data = {
     Nickname: user.Nickname,
     ExpirationDate: dayjs(user.ExpiresOn).format('MMMM D, YYYY'),
@@ -139,7 +143,7 @@ async function backgroundRequested(user) {
     }
     data.userCorps.push(corp)
     store.createDocTriggerEmailTemplate(
-      'Background-Check-Renewal-AllSEC-Notification',
+      templateSEC,
       {
         Nickname: user.Nickname,
         Name: user?.Name,
@@ -151,7 +155,7 @@ async function backgroundRequested(user) {
     )
   }
   console.log('data: ', data)
-  store.createDocTriggerEmailTemplate('Background-Check-Renewal-Instructions', data, user.Email)
+  store.createDocTriggerEmailTemplate(templateGuy, data, user.Email)
   await updateDoc(doc(db, 'Users', user.id), {
     ScreeningBackgroundCheckRenewalRequested: true
   })

@@ -83,7 +83,6 @@ function updatingCode() {
     )
     getDocs(q).then((res) => {
       res.forEach((d) => {
-        console.log('Lets update: ', d.data().id)
         const userCorp = d.data()
         const dRef = doc(db, 'UsersCorporations', userCorp.id)
         updateDoc(dRef, {

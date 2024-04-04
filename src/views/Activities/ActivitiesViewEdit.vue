@@ -18,9 +18,10 @@ import {
   query,
   setDoc,
   updateDoc,
-  where
+  where,
+  addDoc
 } from '@firebase/firestore'
-import { useFirebaseStorage, useFirestore } from 'vuefire'
+import { useCollection, useFirebaseStorage, useFirestore } from 'vuefire'
 import MyInputTextArea from '@/components/MyInputs/MyInputTextArea.vue'
 import dayjs from 'dayjs'
 import { useFuse } from '@vueuse/integrations/useFuse'
@@ -144,7 +145,7 @@ unsubCorp.value = onSnapshot(doc(db, 'Corporations', corpId.value), (res) => {
   corp.value.SiteIds?.forEach((el) => {
     getDoc(doc(db, 'Sites', el)).then((site) => {
       corp.value.SiteInfo.push(site.data())
-      if (site.data().Status == 'Approved') {
+      if (site.data()?.Status == 'Approved') {
         sitesInfo.value.push(site.data())
       }
     })
@@ -602,7 +603,7 @@ function getAllStaff() {
   unsubAllStaff = onSnapshot(allStaffRef.value, (res) => {
     res.docChanges().forEach((change) => {
       const { newIndex, oldIndex, doc: staffDoc } = change
-      const staff = staffDoc.data()
+      const staff = { ...staffDoc.data(), id: staffDoc.id }
       if (change.type === 'added') {
         allStaff.value.splice(newIndex, 0, {
           UserCorpId: staffDoc.id,
@@ -750,7 +751,7 @@ function getAllParticipantsNotSelected() {
     allParticipantsNotSelected.value = []
     res.forEach((d) => {
       allParticipantsNotSelected.value.push({
-        id: d.data().id,
+        id: d.id,
         Name: d.data().Nickname + ' ' + d.data().LastName
       })
     })
@@ -781,7 +782,7 @@ function getParticipantsGroup() {
   unsubParticipantsGroup = onSnapshot(participantsGroupRef.value, (res) => {
     res.docChanges().forEach((change) => {
       const { newIndex, oldIndex, doc: participantDoc } = change
-      const participant = participantDoc.data()
+      const participant = { ...participantDoc.data(), id: participantDoc.id }
       if (change.type === 'added') {
         participantsGroup.value.splice(newIndex, 0, participant)
       }
@@ -835,7 +836,7 @@ function getAllParticipants() {
   unsubAllParticipants = onSnapshot(allParticipantsRef.value, (res) => {
     res.docChanges().forEach((change) => {
       const { newIndex, oldIndex, doc: participantDoc } = change
-      const participant = participantDoc.data()
+      const participant = { ...participantDoc.data(), id: participantDoc.id }
       allParticipantsById.value[participant.id] = {
         Name: participant.Name,
         Nickname: participant.Nickname,
@@ -852,6 +853,33 @@ function getAllParticipants() {
         allParticipants.value.splice(oldIndex, 1)
       }
     })
+  })
+}
+
+const newAdultParticipant = ref({})
+const adultParticipants = useCollection(() =>
+  corpId.value
+    ? query(collection(db, 'AdultParticipants'), where('CorporationId', '==', corpId.value))
+    : null
+)
+
+function addAdultParticipant() {
+  console.log('New Adult Participant: ', newAdultParticipant.value)
+  if (!newAdultParticipant.value.id) {
+    addDoc(collection(db, 'AdultParticipants'), {
+      Name: newAdultParticipant.value.Name,
+      CorporationId: corpId.value
+    })
+  }
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    AdultParticipants: arrayUnion(newAdultParticipant.value.Name)
+  })
+  newAdultParticipant.value = {}
+}
+
+function deleteAdultParticipant(name) {
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    AdultParticipants: arrayRemove(name)
   })
 }
 
@@ -1647,6 +1675,7 @@ async function createPDF() {
                 @click="updateParticipantsViewPreference"
               />
             </div>
+            <div class="mb-1">Minors</div>
 
             <div v-if="!store.loginUser.Settings?.ActiviyParticipantsTabByList" class="">
               <!-- ****************** -->
@@ -1949,6 +1978,43 @@ async function createPDF() {
                 </div>
               </div>
             </div>
+
+            <!-- Adult Participants -->
+            <div class="mt-10 text-slate-600">
+              <div>Adults</div>
+              <MySelectAuto
+                v-model="newAdultParticipant"
+                :items="adultParticipants"
+                items-key="id"
+                items-label="Name"
+                customValues
+                isFussy
+                class="max-h-60"
+                label="Name"
+                info
+                info-title="Add a name"
+                @update:model-value="addAdultParticipant"
+              />
+              <div>
+                <table>
+                  <template v-for="(p, index) in actToEdit.AdultParticipants" :key="p">
+                    <tr>
+                      <td class="pr-1">{{ index + 1 }}.</td>
+                      <td class="pr-1">
+                        {{ p }}
+                      </td>
+                      <td>
+                        <FontAwesomeIcon
+                          icon="trash"
+                          class="cursor-pointer rounded px-2 py-1 hover:bg-slate-200"
+                          @click="deleteAdultParticipant(p)"
+                        />
+                      </td>
+                    </tr>
+                  </template>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2019,7 +2085,7 @@ async function createPDF() {
             <!-- Status: loading file -->
             <div class="flex place-items-center justify-center" v-if="store.isUploadingFiles">
               <div class="flex place-items-center rounded-lg bg-white px-2 py-1 shadow-lg">
-                <div>Loading PDF File</div>
+                <div>Loading PDF file</div>
                 <div class="relative ml-3 h-3 w-60 rounded-full bg-slate-300">
                   <div
                     class="absolute left-0 h-3 rounded-full bg-orange-400"
@@ -2083,7 +2149,7 @@ async function createPDF() {
 
           <!-- Comments on the Checklist -->
           <div class="mb-5">
-            <span class="mb-5 font-bold">Comments on the Checklist: </span
+            <span class="mb-5 font-bold">Comments on the checklist: </span
             >{{ actToEdit.ChecklistComments }}
           </div>
 
@@ -2106,7 +2172,7 @@ async function createPDF() {
 
           <!-- Participants -->
           <div class="mb-5">
-            <div class="font-bold">Participants</div>
+            <div class="font-bold">Minor participants</div>
             <table>
               <template v-for="(p, index) in actToEdit.Participants" :key="index">
                 <tr>
@@ -2131,6 +2197,12 @@ async function createPDF() {
                 A file was uploaded about slips
               </div>
             </div>
+            <div class="mt-2 font-bold">Adult participants</div>
+            <div>
+              <div v-for="(p, index) in actToEdit.AdultParticipants" :key="p">
+                {{ index + 1 }}. {{ p }}
+              </div>
+            </div>
           </div>
 
           <!-- Notes -->
@@ -2146,7 +2218,7 @@ async function createPDF() {
 
           <!-- Ratio -->
           <div class="mb-5">
-            <span class="font-bold">Ratio Staff/Participants: </span>{{ actToEdit.Staff.length }}:{{
+            <span class="font-bold">Ratio staff/participants: </span>{{ actToEdit.Staff.length }}:{{
               actToEdit.Participants.length
             }}
           </div>
@@ -2163,7 +2235,7 @@ async function createPDF() {
         </div>
         <div class="text-center">
           <MyButton @click="seePdf = false">Close</MyButton>
-          <MyButton @click="createPDF" class="bg-green-600">End Activity & Email PDF</MyButton>
+          <MyButton @click="createPDF" class="bg-green-600">End activity & email PDF</MyButton>
         </div>
       </div>
     </div>
