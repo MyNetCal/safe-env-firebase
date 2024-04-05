@@ -61,31 +61,34 @@ function manuallyCreateUserCorp() {
   emit('onClose')
 }
 
-function onSave() {
+async function onSave() {
   if (userToEdit.value.id == '') {
-    createUserAndCorp(userToEdit.value, userCorpToEdit.value)
+    const { newUser, newCorp } = await createUserAndCorp(userToEdit.value, userCorpToEdit.value)
     emit('onClose')
-    return
+    return { newUser, newCorp }
   }
   updateUser(userToEdit.value)
   saveUserCorp(userCorpToEdit.value, userToEdit.value.id)
   emit('onClose')
+  return { newUser: userToEdit.value, newCorp: userCorpToEdit.value }
 }
 
-function emailAppLink() {
-  onSave()
+async function emailAppLink() {
+  const { newUser, newCorp } = await onSave()
+  console.log('+++++++++++New User: ', newUser.id)
+  console.log('+++++++++++New UserCorp: ', newCorp.id)
   store.createDocTriggerEmailTemplate(
     'SignUpInfo',
     {
       Nickname: userToEdit.value.Nickname,
       corp: store.loginCorporation.Name,
       corpShort: store.loginCorporation.Short,
-      idUser: userToEdit.value.id,
+      idUser: newUser.id,
       secEmail: store.loginCorporation.EmailFiles
     },
     [userToEdit.value.Email]
   )
-  updateDoc(doc(db, 'UsersCorporations', userCorpToEdit.value.id), {
+  updateDoc(doc(db, 'UsersCorporations', newCorp.id), {
     EmailSent: true
   })
 }
