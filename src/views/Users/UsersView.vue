@@ -66,7 +66,7 @@
                     :class="[
                       p.userHasAllScreening
                         ? 'cursor-pointer text-green-700'
-                        : 'cursor-not-allowed text-red-700'
+                        : 'cursor-not-allowed text-red-700 pointer-events-none'
                     ]"
                   >
                     <FontAwesomeIcon icon="check-to-slot" />
