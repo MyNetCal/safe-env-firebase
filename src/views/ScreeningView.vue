@@ -45,7 +45,7 @@ function saveChanges(type) {
 </script>
 
 <template>
-  <div class="m-2 flex flex-col justify-center items-center h-full">
+  <div class="m-2 flex flex-col justify-start items-center h-full">
     <h1>Screening</h1>
 
     <!-- Selector: Corporation -->
