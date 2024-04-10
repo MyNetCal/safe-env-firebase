@@ -428,20 +428,25 @@ function showFile(file) {
               type="text"
               v-model="signatureConsent"
               class="input-ring relative rounded border-0 bg-white px-2 py-0.5 text-sm outline-none ring-1 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-300"
-            /><span v-else>{{ signatureConsent }}</span
-            >, hereby authorize {{ store.loginCorporation.Name }} (“the Program”) to share my
-            biographical information with the Prelature of the Holy Cross and Opus Dei - United
-            States Region (“the Prelature”), for the sole purpose of providing the Program and me
-            access to services offered by Praesidium, specifically, Criminal Background Check
-            services and Training services.
+            />
+            <span v-else>{{ signatureConsent }}</span
+            >, hereby authorize the Prelature of the Holy Cross and Opus Dei - United States and
+            Canada Region (“the Prelature”) to share the results of any criminal background check
+            and records of abuse prevention training with {{ store.loginCorporation.Name }} ("{{
+              store.loginCorporation.Short
+            }}").
+          </p>
+          <p>
+            In addition, I authorize {{ store.loginCorporation.Short }} to share with the Prelature
+            any application submitted by me to volunteer for activities with minors as well as any
+            notes of interviews and reference checks conducted in connection with my application.
           </p>
           <p class="mb-3">
-            I understand and agree that my information will otherwise be kept confidential and will
-            not be used for any purpose beyond those described above. I understand that the
-            Prelature does not assume any responsibility for my services as Program Staff in the
-            Program, nor does the Prelature assume any responsibility for the services offered by
-            Praesidium. I understand that the Prelature is simply and only offering the Program and
-            me access to services provided by Praesidium.
+            I understand and agree that my information will not be used for any purpose other than
+            determining my suitability to volunteer for activities with minors organized by
+            {{ store.loginCorporation.Short }} and/or the Prelature. I understand that the Prelature
+            does not assume any responsibility for my services with
+            {{ store.loginCorporation.Short }}.
           </p>
           <p>
             {{ dayjs().format('MMMM D, YYYY') }}

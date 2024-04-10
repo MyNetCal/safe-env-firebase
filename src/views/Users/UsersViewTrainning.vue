@@ -11,7 +11,7 @@
     >
       <div class="relative">
         <div class="m-2 text-center">
-          <h1 class="mb-3 text-blue-600">Trainning</h1>
+          <h1 class="mb-3 text-blue-600">Training</h1>
 
           <UsersViewTrainingList :user="user" />
 

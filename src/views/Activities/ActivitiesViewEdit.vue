@@ -1981,7 +1981,7 @@ async function createPDF() {
 
             <!-- Adult Participants -->
             <div class="mt-10 text-slate-600">
-              <div>Adults</div>
+              <div>Adult Participants</div>
               <MySelectAuto
                 v-model="newAdultParticipant"
                 :items="adultParticipants"

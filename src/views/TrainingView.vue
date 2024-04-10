@@ -327,174 +327,183 @@ function deleteTraining() {
     </div>
 
     <!-- Dialog: Input Training -->
-    <Dialog
-      :open="showInitialTrainingDialog"
-      @close="showInitialTrainingDialog = false"
-      class="relative z-50"
-    >
-      <DialogPanel class="my-dialog">
-        <div class="my-dialog-overlay" />
-        <div class="my-dialog-outer">
-          <div class="my-dialog-inner">
-            <DialogTitle class="my-dialog-title">
-              Add Initial Training Requirement
-              <FontAwesomeIcon @click="showInitialTrainingDialog = false" class="" icon="times" />
-            </DialogTitle>
-            <div class="my-dialog-content min-h-80">
-              <MySelectAuto
-                v-model="newTraining"
-                :items="presetOptions"
-                items-key="id"
-                items-label="Title"
-                customValues
-                class="max-h-60"
-                label="Training"
-                info
-                info-title="To add a new training requirement to the preset list, just type the name of the training in the input field and press enter."
-              />
-              <div class="flex flex-wrap gap-2">
-                <div v-if="currentTab == 1" class="flex gap-2">
-                  <MyInputText
-                    v-model="newStartsTraining"
-                    label="Starts on"
-                    typeInput="date"
-                    info
-                    info-title="Starts"
-                    :is-error="isErrorStartTraining"
-                  >
-                    Enter here the date on which this training will be required. Personnel will have
-                    however many days from this date as is included under “Complete [days]” to
-                    complete the training to be in compliance
-                  </MyInputText>
-                  <MyInputText
-                    v-model="newEndsTraining"
-                    label="Ends on"
-                    typeInput="date"
-                    info
-                    info-title="Ends"
-                    :is-error="isErrorEndsTraining"
-                  >
-                    Enter here the date on which this training will no longer be required. This does
-                    not affect the expiration date of the training.
-                  </MyInputText>
-                </div>
-                <div class="flex gap-2">
-                  <MyInputText
-                    v-model="newCompletedDays"
-                    label="Completed on [days]"
-                    typeInput="number"
-                    info-title="Complete [days]"
-                    info
-                    class="w-32"
-                  >
-                    Enter here how many days the personnel have to complete this training once they
-                    are approved. A value of 0 means that the training must be complete before they
-                    are approved to work with minors. If the training is not complete within this
-                    number of days from their approval date, they cannot be involved in any
-                    activities with minors until they have completed the training.
-                  </MyInputText>
-                  <MyInputText
-                    v-model="newExpirationMonths"
-                    label="Expires in [months]"
-                    typeInput="number"
-                    info
-                    info-title="Expires in [months]"
-                    class="w-32"
-                  >
-                    Enter here the number of months that must elapse once a training module has been
-                    completed for the training to expire
-                  </MyInputText>
-                </div>
-              </div>
-
-              <div>
-                <Listbox v-model="functionsSelected" multiple horizontal>
-                  <div class="relative mt-5 text-sm text-slate-600">
-                    <div class="text-xs text-slate-500">Functions</div>
-                    <ListboxButton
-                      class="relative min-h-10 w-full cursor-pointer rounded-md bg-white px-3 py-2 text-left ring-1 ring-slate-300"
+    <div v-if="showInitialTrainingDialog">
+      <Dialog
+        :open="showInitialTrainingDialog"
+        @close="showInitialTrainingDialog = false"
+        class="relative z-50"
+      >
+        <DialogPanel class="my-dialog">
+          <div class="my-dialog-overlay" />
+          <div class="my-dialog-outer">
+            <div class="my-dialog-inner">
+              <DialogTitle class="my-dialog-title">
+                Add Initial Training Requirement
+                <FontAwesomeIcon
+                  @click="showInitialTrainingDialog = false"
+                  class=""
+                  icon="times"
+                  tabindex="0"
+                />
+              </DialogTitle>
+              <div class="my-dialog-content min-h-80">
+                <MySelectAuto
+                  v-model="newTraining"
+                  :items="presetOptions"
+                  items-key="id"
+                  items-label="Title"
+                  customValues
+                  class="max-h-60"
+                  label="Training"
+                  info
+                  info-title="To add a new training requirement to the preset list, just type the name of the training in the input field and press enter."
+                />
+                <div class="flex flex-wrap gap-2">
+                  <div v-if="currentTab == 1" class="flex gap-2">
+                    <MyInputText
+                      v-model="newStartsTraining"
+                      label="Starts on"
+                      typeInput="date"
+                      info
+                      info-title="Starts"
+                      :is-error="isErrorStartTraining"
                     >
-                      {{ functionsSelected.join(', ') }}
-                    </ListboxButton>
-                    <ListboxOptions
-                      as="div"
-                      class="thinsb absolute flex h-fit w-full flex-wrap gap-x-2 gap-y-1 overflow-auto rounded-md p-1 ring-1 ring-slate-300"
+                      Enter here the date on which this training will be required. Personnel will
+                      have however many days from this date as is included under “Complete [days]”
+                      to complete the training to be in compliance
+                    </MyInputText>
+                    <MyInputText
+                      v-model="newEndsTraining"
+                      label="Ends on"
+                      typeInput="date"
+                      info
+                      info-title="Ends"
+                      :is-error="isErrorEndsTraining"
                     >
-                      <ListboxOption
-                        v-for="f in store.FUNCTIONS"
-                        :key="f"
-                        :value="f"
-                        as="template"
-                        v-slot="{ selected }"
-                      >
-                        <div
-                          class="cursor-pointer rounded-full border px-3 py-1 hover:shadow-md"
-                          :class="{ 'bg-slate-300': selected }"
-                        >
-                          {{ f }}
-                        </div>
-                      </ListboxOption>
-                    </ListboxOptions>
+                      Enter here the date on which this training will no longer be required. This
+                      does not affect the expiration date of the training.
+                    </MyInputText>
                   </div>
-                </Listbox>
+                  <div class="flex gap-2">
+                    <MyInputText
+                      v-model="newCompletedDays"
+                      label="Completed on [days]"
+                      typeInput="number"
+                      info-title="Complete [days]"
+                      info
+                      class="w-32"
+                    >
+                      Enter here how many days the personnel have to complete this training once
+                      they are approved. A value of 0 means that the training must be complete
+                      before they are approved to work with minors. If the training is not complete
+                      within this number of days from their approval date, they cannot be involved
+                      in any activities with minors until they have completed the training.
+                    </MyInputText>
+                    <MyInputText
+                      v-model="newExpirationMonths"
+                      label="Expires in [months]"
+                      typeInput="number"
+                      info
+                      info-title="Expires in [months]"
+                      class="w-32"
+                    >
+                      Enter here the number of months that must elapse once a training module has
+                      been completed for the training to expire
+                    </MyInputText>
+                  </div>
+                </div>
+
+                <div>
+                  <Listbox v-model="functionsSelected" multiple horizontal>
+                    <div class="relative mt-5 text-sm text-slate-600">
+                      <div class="text-xs text-slate-500">Functions</div>
+                      <ListboxButton
+                        class="relative min-h-10 w-full cursor-pointer rounded-md bg-white px-3 py-2 text-left ring-1 ring-slate-300"
+                      >
+                        {{ functionsSelected.join(', ') }}
+                      </ListboxButton>
+                      <ListboxOptions
+                        as="div"
+                        class="thinsb absolute flex h-fit w-full flex-wrap gap-x-2 gap-y-1 overflow-auto rounded-md p-1 ring-1 ring-slate-300"
+                      >
+                        <ListboxOption
+                          v-for="f in store.FUNCTIONS"
+                          :key="f"
+                          :value="f"
+                          as="template"
+                          v-slot="{ selected }"
+                        >
+                          <div
+                            class="cursor-pointer rounded-full border px-3 py-1 hover:shadow-md"
+                            :class="{ 'bg-slate-300': selected }"
+                          >
+                            {{ f }}
+                          </div>
+                        </ListboxOption>
+                      </ListboxOptions>
+                    </div>
+                  </Listbox>
+                </div>
               </div>
-            </div>
-            <div class="my-dialog-buttons">
-              <MyButton @click="showInitialTrainingDialog = false" class="bg-slate-500"
-                >Close</MyButton
+              <div class="my-dialog-buttons">
+                <MyButton @click="showInitialTrainingDialog = false" class="bg-slate-500"
+                  >Close</MyButton
+                >
+                <MyButton
+                  @click="saveTraining"
+                  class="bg-green-600"
+                  :disabled="
+                    !newTraining.Title ||
+                    newTraining.Title?.length < 3 ||
+                    functionsSelected.length == 0
+                  "
+                  >Save</MyButton
+                >
+              </div>
+              <div
+                v-if="newTraining.Title?.length > 2 && !newTraining.id"
+                class="px-5 pb-3 text-xs text-slate-500"
               >
-              <MyButton
-                @click="saveTraining"
-                class="bg-green-600"
-                :disabled="
-                  !newTraining.Title ||
-                  newTraining.Title?.length < 3 ||
-                  functionsSelected.length == 0
-                "
-                >Save</MyButton
-              >
-            </div>
-            <div
-              v-if="newTraining.Title?.length > 2 && !newTraining.id"
-              class="px-5 pb-3 text-xs text-slate-500"
-            >
-              Note: The training
-              <span class="font-semibold text-slate-700">"{{ newTraining.Title }}" </span>
-              will be added to the list of preset trainings.
+                Note: The training
+                <span class="font-semibold text-slate-700">"{{ newTraining.Title }}" </span>
+                will be added to the list of preset trainings.
+              </div>
             </div>
           </div>
-        </div>
-      </DialogPanel>
-    </Dialog>
+        </DialogPanel>
+      </Dialog>
+    </div>
 
     <!-- Dialog: Confirm Delete Training -->
-    <Dialog
-      :open="showDeleteTrainingDialog"
-      @close="showDeleteTrainingDialog = false"
-      class="relative z-50"
-    >
-      <DialogPanel class="my-dialog">
-        <div class="my-dialog-overlay" />
-        <div class="my-dialog-outer">
-          <div class="my-dialog-inner">
-            <DialogTitle class="my-dialog-title">
-              Delete Training Requirement
-              <FontAwesomeIcon @click="showDeleteTrainingDialog = false" class="" icon="times" />
-            </DialogTitle>
-            <div class="my-dialog-content text-slate-600">
-              <div class="">Training to delete: "{{ trainingToDelete.Title }}"</div>
-              <div class="mt-3">Are you sure you want to delete this training requirement?</div>
-            </div>
-            <div class="my-dialog-buttons">
-              <MyButton @click="showDeleteTrainingDialog = false" class="bg-slate-500"
-                >Close</MyButton
-              >
-              <MyButton @click="deleteTraining" class="bg-red-600">Delete</MyButton>
+    <div v-if="showDeleteTrainingDialog">
+      <Dialog
+        :open="showDeleteTrainingDialog"
+        @close="showDeleteTrainingDialog = false"
+        class="relative z-50"
+      >
+        <DialogPanel class="my-dialog">
+          <div class="my-dialog-overlay" />
+          <div class="my-dialog-outer">
+            <div class="my-dialog-inner">
+              <DialogTitle class="my-dialog-title">
+                Delete Training Requirement
+                <FontAwesomeIcon @click="showDeleteTrainingDialog = false" class="" icon="times" />
+              </DialogTitle>
+              <div class="my-dialog-content text-slate-600">
+                <div class="">Training to delete: "{{ trainingToDelete.Title }}"</div>
+                <div class="mt-3">Are you sure you want to delete this training requirement?</div>
+              </div>
+              <div class="my-dialog-buttons">
+                <MyButton @click="showDeleteTrainingDialog = false" class="bg-slate-500"
+                  >Close</MyButton
+                >
+                <MyButton @click="deleteTraining" class="bg-red-600">Delete</MyButton>
+              </div>
             </div>
           </div>
-        </div>
-      </DialogPanel>
-    </Dialog>
+        </DialogPanel>
+      </Dialog>
+    </div>
   </div>
 </template>
 

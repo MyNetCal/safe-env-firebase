@@ -39,7 +39,7 @@
         </div>
         <!-- Buttons -->
         <div class="mt-6 text-center">
-          <MyButton @click="onSave" color="bg-green-700"> Add Trainning Date </MyButton>
+          <MyButton @click="onSave" color="bg-green-700"> Add Training Date </MyButton>
           <div class="text-center text-sm text-slate-600 relative -top-2">
             [After adding a date, it can not be deleted]
           </div>
