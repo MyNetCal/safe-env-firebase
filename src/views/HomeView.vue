@@ -91,13 +91,20 @@ const codeCardText = computed(() => {
   return null
 })
 
+const isConsentRequired = computed(() => {
+  const typeScreening = store.getScreening(user.value.Function)
+  return store.loginCorporation?.Screening?.[typeScreening]?.Consent
+})
+
 const user = computed(() => {
   const userCorp = JSON.parse(JSON.stringify(store.loginUserCorporation))
   userCorp.UserData = JSON.parse(JSON.stringify(store.loginUser))
   return userCorp
 })
 
-const validConsent = computed(() => store.loginUserCorporation?.ScreeningReqFlagConsent || false)
+const validConsent = computed(
+  () => store.loginUserCorporation?.ScreeningReqFlagConsent || !isConsentRequired.value
+)
 
 const seeSignature = ref(false)
 
@@ -307,7 +314,7 @@ function showFile(file) {
           </span>
         </div>
         <div v-if="!validConsent" class="px-2 pt-3 text-left">
-          &bull; Please Sign the
+          &bull; Please sign the
           <span class="cursor-pointer text-blue-600 underline" @click="consentEditing = true"
             >Consent to release and share information</span
           >
@@ -360,7 +367,7 @@ function showFile(file) {
       </div>
 
       <!-- Card with Consent Date -->
-      <div v-if="validConsent" class="w-fit p-5 shadow-md">
+      <div v-if="validConsent && isConsentRequired" class="w-fit p-5 shadow-md">
         <div class="font-semibold">
           <FontAwesomeIcon icon="check" class="text-green-700" /> Consent to release and share
           information
