@@ -17,6 +17,7 @@ import {
   arrayRemove
 } from 'firebase/firestore'
 import { watch, onUnmounted, ref } from 'vue'
+import dayjs from 'dayjs'
 
 const store = useGeneralStore()
 const db = useFirestore()
@@ -38,10 +39,10 @@ function initUser(user) {
     Branch: store.loginUser.Branch, // values: men, women, both
     EmailSent: false,
     LastLogin: '',
-    ScreeningReqFilesApplication:[],
-    ScreeningReqFilesInterview:[],
-    ScreeningReqFilesReference:[],
-    ScreeningReqFilesBackground:[],
+    ScreeningReqFilesApplication: [],
+    ScreeningReqFilesInterview: [],
+    ScreeningReqFilesReference: [],
+    ScreeningReqFilesBackground: [],
     CorpsActiveAtLeastOne: false,
     CorpsActiveIds: [],
     ...newUser
@@ -116,13 +117,12 @@ function entities(corpEntity) {
 function initUserCorp(user, corp) {
   return {
     Active: true,
-    Activity: '0',
     Board: false,
     CorporationId: corp?.id || 'xxx',
     CorporationName: corp?.Short || '',
     Entity: entities(corp?.Entity)[0],
-    Function: store.getFunction(store.activities[0].Role[0]),
-    Role: store.activities[0].Role[0],
+    Function: store.getFunction(store.ROLES),
+    Role: store.ROLES[0],
     Screening: false,
     Status: store.USER_STATUS_PENDING,
     ScreeningReq: {
@@ -191,6 +191,13 @@ async function createUserCorp(userCorp, userId) {
           CorpsActiveAtLeastOne: userCorps.length > 0,
           CorpsIds: arrayUnion(userCorp.CorporationId)
         })
+        const dob = u.data().DOB
+        const uData = u.data()
+        if (dayjs().diff(dayjs(dob), 'years') < 18) {
+          console.log('Adding Minor to Participants');
+          const p = initParticipant({ Name: uData.Name, LastName: uData.LastName, Nickname: uData.Nickname, DOB: uData.DOB, CorpId: userCorp.CorporationId, id:'' })
+          addDoc(collection(db, 'Participants'), p)
+        }
         res(d)
       },
       (e) => err(e)

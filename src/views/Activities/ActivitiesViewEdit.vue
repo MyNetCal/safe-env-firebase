@@ -481,7 +481,8 @@ const staffGroupRef = computed(() =>
     collection(db, 'UsersCorporations'),
     where('CorporationId', '==', corpId.value),
     where('Status', '==', 'Approved'),
-    where('Groups', 'array-contains', actToEdit.value.Title)
+    where('Groups', 'array-contains', actToEdit.value.Title),
+    where('Role', '!=', store.ROLE_JUNIOR_COUNSELOR)
   )
 )
 
@@ -552,7 +553,9 @@ const allStaffRef = computed(() =>
   query(
     collection(db, 'UsersCorporations'),
     where('Status', '==', 'Approved'),
-    where('CorporationId', '==', corpId.value)
+    where('CorporationId', '==', corpId.value),
+    where('Role', '!=', store.ROLE_JUNIOR_COUNSELOR)
+
   )
 )
 
@@ -563,7 +566,7 @@ const allStaffNotSelectedRef = computed(() =>
     collection(db, 'UsersCorporations'),
     where('Status', '==', 'Approved'),
     where('CorporationId', '==', corpId.value),
-    where('id', 'not-in', actToEdit.value.Staff)
+    where('id', 'not-in', actToEdit.value.Staff),
   )
 )
 

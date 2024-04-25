@@ -224,7 +224,7 @@ function deleteTraining() {
                 <!-- Header -->
                 <div class="flex place-items-center justify-between rounded-t bg-slate-300 px-3">
                   <div class="py-2 font-semibold">{{ req.Title }}</div>
-                  <div class="flex">
+                  <div class="flex" v-if="store.accessLevel > 2">
                     <FontAwesomeIcon
                       class="mr-2 cursor-pointer rounded bg-slate-200 px-2 py-1.5 shadow"
                       @click="confirmDeleteTraining(req)"
@@ -260,7 +260,7 @@ function deleteTraining() {
             </div>
           </div>
           <div v-else class="mt-10 text-center">None</div>
-          <MyFab @click="addTraining" class="-bottom-5 -right-2 bg-green-800/80">
+          <MyFab @click="addTraining" class="-bottom-5 -right-2 bg-green-800/80" v-if="store.accessLevel > 2">
             <FontAwesomeIcon icon="plus" />
           </MyFab>
         </div>
@@ -273,7 +273,7 @@ function deleteTraining() {
                 <!-- Header -->
                 <div class="flex place-items-center justify-between rounded-t bg-slate-300 px-3">
                   <div class="py-2 font-semibold">{{ req.Title }}</div>
-                  <div class="flex">
+                  <div class="flex" v-if="store.accessLevel > 2">
                     <FontAwesomeIcon
                       class="mr-2 cursor-pointer rounded bg-slate-200 px-2 py-1.5 shadow"
                       @click="confirmDeleteTraining(req)"
@@ -319,7 +319,7 @@ function deleteTraining() {
             </div>
           </div>
           <div v-else class="mt-10 text-center">None</div>
-          <MyFab @click="addTraining" class="-bottom-5 -right-2 bg-green-800/80">
+          <MyFab @click="addTraining" class="-bottom-5 -right-2 bg-green-800/80" v-if="store.accessLevel > 2">
             <FontAwesomeIcon icon="plus" />
           </MyFab>
         </div>

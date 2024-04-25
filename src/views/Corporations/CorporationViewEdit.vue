@@ -28,33 +28,50 @@
           </div>
         </div>
 
-        <!-- Code of Conduct -->
-        <div class="mt-3 text-center">
-          <MyButton class="bg-green-600" @click="openCodeEditor"
-            >{{ dataToEdit.id == '' ? 'Upload' : 'Update' }} Code Of Conduct</MyButton
-          >
+        <!-- Updating Code, Handbook & Appendix -->
+        <div class="mt-6 flex max-w-lg flex-wrap mx-auto">
+          <!-- Code of Conduct -->
+          <div class="w-40 grow text-center">
+            <MyButton class="h-16 bg-green-600" @click="openCodeEditor"
+              >Update Code Of Conduct</MyButton
+            >
+          </div>
+          <!-- Safe Environment Handbook -->
+          <div class="w-40 grow text-center">
+            <MyButton class="h-16 bg-green-600" @click="updateHandbook">
+              <span v-if="dataToEdit?.FileHandbook">Update</span
+              ><span v-else>Upload</span> Safe Environment Handbook
+            </MyButton>
+          </div>
+          <!-- Directors’ Appendix -->
+          <div class="w-40 grow text-center">
+            <MyButton class="h-16 bg-green-600" @click="updateAppendix">
+              <span v-if="dataToEdit?.FileAppendix">Update</span
+              ><span v-else>Upload</span> Directors’ Appendix
+            </MyButton>
+          </div>
         </div>
 
-        <!-- Activities -->
+        <!-- Roles -->
         <div class="mt-5">
           <div class="text-xs text-slate-600">
-            Activities and Roles [Check all that apply to this corporation]
+            Roles [Check all that apply to this corporation]
           </div>
           <div
             class="min-h-[52px] rounded border-0 bg-slate-100 p-1 outline-none ring-1 ring-slate-300 hover:shadow-md hover:ring-slate-400"
           >
             <div class="flex flex-wrap gap-1">
-              <template v-for="(act, index) in activities" :key="act.id">
+              <template v-for="(role, index) in roles" :key="role.id">
                 <div
                   class="flex w-[158px] cursor-pointer rounded border px-1.5 text-sm"
                   :class="[
-                    dataToEdit.Activities.includes(act.id)
+                    dataToEdit.Roles?.includes(role)
                       ? 'bg-orange-300 text-slate-900'
                       : 'bg-stone-200  text-slate-700'
                   ]"
-                  @click="toggleActivities(act.id)"
+                  @click="toggleRole(role)"
                 >
-                  <div class="py-1">{{ index + 1 }}. {{ act.Name }}</div>
+                  <div class="py-1">{{ index + 1 }}. {{ role }}</div>
                 </div>
               </template>
             </div>
@@ -154,8 +171,11 @@ import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import { useGeneralStore } from '@/stores/general'
 import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'
-import { useFirestore } from 'vuefire'
+import { useFirebaseStorage, useFirestore } from 'vuefire'
 import dayjs from 'dayjs'
+import { useFileDialog } from '@vueuse/core'
+import { ref as storageRef, uploadBytesResumable } from '@firebase/storage'
+
 
 const emit = defineEmits(['onClose', 'onUpdate'])
 const props = defineProps({ showModal: Boolean, id: String, branch: String, rowSelected: Object })
@@ -163,7 +183,9 @@ const { showModal, id, branch, rowSelected } = toRefs(props)
 
 const db = useFirestore()
 const store = useGeneralStore()
-const activities = computed(() => store.activities)
+const storage = useFirebaseStorage()
+
+const roles = computed(() => store.ROLES)
 const entities = store.entities
 
 const codeEditing = ref(false)
@@ -171,9 +193,10 @@ const codeEditing = ref(false)
 const percentage = ref(0)
 const isLoading = ref(false)
 
-function toggleActivities(id) {
-  const index = dataToEdit.value.Activities.indexOf(id)
-  index >= 0 ? dataToEdit.value.Activities.splice(index, 1) : dataToEdit.value.Activities.push(id)
+function toggleRole(role) {
+  if (!dataToEdit.value.Roles) dataToEdit.value.Roles = []
+  const index = dataToEdit.value.Roles.indexOf(role)
+  index >= 0 ? dataToEdit.value.Roles.splice(index, 1) : dataToEdit.value.Roles.push(role)
 }
 
 const dataToEdit = ref({})
@@ -186,7 +209,7 @@ function initPlace() {
     Branch: branch.value,
     Code: '',
     Entity: '',
-    Activities: [],
+    Roles: [],
     BackgroundCheckValidFor: 2,
     CodeOfConductValidFor: 1,
     Screening: {
@@ -304,6 +327,50 @@ function onSave() {
 
   emit('onUpdate')
 }
+
+// *** Upload files
+const { files: fileToUpload, open, onChange: uploadFile, reset } = useFileDialog()
+let updating = ''
+function updateHandbook() {
+  updating = 'Handbook'
+  open()
+}
+
+function updateAppendix() {
+  updating = 'Appendix'
+  open()
+}
+
+uploadFile(() => {
+  if (!fileToUpload.value) return
+  const fileName = fileToUpload.value.item(0).name
+  console.log('Uploading ', updating, '   File: ', fileName)
+  console.log('Corp id: ', dataToEdit.value)
+  store.isUploadingFiles = true
+  store.isUploadingFilesPercentage = 0
+  const fileRef = storageRef(
+    storage,
+    `Corporations/${id.value}/${updating}/${fileName}`
+  )
+  const uploadTask = uploadBytesResumable(fileRef, fileToUpload.value.item(0))
+  uploadTask.on(
+    'state_changed',
+    (snapshot) => {
+      store.isUploadingFilesPercentage = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+    },
+    (error) => {
+      console.log('ERROR', error)
+      store.isUploadingFiles = false
+      reset()
+    },
+    () => {
+      console.log('Uploaded Success')
+      store.isUploadingFiles = false
+      updateDoc(doc(db, 'Corporations', id.value), { ['File' + updating]: fileName })
+      reset()
+    }
+  )
+})
 </script>
 
 <style scoped>

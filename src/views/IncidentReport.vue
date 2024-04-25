@@ -115,7 +115,7 @@ async function createSentReport() {
     <!-- Form -->
     <div class="mx-auto my-5 px-5 max-w-xl text-left overflow-auto">
       <div class="mb-3 flex flex-wrap gap-2">
-        <MyInputText typeInput="date" label="Date of incidente" v-model="date" />
+        <MyInputText typeInput="date" label="Date of incident" v-model="date" />
         <MyInputText typeInput="time" label="Aprox. time" v-model="time" />
       </div>
       <MyInputText label="Location" class="mb-3" v-model="location" />
@@ -134,7 +134,7 @@ async function createSentReport() {
         v-model="response"
       />
       <div class="text-center">
-        <MyButton class="" @click="createSentReport">Submitt</MyButton>
+        <MyButton class="" @click="createSentReport">Submit</MyButton>
       </div>
     </div>
 

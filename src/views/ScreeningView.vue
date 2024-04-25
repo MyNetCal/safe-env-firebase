@@ -45,7 +45,7 @@ function saveChanges(type) {
 </script>
 
 <template>
-  <div class="m-2 flex flex-col justify-start items-center h-full">
+  <div class="m-2 flex h-full flex-col items-center justify-start">
     <h1>Screening</h1>
 
     <!-- Selector: Corporation -->
@@ -54,7 +54,7 @@ function saveChanges(type) {
     </div>
 
     <!-- Tabs -->
-    <div class="tabs mx-auto max-w-md w-full">
+    <div class="tabs mx-auto w-full max-w-md">
       <div
         class="tab border-b border-b-slate-400"
         :class="{ 'tab-active': currentScreeningType == store.SCREENING_STAFF }"
@@ -79,45 +79,51 @@ function saveChanges(type) {
     </div>
 
     <!-- List -->
-    <div v-if="!(editingValues == null)" class="mt-5 flex justify-center overflow-auto mb-8">
+    <div v-if="!(editingValues == null)" class="mb-8 mt-5 flex justify-center overflow-auto">
       <div class="w-80">
         <MyInputCheckBox
           v-model="editingValues[currentScreeningType].Application"
           @update:modelValue="saveChanges('Application')"
+          :disable="store.accessLevel < 3"
         >
           Written Application
         </MyInputCheckBox>
         <MyInputCheckBox
           v-model="editingValues[currentScreeningType].Interview"
           @update:modelValue="saveChanges('Interview')"
+          :disable="store.accessLevel < 3"
         >
           Face-to-face interview
         </MyInputCheckBox>
         <div class="flex place-items-center">
           <div class="mb-4 ml-12 w-40 text-left text-sm">Reference Check:</div>
-          <div class="w-16">
+          <div class="w-16" v-if="store.accessLevel > 2">
             <MySelectAuto
               :items="[0, 1, 2, 3]"
               v-model="editingValues[currentScreeningType].Reference"
               @update:modelValue="saveChanges('Reference')"
             ></MySelectAuto>
           </div>
+          <div v-else class="mb-4">{{ editingValues[currentScreeningType].Reference }}</div>
         </div>
         <MyInputCheckBox
           v-model="editingValues[currentScreeningType].Background"
           @update:modelValue="saveChanges('Background')"
+          :disable="store.accessLevel < 3"
         >
           Criminal background check
         </MyInputCheckBox>
         <MyInputCheckBox
           v-model="editingValues[currentScreeningType].Code"
           @update:modelValue="saveChanges('Code')"
+          :disable="store.accessLevel < 3"
         >
           Signed code of conduct
         </MyInputCheckBox>
         <MyInputCheckBox
           v-model="editingValues[currentScreeningType].Consent"
           @update:modelValue="saveChanges('Consent')"
+          :disable="store.accessLevel < 3"
         >
           Consent to Release and Share Information
         </MyInputCheckBox>

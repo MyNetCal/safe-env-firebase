@@ -44,12 +44,13 @@ watch(
     unsubSites = onSnapshot(particiapntsRef.value, (res) => {
       res.docChanges().forEach((change) => {
         const { newIndex, oldIndex, doc: siteDoc } = change
+        const site = { ...siteDoc.data(), id: siteDoc.id }
         if (change.type === 'added') {
-          participants.value.splice(newIndex, 0, siteDoc.data())
+          participants.value.splice(newIndex, 0, site)
         }
         if (change.type === 'modified') {
           participants.value.splice(oldIndex, 1)
-          participants.value.splice(newIndex, 0, siteDoc.data())
+          participants.value.splice(newIndex, 0, site)
         }
         if (change.type === 'removed') {
           participants.value.splice(oldIndex, 1)

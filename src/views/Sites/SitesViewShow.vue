@@ -174,7 +174,7 @@ function showOriginalPhoto(photo) {
         </div>
 
         <!-- Add Vote buton -->
-        <div class="mb-5 text-center" v-if="site.Status == 'Waiting Approval'">
+        <div class="mb-5 text-center" v-if="site.Status == 'Waiting Approval' && store.accessLevel > 1">
           <MyButton v-if="!alreadyVoted" @click="addVote" class="bg-green-700"
             >Add my Vote</MyButton
           >

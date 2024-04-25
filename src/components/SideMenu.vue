@@ -18,14 +18,6 @@
         <font-awesome-icon icon="bars" size="lg" class="" />
         <div class="ml-4 whitespace-nowrap text-lg">Safe Environment</div>
       </div>
-      <!-- Menu: Dashboard -->
-      <div
-        @click="goto('/dashboard')"
-        class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
-      >
-        <FontAwesomeIcon icon="gauge" />
-        <div class="ml-6 whitespace-nowrap">Dashboard</div>
-      </div>
       <!-- Menu: Home -->
       <div
         @click="goto('/')"
@@ -33,6 +25,15 @@
       >
         <FontAwesomeIcon icon="home" />
         <div class="ml-6 whitespace-nowrap">My Status</div>
+      </div>
+      <!-- Menu: Dashboard -->
+      <div
+      v-if="accessLevel > 1"
+        @click="goto('/dashboard')"
+        class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
+      >
+        <FontAwesomeIcon icon="gauge" />
+        <div class="ml-6 whitespace-nowrap">Dashboard</div>
       </div>
       <!-- Menu: Board -->
       <div
@@ -45,7 +46,7 @@
       </div>
       <!-- Menu: Personnel -->
       <div
-        v-if="accessLevel > 0"
+        v-if="accessLevel > 1"
         @click="goto('/personnel')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
@@ -63,7 +64,7 @@
       </div>
       <!-- Menu: Training -->
       <div
-        v-if="accessLevel > 0"
+        v-if="accessLevel > 1"
         @click="goto('/training')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
@@ -72,7 +73,7 @@
       </div>
       <!-- Menu: Screening -->
       <div
-        v-if="accessLevel > 0"
+        v-if="accessLevel > 1"
         @click="goto('/screening')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
@@ -81,7 +82,7 @@
       </div>
       <!-- Menu: Sponsoring Entities -->
       <div
-        v-if="accessLevel >= 0"
+        v-if="accessLevel >= 1"
         @click="goto('/Sites')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >

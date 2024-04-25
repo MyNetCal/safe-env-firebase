@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watchEffect, watch } from 'vue'
+import { ref, watchEffect, watch, computed } from 'vue'
 import { useGeneralStore } from '@/stores/general'
 import { getUsersByCorp } from '@/stores/datadb'
 import { storeToRefs } from 'pinia'
@@ -20,10 +20,10 @@ import {
 } from 'firebase/firestore'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { useElementHover, useElementBounding } from '@vueuse/core'
+import { useElementHover, useElementBounding, useFileDialog } from '@vueuse/core'
 import dayjs from 'dayjs'
 import localizedFormat from 'dayjs/plugin/localizedFormat'
-import { ref as storageRef, getDownloadURL } from '@firebase/storage'
+import { ref as storageRef, getDownloadURL, uploadBytesResumable } from '@firebase/storage'
 import MyButton from '@/components/MyButton.vue'
 
 const store = useGeneralStore()
@@ -55,6 +55,22 @@ let unsubReportsList = null
 
 const codeEditing = ref(false)
 const newCode = ref('')
+
+const userCanEdit = computed(() => {
+  if (store.loginUserCorporation?.CorporationName == 'Prelature') {
+    if (store.loginUserCorporation.SEC) return true
+    return false
+  }
+  if (store.accessLevel > 2) return true
+  return false
+})
+
+function backgroundCheckExpiring() {
+  if (!userCanEdit.value) return
+  backgroundCheckValidFor.value == 99
+    ? (backgroundCheckValidFor.value = 2)
+    : (backgroundCheckValidFor.value = 99)
+}
 
 function openCodeEditor() {
   getDoc(doc(db, 'Corporations', store.loginCorporationId)).then((d) => {
@@ -207,7 +223,7 @@ function getReportsList() {
   }
 
   unsubReportsList = onSnapshot(q, (res) => {
-    res.docChanges().forEach(async(change) => {
+    res.docChanges().forEach(async (change) => {
       const { newIndex, oldIndex, doc: tDoc } = change
       const t = tDoc.data()
       t.id = tDoc.id
@@ -215,7 +231,7 @@ function getReportsList() {
       const userREf = await getDoc(doc(db, 'Users', t.UserId))
       t.CorpData = corpRef.data()
       t.UserData = userREf.data()
-      
+
       if (change.type === 'added') {
         reportsList.value.splice(newIndex, 0, t)
       }
@@ -235,10 +251,56 @@ function getUrlReport(path) {
     window.open(url, '_blank')
   })
 }
+
+// *** Upload files
+const { files: fileToUpload, open, onChange: uploadFile, reset } = useFileDialog()
+let updating = ''
+function updateHandbook() {
+  updating = 'Handbook'
+  open()
+}
+
+function updateAppendix() {
+  updating = 'Appendix'
+  open()
+}
+
+uploadFile(() => {
+  if (!fileToUpload.value) return
+  const fileName = fileToUpload.value.item(0).name
+  console.log('Uploading ', updating, '   File: ', fileName)
+  console.log('Corp id: ', currentCorpId.value)
+  store.isUploadingFiles = true
+  store.isUploadingFilesPercentage = 0
+  const fileRef = storageRef(
+    storage,
+    `Corporations/${currentCorpId.value}/${updating}/${fileName}`
+  )
+  const uploadTask = uploadBytesResumable(fileRef, fileToUpload.value.item(0))
+  uploadTask.on(
+    'state_changed',
+    (snapshot) => {
+      store.isUploadingFilesPercentage = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+    },
+    (error) => {
+      console.log('ERROR', error)
+      store.isUploadingFiles = false
+      reset()
+    },
+    () => {
+      console.log('Uploaded Success')
+      store.isUploadingFiles = false
+      updateDoc(doc(db, 'Corporations', currentCorpId.value), { ['File' + updating]: fileName })
+      reset()
+    }
+  )
+})
+
+// end
 </script>
 
 <template>
-  <div class="flex h-full flex-col overflow-auto">
+  <div class="thinsb flex h-full flex-col overflow-auto px-1">
     <h1 class="mt-3 text-blue-800">Board</h1>
     <div class="text-sm text-slate-500">
       This page can be edited only by the Safe Environment Coordinator
@@ -307,7 +369,7 @@ function getUrlReport(path) {
         v-model="votesNeeded"
         type-input="number"
         @on-change="saveVotesNeeded"
-        :deactivated="store.accessLevel < 3"
+        :deactivated="!userCanEdit"
       ></MyInputText>
 
       <!-- Email address -->
@@ -319,20 +381,36 @@ function getUrlReport(path) {
         v-model="emailFiles"
         type-input="email"
         @on-change="savesEmailFiles"
-        :deactivated="store.accessLevel < 3"
+        :deactivated="!userCanEdit"
       ></MyInputText>
 
       <!--Background Ckeck Valid For -->
-      <div class="mx-auto mt-6 flex flex-wrap place-items-center text-slate-700">
-        Background check valid for
-        <MyInputText
-          class="mx-2 w-12"
-          v-model="backgroundCheckValidFor"
-          type-input="number"
-          @on-change="savesBackgroundCheckValidFor"
-          :deactivated="store.accessLevel < 3"
-        ></MyInputText>
-        years
+      <div class="mt-6">
+        <div class="mx-auto mb-2 flex flex-wrap place-items-center text-slate-700">
+          Background check does not expire
+          <FontAwesomeIcon
+            size="lg"
+            class="ml-2"
+            :class="[userCanEdit ? 'cursor-pointer' : 'cursor-not-allowed']"
+            @click="backgroundCheckExpiring"
+            :icon="backgroundCheckValidFor == 99 ? ['far', 'check-square'] : ['far', 'square']"
+          />
+        </div>
+
+        <div
+          class="mx-auto flex flex-wrap place-items-center text-slate-700"
+          v-if="backgroundCheckValidFor != 99"
+        >
+          Background check valid for
+          <MyInputText
+            class="mx-2 w-12"
+            v-model="backgroundCheckValidFor"
+            type-input="number"
+            @on-change="savesBackgroundCheckValidFor"
+            :deactivated="!userCanEdit"
+          ></MyInputText>
+          years
+        </div>
       </div>
 
       <!-- Code of Conduct Valid For -->
@@ -343,22 +421,38 @@ function getUrlReport(path) {
           v-model="codeOfConductValidFor"
           type-input="number"
           @on-change="savesCodeOfConductValidFor"
-          :deactivated="store.accessLevel < 3"
+          :deactivated="!userCanEdit"
         ></MyInputText>
         years
       </div>
 
-      <!-- Code of Conduct -->
-      <div class="mt-6 text-center">
-        <MyButton :disabled="store.accessLevel < 3" class="bg-green-600" @click="openCodeEditor"
-          >Update Code Of Conduct</MyButton
-        >
+      <!-- Updating Code, Handbook & Appendix -->
+      <div class="mt-6 flex max-w-lg flex-wrap">
+        <!-- Code of Conduct -->
+        <div class="w-40 grow text-center">
+          <MyButton :disabled="!userCanEdit" class="h-16 bg-green-600" @click="openCodeEditor"
+            >Update Code Of Conduct</MyButton
+          >
+        </div>
+        <!-- Safe Environment Handbook -->
+        <div class="w-40 grow text-center">
+          <MyButton :disabled="!userCanEdit" class="h-16 bg-green-600" @click="updateHandbook">
+            <span v-if="currentCorpData?.FileHandbook">Update</span><span v-else>Upload</span> Safe
+            Environment Handbook
+          </MyButton>
+        </div>
+        <!-- Directors’ Appendix -->
+        <div class="w-40 grow text-center">
+          <MyButton :disabled="!userCanEdit" class="h-16 bg-green-600" @click="updateAppendix">
+            <span v-if="currentCorpData?.FileAppendix">Update</span><span v-else>Upload</span>  Directors’ Appendix
+          </MyButton>
+        </div>
       </div>
 
       <!-- List of reports -->
-      <div class="mt-10">
+      <div class="my-10">
         <div>List of Reports</div>
-        <table v-if="reportsList.length > 0" class="mt-3 mx-auto">
+        <table v-if="reportsList.length > 0" class="mx-auto mt-3">
           <thead>
             <tr>
               <th>Date</th>
@@ -384,23 +478,42 @@ function getUrlReport(path) {
         v-if="codeEditing"
         class="absolute inset-0 z-50 justify-between bg-slate-200/95 p-2 text-left"
       >
-        <div class="pdf-height mx-auto max-w-[816px] bg-white p-2 text-stone-600">
-          <textarea
-            v-model="newCode"
-            class="code-input thinsb relative w-full resize-none rounded border-0 bg-white px-1 py-1 placeholder-gray-400 shadow outline-none hover:shadow-md focus:outline-none focus:ring-1 focus:ring-blue-300"
-          ></textarea>
-          <div class="mt-6 px-2">
-            I, __________________________________, have read the above guidelines and agree to abide
-            by them in connection with all Activities and Programs involving Minors. I understand
-            that I will be asked to review and sign my agreement with these guidelines annually.
+        <div>
+          <div class="mx-auto flex max-w-[816px] flex-col bg-white p-2 text-stone-600">
+            <textarea
+              v-model="newCode"
+              class="code-input thinsb relative w-full resize-none rounded border-0 bg-white px-1 py-1 placeholder-gray-400 shadow outline-none hover:shadow-md focus:outline-none focus:ring-1 focus:ring-blue-300"
+            ></textarea>
+            <div class="mt-6 px-2">
+              I, __________________________________, have read the above guidelines and agree to
+              abide by them in connection with all Activities and Programs involving Minors. I
+              understand that I will be asked to review and sign my agreement with these guidelines
+              annually.
+            </div>
+          </div>
+          <div class="mt-5 text-center">
+            <MyButton class="bg-red-600" @click="closingCodeEditor">Cancel</MyButton>
+            <MyButton class="bg-green-700" @click="updatingCode">Update</MyButton>
+          </div>
+          <div class="text-center text-xs text-slate-500">
+            * Updating the Code of Conduct will require all personnel to sign it again
           </div>
         </div>
-        <div class="mt-5 text-center">
-          <MyButton class="bg-red-600" @click="closingCodeEditor">Cancel</MyButton>
-          <MyButton class="bg-green-700" @click="updatingCode">Update</MyButton>
-        </div>
-        <div class="text-center text-xs text-slate-500">
-          * Updating the Code of Conduct will require all personnel to sign it again
+      </div>
+    </div>
+
+    <!-- Loading -->
+    <div
+      class="absolute left-0 right-0 top-7 mx-auto flex place-items-center justify-center"
+      v-if="store.isUploadingFiles"
+    >
+      <div class="flex place-items-center rounded-lg bg-white px-2 py-1 shadow-lg">
+        <div>Loading</div>
+        <div class="relative ml-3 h-3 w-60 rounded-full bg-slate-300">
+          <div
+            class="absolute left-0 h-3 rounded-full bg-orange-400"
+            :style="{ width: store.isUploadingFilesPercentage + '%' }"
+          ></div>
         </div>
       </div>
     </div>
@@ -419,6 +532,6 @@ function getUrlReport(path) {
 }
 
 .code-input {
-  height: calc(100vh - 200px);
+  height: calc(100vh - 300px);
 }
 </style>

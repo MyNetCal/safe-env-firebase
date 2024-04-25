@@ -103,10 +103,10 @@ export const useGeneralStore = defineStore('general', () => {
   const accessLevelName = computed(() => {
     if (loginUserCorporation.value?.CorporationName == 'Prelature') {
       if (loginUserCorporation.value?.SEC) {
-        return 'SEC of the Prealture' // 5
+        return 'SEC of the Prelature' // 5
       }
       if (loginUserCorporation.value?.Board) {
-        return 'Board of the Prealture' // 4
+        return 'Board of the Prelature' // 4
       }
     }
     if (loginUserCorporation.value?.SEC) {
@@ -129,29 +129,23 @@ export const useGeneralStore = defineStore('general', () => {
 
 
   const ROLE_PRIEST = 'Priest'
-  const ROLE_DIRECTOR = 'Director'
+  const ROLE_DIRECTOR = 'Activity Director'
   const ROLE_STAFF = 'Staff'
-  const ROLE_JUNIOR_COUNSELOR = 'Junior Counselor'
-  const ROLE_TEACHER = 'Teacher'
-  const ROLE_RESIDENT = 'Resident'
-  const ROLE_LOCAL_COUNCIL = 'Local Council'
-  const ROLE_LOW_ACCESS_STAFF = 'Low Access Staff'
+  const ROLE_LOW_ACCESS_STAFF = 'Low Access'
   const ROLE_BOARD = 'Board'
+  const ROLE_JUNIOR_COUNSELOR = 'Junior Counselor'
 
   const ROLES = [
     ROLE_PRIEST,
     ROLE_DIRECTOR,
     ROLE_STAFF,
-    ROLE_JUNIOR_COUNSELOR,
-    ROLE_TEACHER,
-    ROLE_RESIDENT,
-    ROLE_LOCAL_COUNCIL,
     ROLE_LOW_ACCESS_STAFF,
-    ROLE_BOARD
+    ROLE_BOARD,
+    ROLE_JUNIOR_COUNSELOR,
   ]
 
   const ENTITY_PRELATURE = 'Prelature'
-  const ENTITY_PARTY = '3rd Party Only'
+  const ENTITY_PARTY = '3rd Party'
   const ENTITY_BOTH = 'Both'
 
   const USER_STATUS_BOARD = 'BOARD'
@@ -187,48 +181,10 @@ export const useGeneralStore = defineStore('general', () => {
     Code: SCREENING_TITLE_CODE,
     Consent: SCREENING_TITLE_CONSENT
   }
-  const activities = ref([
-    { id: '0', Name: 'Priest', Role: [ROLE_PRIEST] },
-    {
-      id: '1',
-      Name: 'sr Traditional Means',
-      Role: [ROLE_DIRECTOR, ROLE_STAFF, ROLE_JUNIOR_COUNSELOR]
-    },
-    {
-      id: '2',
-      Name: 'sr Auxiliary Means',
-      Role: [ROLE_DIRECTOR, ROLE_STAFF, ROLE_JUNIOR_COUNSELOR]
-    },
-    {
-      id: '3',
-      Name: 'Father-son Club',
-      Role: [ROLE_DIRECTOR, ROLE_STAFF, ROLE_JUNIOR_COUNSELOR]
-    },
-    {
-      id: '4',
-      Name: 'Religion Class',
-      Role: [ROLE_TEACHER]
-    },
-    {
-      id: '5',
-      Name: 'sr Center Resident',
-      Role: [ROLE_RESIDENT, ROLE_LOCAL_COUNCIL]
-    },
-    {
-      id: '6',
-      Name: 'Low Access Staff',
-      Role: [ROLE_LOW_ACCESS_STAFF]
-    },
-    {
-      id: '7',
-      Name: 'Board',
-      Role: [ROLE_BOARD]
-    }
-  ])
 
   const FUNCTION_BOARD = 'Board'
   const FUNCTION_DIRECTOR = 'Activity Director'
-  const FUNCTION_PERSONNEL = 'Personnel'
+  const FUNCTION_PERSONNEL = 'Staff'
   const FUNCTION_JUNIOR_COUNSELOR = 'Junior Counselor'
   const FUNCTION_LOW_ACCESS = 'Low Access'
   const FUNCTION_SCREENING = 'Screening and Selection Staff'
@@ -285,15 +241,12 @@ export const useGeneralStore = defineStore('general', () => {
       case ROLE_BOARD:
         return FUNCTION_BOARD
       case ROLE_DIRECTOR:
-      case ROLE_LOCAL_COUNCIL:
       case ROLE_PRIEST:
         return FUNCTION_DIRECTOR
       case ROLE_STAFF:
-      case ROLE_TEACHER:
         return FUNCTION_PERSONNEL
       case ROLE_JUNIOR_COUNSELOR:
         return FUNCTION_JUNIOR_COUNSELOR
-      case ROLE_RESIDENT:
       case ROLE_LOW_ACCESS_STAFF:
         return FUNCTION_LOW_ACCESS
       default:
@@ -461,9 +414,14 @@ export const useGeneralStore = defineStore('general', () => {
     countListAll,
     currentUserEmail,
     countRequests,
-    activities,
     entities,
     ROLES,
+    ROLE_PRIEST,
+    ROLE_DIRECTOR,
+    ROLE_STAFF,
+    ROLE_LOW_ACCESS_STAFF,
+    ROLE_BOARD,
+    ROLE_JUNIOR_COUNSELOR,
     USER_STATUS,
     ENTITY_PRELATURE,
     ENTITY_PARTY,

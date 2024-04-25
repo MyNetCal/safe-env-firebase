@@ -107,12 +107,11 @@ const isErrorLastName = computed(() => {
 const isErrorDOB = computed(() => {
   const formula = !(
     dayjs(userToEdit.value.DOB).isValid() &&
-    dayjs().diff(dayjs(userToEdit.value.DOB), 'y') < 100 &&
-    dayjs().diff(dayjs(userToEdit.value.DOB), 'y') >= 18
+    dayjs().diff(dayjs(userToEdit.value.DOB), 'y') < 100 
   )
   const label =
     dayjs(userToEdit.value.DOB).isValid() && dayjs().diff(dayjs(userToEdit.value.DOB), 'y') < 18
-      ? 'Should be older than 18'
+      ? 'The User is a Minor'
       : ''
   return { formula, label }
 })

@@ -7,7 +7,7 @@
         corp.UserRef?.Name + ' ' + corp.UserRef?.LastName + ' @ ' + corpToEdit.CorporationName
       "
       @onClose="emit('onClose')"
-      maxWidth="max-w-md"
+      maxWidth="max-w-xl"
     >
       <div>
         <div class="mt-3">

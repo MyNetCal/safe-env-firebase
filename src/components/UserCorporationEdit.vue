@@ -2,7 +2,6 @@
 import { useGeneralStore } from '@/stores/general'
 import { computed, watchEffect, ref } from 'vue'
 import MySelectCorporation from './MySelect/MySelectCorporation.vue'
-import MySelectActivity from './MySelect/MySelectActivity.vue'
 import MySelectAuto from './MyInputs/MySelectAuto.vue'
 import { arrayRemove, arrayUnion, doc, getDoc, updateDoc } from 'firebase/firestore'
 import { useFirestore } from 'vuefire'
@@ -40,19 +39,30 @@ function newSelCorporation(val) {
   corpToEdit.value.CorporationName = val.Short
 }
 
-const roles = computed(() => store.activities[corpToEdit.value.Activity]?.Role || [])
+const isUserAMinor = computed(() => dayjs().diff(dayjs(user.value?.DOB), 'years') < 18)
 
-function activitySelected() {
-  corpToEdit.value.Role = roles.value[0]
-  corpToEdit.value.Screening = store.getFunction(corpToEdit.value.Role) == store.FUNCTION_BOARD
-  corpToEdit.value.Board = store.getFunction(corpToEdit.value.Role) == store.FUNCTION_BOARD
-}
-
-const isErrorActivity = computed(() => {
-  const formula = corpToEdit.value.Activity == ''
-  const label = ''
-  return { formula, label }
+const roles = computed(() => {
+  if (isUserAMinor.value) {
+    return [store.ROLE_JUNIOR_COUNSELOR]
+  }
+  return store.ROLES.filter(
+    (r) => corp.value?.Roles?.includes(r) && r != store.ROLE_JUNIOR_COUNSELOR
+  )
 })
+
+function roleSelected() {
+  corpToEdit.value.Screening = corpToEdit.value.Role == store.ROLE_BOARD
+  corpToEdit.value.Board = corpToEdit.value.Role == store.ROLE_BOARD
+  if (
+    corpToEdit.value.Role == store.ROLE_JUNIOR_COUNSELOR ||
+    corpToEdit.value.Role == store.ROLE_LOW_ACCESS_STAFF
+  ) {
+    corpToEdit.value.Entity = store.ENTITY_PARTY
+  }
+  if (corpToEdit.value.Role == store.ROLE_PRIEST) {
+    corpToEdit.value.Entity = store.ENTITY_PRELATURE
+  }
+}
 
 const isErrorRole = computed(() => {
   const formula = corpToEdit.value.Role == ''
@@ -73,12 +83,26 @@ watchEffect(() => {
   if (corpToEdit.value.UserId) {
     getDoc(doc(db, 'Users', corpToEdit.value.UserId)).then((d) => {
       user.value = d.data()
+      if (isUserAMinor.value) {
+        corpToEdit.value.Role = store.ROLE_JUNIOR_COUNSELOR
+        corpToEdit.value.Entity = store.ENTITY_PARTY
+      }
     })
   }
 })
 
 const entities = computed(() => {
-  if (!corpEntity.value) return []
+  if (!corpEntity.value) return ''
+  if (
+    corpToEdit.value.Role == store.ROLE_JUNIOR_COUNSELOR ||
+    corpToEdit.value.Role == store.ROLE_LOW_ACCESS_STAFF
+  ) {
+    return [store.ENTITY_PARTY]
+  }
+  if (corpToEdit.value.Role == store.ROLE_PRIEST) {
+    return [store.ENTITY_PRELATURE]
+  }
+
   return corpEntity.value == store.ENTITY_PRELATURE
     ? [store.ENTITY_PRELATURE]
     : corpEntity.value == store.ENTITY_PARTY
@@ -93,7 +117,6 @@ async function deactivateEmailNotification() {
   const html = `<p>Name: ${user.value.Name} ${user.value.LastName}</p>
               <p>Email: ${user.value.Email}</p>
               <p>Corporation: ${corp.value.Name}</p>
-              <p>Activity: ${store.activities[corpToEdit.value.Activity].Name}</p>
               <p>Role: ${corpToEdit.value.Role}</p>
               <p>Entity: ${corpToEdit.value.Entity}</p>
               <p>Board: ${corpToEdit.value.Board ? 'Yes' : 'No'}</p>
@@ -153,57 +176,80 @@ async function reactivateUser() {
 <template>
   <div>
     <div class="min-h-52">
+      <!-- Title -->
       <h2 class="text-center font-medium text-blue-500">
         Personnel Role at {{ corpToEdit.CorporationName }}
       </h2>
       <div class="mb-5 text-center text-sm text-slate-500">
         [This information is specific to {{ corpToEdit.CorporationName }}]
       </div>
+
+      <div v-if="isUserAMinor">The user is a Minor</div>
+
+      <!-- Select Corporation -->
       <div v-if="corpToEdit.id == '' && store.isUserBoardPrelature">
         <MySelectCorporation v-model="corpToEdit.CorporationId" @newEntry="newSelCorporation" />
       </div>
+
       <div class="flex flex-wrap gap-x-2">
-        <div>
-          <MySelectActivity
-            v-model="corpToEdit.Activity"
-            @newEntry="activitySelected"
-            label="Activity: Choose the first option that applies"
-            :isError="isErrorActivity"
-            class="max-h-60"
-          ></MySelectActivity>
-        </div>
-        <div>
+        <div class="w-40 grow">
           <MySelectAuto
             :items="roles"
             v-model="corpToEdit.Role"
             :id="null"
-            label="Role"
+            label="Role (Choose the first option that applies)"
             :isError="isErrorRole"
-          ></MySelectAuto>
+            @update:model-value="roleSelected"
+            info
+            info-title="Role"
+          >
+            <p>Choose “Activity Director” for anyone who will direct any activity.</p>
+            <p>
+              Choose “Low Access” for anyone who is not directly involved in activities with minors
+              or who does not interact directly with minors
+            </p></MySelectAuto
+          >
+        </div>
+        <div class="w-28 grow">
+          <MySelectAuto
+            label="Entity"
+            :items="entities"
+            v-model="corpToEdit.Entity"
+            :id="null"
+            info
+            info-title="Entity"
+          >
+            <p>
+              Choose “Prelature” for anyone who will be staff for any traditional means of
+              formation.
+            </p>
+            <p>
+              Choose “3rd Party Only” for anyone who will not be staff for any traditional means of
+              formation
+            </p></MySelectAuto
+          >
         </div>
       </div>
+
       <div class="flex gap-x-2">
-        <MySelectAuto
-          label="Entity"
-          :items="entities"
-          v-model="corpToEdit.Entity"
-          :id="null"
-        ></MySelectAuto>
         <MyInputCheckBox
+          v-if="corpToEdit.Role != store.ROLE_JUNIOR_COUNSELOR"
           :disable="store.getFunction(corpToEdit.Role) == store.FUNCTION_BOARD"
           v-model="corpToEdit.Board"
-          label="Board"
+          label="Board Member also"
         ></MyInputCheckBox>
         <MyInputCheckBox
           v-if="
             store.getFunction(corpToEdit.Role) == store.FUNCTION_BOARD ||
-            store.getFunction(corpToEdit.Role) == store.FUNCTION_DIRECTOR
+            store.getFunction(corpToEdit.Role) == store.FUNCTION_DIRECTOR ||
+            corpToEdit.Role == store.ROLE_LOW_ACCESS_STAFF
           "
           :disable="store.getFunction(corpToEdit.Role) == store.FUNCTION_BOARD"
           v-model="corpToEdit.Screening"
-          label="Screening"
+          label="Screening staff"
         ></MyInputCheckBox>
       </div>
+
       <div class="flex gap-x-2">
         <MyInputTextArea class="w-full" v-model="corpToEdit.Notes" label="Notes" />
       </div>

@@ -241,6 +241,7 @@ async function onCreatingEmailingConsent() {
   const dataPDFTemplate = {
     Name: signatureConsent.value,
     Corp: store.loginCorporation.Name,
+    Short: store.loginCorporation.Short,
     _pdfplum_config: {
       outputFileName: `${store.loginUserId}/${pdfRef.id}.pdf`,
       templatePath: 'vue-safe-env-pdfs/consent.zip',
@@ -383,6 +384,21 @@ function showFile(file) {
       </div>
     </div>
 
+    <div class="mt-6">
+      <MyButton
+        v-if="store.loginCorporation?.FileHandbook"
+        @click="
+          showFile(
+            `Corporations/${store.loginCorporationId}/Handbook/${store.loginCorporation?.FileHandbook}`
+          )
+        "
+        >Safe Environment Handbook<FontAwesomeIcon class="ml-2" icon="file-pdf"
+      /></MyButton>
+      <MyButton v-if="store.loginCorporation?.FileAppendix"
+        >Directors’ Appendix<FontAwesomeIcon class="ml-2" icon="file-pdf"
+      /></MyButton>
+    </div>
+
     <div class="my-5">
       <UsersViewTrainingList :user="user" />
     </div>
@@ -443,10 +459,15 @@ function showFile(file) {
               store.loginCorporation.Short
             }}").
           </p>
-          <p>
+          <p class="mb-3">
             In addition, I authorize {{ store.loginCorporation.Short }} to share with the Prelature
             any application submitted by me to volunteer for activities with minors as well as any
             notes of interviews and reference checks conducted in connection with my application.
+          </p>
+          <p class="mb-3">
+            I authorize the Prelature to share with {{ store.loginCorporation.Short }} the
+            information mentioned in the preceding paragraphs which has been obtained by any other
+            organizations working with the Prelature and with which I have volunteered.
           </p>
           <p class="mb-3">
             I understand and agree that my information will not be used for any purpose other than
