@@ -301,7 +301,7 @@ uploadFile(() => {
 
 <template>
   <div class="thinsb flex h-full flex-col overflow-auto px-1">
-    <h1 class="mt-3 text-blue-800">Board</h1>
+    <h1 class="mt-3 text-blue-800">Safe Environment Committee</h1>
     <div class="text-sm text-slate-500">
       This page can be edited only by the Safe Environment Coordinator
     </div>
@@ -362,7 +362,7 @@ uploadFile(() => {
 
       <!-- Voters needed -->
       <div class="mx-auto mt-6 max-w-xs text-slate-700">
-        Votes needed from board members and selection staff for personnel to be approved
+        Votes needed from committee members and selection staff for personnel to be approved
       </div>
       <MyInputText
         class="mx-auto mt-1 w-20"

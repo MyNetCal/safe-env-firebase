@@ -84,6 +84,7 @@ import {
   faCircleCheck,
   faTriangleExclamation,
   faUserSlash,
+  faCaretLeft,
 } from '@fortawesome/free-solid-svg-icons'
 import { faWindowClose, faCheckSquare, faSquare } from '@fortawesome/free-regular-svg-icons'
 
@@ -144,6 +145,7 @@ library.add(
   faPen,
   faPlus,
   faCaretRight,
+  faCaretLeft,
   faArrowRight,
   faArrowLeft,
   faMagnifyingGlass,

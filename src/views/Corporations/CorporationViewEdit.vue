@@ -217,6 +217,7 @@ function initPlace() {
         Application: true,
         Interview: true,
         Reference: 0,
+        InternalReference: 0,
         Background: true,
         Code: true,
         Consent: true
@@ -225,6 +226,7 @@ function initPlace() {
         Application: true,
         Interview: true,
         Reference: 0,
+        InternalReference: 0,
         Background: true,
         Code: true,
         Consent: true
@@ -233,6 +235,7 @@ function initPlace() {
         Application: true,
         Interview: true,
         Reference: 0,
+        InternalReference: 0,
         Background: true,
         Code: true,
         Consent: true

@@ -1,10 +1,11 @@
 <script setup>
 import MyInputCheckBox from '@/components/MyInputs/MyInputCheckBox.vue'
-import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 import MySelectCorporation from '@/components/MySelect/MySelectCorporation.vue'
 import { useGeneralStore } from '@/stores/general'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+import { useElementBounding } from '@vueuse/core'
 import { collection, doc, updateDoc } from 'firebase/firestore'
-import { computed, ref, watchEffect } from 'vue'
+import { computed, ref, useTemplateRef, watchEffect } from 'vue'
 import { useDocument, useFirestore } from 'vuefire'
 
 const db = useFirestore()
@@ -13,6 +14,10 @@ const store = useGeneralStore()
 const currentCorporationId = ref(store.loginCorporationId)
 
 const loginCorporationId = computed(() => store.loginCorporationId)
+
+const box = useTemplateRef('box')
+
+const { height } = useElementBounding(box)
 
 watchEffect(() => {
   currentCorporationId.value = loginCorporationId.value
@@ -33,6 +38,11 @@ watchEffect(() => {
     editingValues.value = JSON.parse(JSON.stringify(currentCorporationDoc.value?.Screening))
   }
 })
+
+function onCounter(type, n) {
+  editingValues.value[currentScreeningType.value][type] += n
+  saveChanges(type)
+}
 
 function saveChanges(type) {
   const key = `Screening.${currentScreeningType.value}.${type}`
@@ -79,32 +89,99 @@ function saveChanges(type) {
     </div>
 
     <!-- List -->
-    <div v-if="!(editingValues == null)" class="mb-8 mt-5 flex justify-center overflow-auto">
-      <div class="w-80">
-        <MyInputCheckBox
-          v-model="editingValues[currentScreeningType].Application"
-          @update:modelValue="saveChanges('Application')"
-          :disable="store.accessLevel < 3"
-        >
-          Written Application
-        </MyInputCheckBox>
-        <MyInputCheckBox
-          v-model="editingValues[currentScreeningType].Interview"
-          @update:modelValue="saveChanges('Interview')"
-          :disable="store.accessLevel < 3"
-        >
-          Face-to-face interview
-        </MyInputCheckBox>
-        <div class="flex place-items-center">
-          <div class="mb-4 ml-12 w-40 text-left text-sm">Reference Check:</div>
-          <div class="w-16" v-if="store.accessLevel > 2">
-            <MySelectAuto
-              :items="[0, 1, 2, 3]"
-              v-model="editingValues[currentScreeningType].Reference"
-              @update:modelValue="saveChanges('Reference')"
-            ></MySelectAuto>
+    <div v-if="!(editingValues == null)" class="my-5 flex justify-center overflow-auto">
+      <div class="">
+        <!-- Box: Recommendation & References -->
+        <div>
+          <!-- Recommendation -->
+          <MyInputCheckBox
+            v-model="editingValues[currentScreeningType].Application"
+            @update:modelValue="saveChanges('Application')"
+            :disable="store.accessLevel < 3"
+            class="mb-0"
+          >
+            Recommendation from Screening Staff
+          </MyInputCheckBox>
+
+          <!-- Interview & References -->
+          <div
+            class="ml-10 mt-1 mb-2 overflow-hidden transition-all"
+            :style="{
+              height: editingValues[currentScreeningType].Application ? height + 'px' : '0px'
+            }"
+          >
+            <div ref="box">
+              <div class="mb-1 text-left text-sm text-slate-600 font-semibold">Alternatively</div>
+
+              <!-- Interview checkbox -->
+              <MyInputCheckBox
+                v-model="editingValues[currentScreeningType].Interview"
+                @update:modelValue="saveChanges('Interview')"
+                :disable="store.accessLevel < 3"
+              >
+                Interview
+                <div class="text-xs text-slate-500">
+                  by an active staff member who is trained on screening candidates
+                </div>
+              </MyInputCheckBox>
+
+              <div class="mb-1 ml-10 text-left text-sm text-slate-600 font-semibold">And</div>
+
+              <!-- Internal refenceses dropbox -->
+              <div class="ml-10 flex place-items-center">
+                <div
+                  v-if="store.accessLevel > 2"
+                  @click="onCounter('InternalReference', -1)"
+                  class="ml-0.5 cursor-pointer px-2 py-0.5 shadow"
+                >
+                  <FontAwesomeIcon icon="caret-left" />
+                </div>
+                <div class="mx-2 text-sm text-slate-600">
+                  {{ editingValues[currentScreeningType].InternalReference }}
+                </div>
+                <div
+                  v-if="store.accessLevel > 2"
+                  @click="onCounter('InternalReference', 1)"
+                  class="ml-0.5 cursor-pointer px-2 py-0.5 shadow"
+                >
+                  <FontAwesomeIcon icon="caret-right" />
+                </div>
+                <div>
+                  <div class="ml-2 text-left text-sm">Internal Reference Check</div>
+                  <div class="ml-2 text-xs text-slate-500">
+                    [Reference from an active staff member]
+                  </div>
+                </div>
+              </div>
+
+              <div class="my-1 ml-32 text-left text-sm text-slate-600 font-semibold">Or</div>
+
+              <!-- External refenceses dropbox -->
+              <div class="ml-10 flex place-items-center">
+                <div
+                  v-if="store.accessLevel > 2"
+                  @click="onCounter('Reference', -1)"
+                  class="ml-0.5 cursor-pointer px-2 py-0.5 shadow"
+                >
+                  <FontAwesomeIcon icon="caret-left" />
+                </div>
+                <div class="mx-2 text-sm text-slate-600">
+                  {{ editingValues[currentScreeningType].Reference }}
+                </div>
+                <div
+                  v-if="store.accessLevel > 2"
+                  @click="onCounter('Reference', 1)"
+                  class="ml-0.5 cursor-pointer px-2 py-0.5 shadow"
+                >
+                  <FontAwesomeIcon icon="caret-right" />
+                </div>
+                <div>
+                  <div class="ml-2 text-left text-sm">Reference Check</div>
+                  <div class="ml-2 text-xs text-slate-500">[Any valid reference]</div>
+                </div>
+              </div>
+            </div>
           </div>
-          <div v-else class="mb-4">{{ editingValues[currentScreeningType].Reference }}</div>
         </div>
         <MyInputCheckBox
           v-model="editingValues[currentScreeningType].Background"
