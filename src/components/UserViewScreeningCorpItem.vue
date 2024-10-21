@@ -410,7 +410,7 @@ function deleteFile(e, f, index) {
         <div
           class="cursor-pointer rounded hover:bg-slate-600 hover:text-slate-50"
           @click="openFileDiologAndUpload"
-          v-if="['Application', 'Interview', 'Reference', 'Background'].includes(item)"
+          v-if="['Interview', 'Reference', 'Background'].includes(item)"
         >
           <FontAwesomeIcon icon="cloud-arrow-up" class="px-1" />
         </div>

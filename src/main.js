@@ -85,6 +85,7 @@ import {
   faTriangleExclamation,
   faUserSlash,
   faCaretLeft,
+  faMinus,
 } from '@fortawesome/free-solid-svg-icons'
 import { faWindowClose, faCheckSquare, faSquare } from '@fortawesome/free-regular-svg-icons'
 
@@ -166,6 +167,7 @@ library.add(
   faCircleCheck,
   faTriangleExclamation,
   faUserSlash,
+  faMinus
 )
 
 const app = createApp(App)

@@ -159,14 +159,14 @@ export const useGeneralStore = defineStore('general', () => {
   const entities = [ENTITY_PRELATURE, ENTITY_PARTY, ENTITY_BOTH]
 
   const SCREENING_REQ = ['Application', 'Interview', 'Reference', 'Background', 'Code', 'Consent']
-  const SCREENING_TITLE_APPLICATION = 'Written application'
+  const SCREENING_TITLE_APPLICATION = 'Recommendation from Screening Staff'
   const SCREENING_TITLE_INTERVIEW = 'Face-to-face interview'
   const SCREENING_TITLE_REFERENCE = 'Reference check'
   const SCREENING_TITLE_BACKGROUND = 'Criminal background check'
   const SCREENING_TITLE_CODE = 'Code of conduct'
   const SCREENING_TITLE_CONSENT = 'Consent to Release and Share Information'
   const SCREENING_REQ_TITLES = [
-    'Written application',
+    'Recommendation from Screening Staff',
     'Face-to-face interview',
     'Reference check',
     'Criminal background check',

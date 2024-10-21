@@ -4,7 +4,7 @@
     @pointerenter="onEnterMenu"
     @pointerleave="onLeaveMenu"
     class="h-full overflow-x-hidden bg-slate-200/90 text-left transition-all backdrop:blur print:hidden thinsb-menu"
-    :class="[showSidemenu ? 'w-64' : 'w-full']"
+    :class="[showSidemenu ? 'w-72' : 'w-full']"
   >
     <div v-if="!showSidemenu && !isLargeScreen" class="fixed left-2 top-1" @click="onClickShowOpen">
       <font-awesome-icon icon="bars" size="lg" class="text-blue-50" />
@@ -42,7 +42,8 @@
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
         <FontAwesomeIcon icon="users-line" />
-        <div class="ml-6 whitespace-nowrap">Board</div>
+        <div class="ml-6 whitespace-nowrap"
+        >Safe Environment Committee</div>
       </div>
       <!-- Menu: Personnel -->
       <div

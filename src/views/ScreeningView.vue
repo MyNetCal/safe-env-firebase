@@ -105,13 +105,13 @@ function saveChanges(type) {
 
           <!-- Interview & References -->
           <div
-            class="ml-10 mt-1 mb-2 overflow-hidden transition-all"
+            class="ml-10 mt-1 mb-2 overflow-hidden transition-all text-slate-700"
             :style="{
               height: editingValues[currentScreeningType].Application ? height + 'px' : '0px'
             }"
           >
             <div ref="box">
-              <div class="mb-1 text-left text-sm text-slate-600 font-semibold">Alternatively</div>
+              <div class="mb-1 text-left text-sm font-semibold">Alternatively</div>
 
               <!-- Interview checkbox -->
               <MyInputCheckBox
@@ -125,59 +125,59 @@ function saveChanges(type) {
                 </div>
               </MyInputCheckBox>
 
-              <div class="mb-1 ml-10 text-left text-sm text-slate-600 font-semibold">And</div>
+              <div class="mb-1 ml-10 text-left text-sm font-semibold">And</div>
 
               <!-- Internal refenceses dropbox -->
               <div class="ml-10 flex place-items-center">
                 <div
                   v-if="store.accessLevel > 2"
                   @click="onCounter('InternalReference', -1)"
-                  class="ml-0.5 cursor-pointer px-2 py-0.5 shadow"
+                  class="ml-0.5 cursor-pointer px-1 py-0.5 shadow"
                 >
-                  <FontAwesomeIcon icon="caret-left" />
+                  <FontAwesomeIcon icon="minus" class="text-slate-500" />
                 </div>
-                <div class="mx-2 text-sm text-slate-600">
+                <div class="mx-2 text-sm">
                   {{ editingValues[currentScreeningType].InternalReference }}
                 </div>
                 <div
                   v-if="store.accessLevel > 2"
                   @click="onCounter('InternalReference', 1)"
-                  class="ml-0.5 cursor-pointer px-2 py-0.5 shadow"
+                  class="ml-0.5 cursor-pointer px-1 py-0.5 shadow"
                 >
-                  <FontAwesomeIcon icon="caret-right" />
+                  <FontAwesomeIcon icon="plus" class="text-slate-500" />
                 </div>
                 <div>
                   <div class="ml-2 text-left text-sm">Internal Reference Check</div>
                   <div class="ml-2 text-xs text-slate-500">
-                    [Reference from an active staff member]
+                    Reference from an active staff member
                   </div>
                 </div>
               </div>
 
-              <div class="my-1 ml-32 text-left text-sm text-slate-600 font-semibold">Or</div>
+              <div class="my-1 ml-32 text-left text-sm font-semibold">Or</div>
 
               <!-- External refenceses dropbox -->
               <div class="ml-10 flex place-items-center">
                 <div
                   v-if="store.accessLevel > 2"
                   @click="onCounter('Reference', -1)"
-                  class="ml-0.5 cursor-pointer px-2 py-0.5 shadow"
+                  class="ml-0.5 cursor-pointer px-1 py-0.5 shadow"
                 >
-                  <FontAwesomeIcon icon="caret-left" />
+                  <FontAwesomeIcon icon="minus" class="text-slate-500" />
                 </div>
-                <div class="mx-2 text-sm text-slate-600">
+                <div class="mx-2 text-sm">
                   {{ editingValues[currentScreeningType].Reference }}
                 </div>
                 <div
                   v-if="store.accessLevel > 2"
                   @click="onCounter('Reference', 1)"
-                  class="ml-0.5 cursor-pointer px-2 py-0.5 shadow"
+                  class="ml-0.5 cursor-pointer px-1 py-0.5 shadow"
                 >
-                  <FontAwesomeIcon icon="caret-right" />
+                  <FontAwesomeIcon icon="plus" class="text-slate-500" />
                 </div>
                 <div>
                   <div class="ml-2 text-left text-sm">Reference Check</div>
-                  <div class="ml-2 text-xs text-slate-500">[Any valid reference]</div>
+                  <div class="ml-2 text-xs text-slate-500">Any valid reference</div>
                 </div>
               </div>
             </div>
