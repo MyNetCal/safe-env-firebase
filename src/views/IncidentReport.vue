@@ -8,7 +8,7 @@ import dayjs from 'dayjs'
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
 import { ref } from 'vue'
 import { useFirestore } from 'vuefire'
-import { addDoc, collection, doc, setDoc } from 'firebase/firestore'
+import { addDoc, collection, doc, setDoc, Timestamp } from 'firebase/firestore'
 import { getEmailSECPrelature } from '@/stores/datadb'
 
 const store = useGeneralStore()
@@ -81,6 +81,7 @@ async function createSentReport() {
     sentName: store.loginUser.Nickname + ' ' + store.loginUser.LastName,
     corpName: store.loginCorporation.Name,
     branch: store.currentBranch,
+    ExpiresAt: Timestamp.fromDate(new Date(dayjs().add(1, 'day').toISOString())),
     _pdfplum_config: {
       outputFileName: `${store.loginUserId}/${pdfRef.id}.pdf`,
       templatePath: 'vue-safe-env-pdfs/incident.zip',

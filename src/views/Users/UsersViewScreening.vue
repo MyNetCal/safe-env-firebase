@@ -18,7 +18,13 @@
 
           <div v-if="userCorp?.id">
             <h3 class="mb-2">{{ currentScreeningType }}</h3>
-            <template v-for="req in store.SCREENING_REQ" :key="req">
+
+            <UserViewScreeningApplication
+              v-if="user && currentCorp?.Screening[currentScreeningType].Application"
+              :user-corp="userCorp"
+              :user="user"
+              :corp="currentCorp" />
+            <template v-for="req in ['Background', 'Code', 'Consent']" :key="req">
               <UserViewScreeningCorpItem
                 v-if="user && currentCorp?.Screening[currentScreeningType][req]"
                 :user-corp="userCorp"
@@ -86,6 +92,7 @@ import { useGeneralStore } from '@/stores/general'
 import { doc } from 'firebase/firestore'
 import { useDocument, useFirestore } from 'vuefire'
 import UserViewScreeningCorpItem from '@/components/UserViewScreeningCorpItem.vue'
+import UserViewScreeningApplication from '@/components/UserViewScreeningApplication.vue'
 
 const props = defineProps({ showModal: Boolean, userCorpId: String })
 const { showModal, userCorpId } = toRefs(props)

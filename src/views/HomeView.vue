@@ -14,11 +14,26 @@ import MyButton from '@/components/MyButton.vue'
 import dayjs from 'dayjs'
 import localizedFormat from 'dayjs/plugin/localizedFormat'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { doc, arrayUnion, collection, addDoc, setDoc, arrayRemove } from 'firebase/firestore'
+import {
+  doc,
+  arrayUnion,
+  collection,
+  addDoc,
+  setDoc,
+  arrayRemove,
+  deleteField,
+  updateDoc,
+  Timestamp,
+  query,
+  where,
+  getDocs,
+  getDoc
+} from 'firebase/firestore'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 import { useGeneralStore } from '@/stores/general'
 import UsersViewTrainingList from './Users/UsersViewTrainingList.vue'
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/vue'
 
 const store = useGeneralStore()
 const storage = useFirebaseStorage()
@@ -155,6 +170,7 @@ async function onCreatingEmailingCode() {
   // info needed to generate pdf
   const dataPDFTemplate = {
     Name: signature.value,
+    ExpiresAt: Timestamp.fromDate(new Date(dayjs().add(1, 'day').toISOString())),
     code: store.loginCorporation.Code.split('\n'),
     _pdfplum_config: {
       outputFileName: `${store.loginUserId}/${pdfRef.id}.pdf`,
@@ -242,6 +258,7 @@ async function onCreatingEmailingConsent() {
     Name: signatureConsent.value,
     Corp: store.loginCorporation.Name,
     Short: store.loginCorporation.Short,
+    ExpiresAt: Timestamp.fromDate(new Date(dayjs().add(1, 'day').toISOString())),
     _pdfplum_config: {
       outputFileName: `${store.loginUserId}/${pdfRef.id}.pdf`,
       templatePath: 'vue-safe-env-pdfs/consent.zip',
@@ -289,6 +306,146 @@ function showFile(file) {
     window.open(url)
   })
 }
+
+// ************************************************
+// on Requested Recommendatioins
+// ************************************************
+const showDialogRecommendation = ref(false)
+const recommendationSignature = ref('')
+const recommendationMonths = ref(1)
+const recommendationYears = ref(1)
+
+const recAccepted = ref() // it contains the info of the user requesting the recommendation. It contains {Name, LastName, CorpName, UserId, CorpId, UserCorpId, PostDate} cf. UserViewScreeningCorpItem.vue
+
+function onToAcceptReq(r) {
+  recAccepted.value = r
+  showDialogRecommendation.value = true
+}
+
+async function saveRecommedationPDF() {
+  // lets get ref in pdfs
+  const pdfRef = await doc(collection(db, 'pdfs'))
+
+  const dataPDFTemplate = {
+    StaffName: recommendationSignature.value,
+    CorpName: recAccepted.value.CorpName,
+    Name: recAccepted.value.Name,
+    LastName: recAccepted.value.LastName,
+    Months: recommendationMonths.value,
+    Years: recommendationYears.value,
+    ExpiresAt: Timestamp.fromDate(new Date(dayjs().add(1, 'day').toISOString())),
+    _pdfplum_config: {
+      outputFileName: `${recAccepted.value.UserId}/${pdfRef.id}.pdf`,
+      templatePath: 'vue-safe-env-pdfs/recommendation.zip',
+      chromiumPdfOptions: {
+        format: 'Letter',
+        margin: {
+          top: '0.5in',
+          bottom: '0.5in',
+          right: '0.5in',
+          left: '0.5in'
+        }
+      }
+    }
+  }
+  setDoc(pdfRef, dataPDFTemplate)
+  return pdfRef.id
+}
+
+async function onAcceptedRecommendation() {
+  // 1. Delete  User asking for recommendation in the UserCorporations Collection
+
+  const userCorporationRef = doc(db, 'UsersCorporations', recAccepted.value.UserCorpId)
+
+  updateDoc(userCorporationRef, {
+    ScreenRecommendationStaffRequested: deleteField()
+  })
+
+  // 2. Remove entry from array Staff Recommending in the User Collection
+  const userRef = doc(db, `Users/${store.loginUserId}`)
+  updateDoc(userRef, {
+    ScreenRecommendationNewUserRequested: arrayRemove(recAccepted.value)
+  })
+
+  // 3. Generate pdf and sve it in the UserCorporations Collection of the User requesting
+  const pdfRefId = await saveRecommedationPDF()
+
+  // 4. Add entry in UserCorporation of the user requestion witn the info of the pdf
+  // 4.1 Check if the UserId is in UserCorporation with CorporationName = 'Prelature' and Screening = true
+  const userCorpRef = collection(db, 'UsersCorporations')
+  const q = query(
+    userCorpRef,
+    where('CorporationName', '==', 'Prelature'),
+    where('Screening', '==', true),
+    where('UserId', '==', store.loginUserId)
+  )
+  const userCorpDocs = await getDocs(q)
+  let isPrelatureScreeningStaff = false
+  if (userCorpDocs.size > 0) {
+    isPrelatureScreeningStaff = true
+  }
+
+  const user2Ref = doc(db, `Users/${recAccepted.value.UserId}`)
+  await updateDoc(user2Ref, {
+    ScreeningFilesRecommendation: arrayUnion({
+      Date: new Date().toISOString(),
+      StaffUserName: store.loginUser.Nickname + ' ' + store.loginUser.LastName,
+      StaffUserId: store.loginUserId,
+      File: `gs://vue-safe-env-pdfs/${recAccepted.value.UserId}/${pdfRefId}.pdf`,
+      IsPrelatureScreeningStaff: isPrelatureScreeningStaff
+    })
+  })
+
+  showDialogRecommendation.value = false
+}
+
+async function onDeclineRecommendation(request) {
+  // GEt Email of SEC of the Corporation
+  console.log('Decline Recommendation', request)
+  const q = query(
+    collection(db, 'UsersCorporations'),
+    where('CorporationId', '==', request.CorpId),
+    where('SEC', '==', true)
+  )
+  const querySnapshot = await getDocs(q)
+  const userId = querySnapshot.docs[0].data().UserId
+  const userSEC = await getDoc(doc(db, `Users/${userId}`))
+  const email = userSEC.data().Email
+
+  const corpInfo = await getDoc(doc(db, `Corporations/${request.CorpId}`))
+  const userCorpInfo = await getDoc(doc(db, `UsersCorporations/${request.UserCorpId}`))
+  const screeningType = store.getScreening(userCorpInfo.data().Function)
+  console.log('Screening Type', screeningType);
+  console.log('CorpInfo', corpInfo.data().Screening[screeningType]);
+  
+  
+  const internalReferences = corpInfo.data().Screening[screeningType].InternalReference
+  const externalReferences = corpInfo.data().Screening[screeningType].Reference
+
+  const dataEmail = {
+    SECoordinator: userSEC.data().Nickname + ' ' + userSEC.data().LastName,
+    ApplicantName: request.Name + ' ' + request.LastName,
+    StaffName: store.loginUser.Nickname + ' ' + store.loginUser.LastName,
+    InternalReferences: internalReferences,
+    ExternalReferences: externalReferences
+  }
+  console.log('Data Email', dataEmail);
+  
+  console.log('Email', email)
+  store.createDocTriggerEmailTemplate('Screening-Recommendation-Declined', dataEmail, [email])
+  
+  updateDoc(doc(db, `Users/${store.loginUserId}`), {
+    ScreenRecommendationNewUserRequested: arrayRemove(request)
+  })
+
+  const userCorporationRef = doc(db, 'UsersCorporations', request.UserCorpId)
+
+  updateDoc(userCorporationRef, {
+    "ScreenRecommendationStaffRequested.denied": true
+  })
+
+
+}
 </script>
 
 <template>
@@ -296,7 +453,10 @@ function showFile(file) {
     class="content-height thinsb h-full justify-between overflow-auto p-2 text-slate-700"
     v-if="store.loginUser && store.loginUserCorporation"
   >
-    <h1 class="select-none text-center">
+    <h1
+      class="select-none text-center"
+      @click="showFile('gs://vue-safe-env-pdfs/recomendation-test.pdf')"
+    >
       {{ store.loginUser.Nickname }} {{ store.loginUser.LastName }}
     </h1>
     <h2>{{ store.loginUserCorporation.Status }}</h2>
@@ -347,6 +507,98 @@ function showFile(file) {
         </div>
       </div>
     </div>
+
+    <!-- Recomendations Requested -->
+    <div v-if="store.loginUser.ScreenRecommendationNewUserRequested">
+      <template
+        v-for="request in store.loginUser.ScreenRecommendationNewUserRequested"
+        :key="request.UserId"
+      >
+        <div class="mx-auto my-5 w-fit max-w-96 shadow-md">
+          <div class="pb-3">
+            <div class="rounded-t bg-orange-600 p-2 text-lg font-semibold text-white">
+              Recommendation Requested!
+            </div>
+            <div class="px-2 pt-3 text-left">
+              <span class="font-semibold">{{ request.Name }} {{ request.LastName }}</span>
+              has requested your recommendation for work with minors at
+              <span class="font-semibold">{{ request.CorpName }}</span>
+            </div>
+            <div class="mt-2">
+              <MyButton color="bg-green-700" @click="onToAcceptReq(request)">Recommend</MyButton>
+              <MyButton color="bg-red-600" @click="onDeclineRecommendation(request)"
+                >Decline</MyButton
+              >
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- Dialog to acknowledge recommendations -->
+    <Dialog
+      :open="showDialogRecommendation"
+      @close="showDialogRecommendation = false"
+      class="relative z-50"
+    >
+      <DialogPanel class="my-dialog">
+        <div class="my-dialog-overlay" />
+        <div class="my-dialog-outer">
+          <div class="my-dialog-inner">
+            <DialogTitle class="my-dialog-title">
+              Acknowledging Recommendation
+              <FontAwesomeIcon @click="showDialogRecommendation = false" class="" icon="times" />
+            </DialogTitle>
+            <!-- Text -->
+            <div class="my-dialog-content">
+              I
+              <input type="text" v-model="recommendationSignature" class="input-signature" />
+              have completed the screening and selection training required by
+              <span class="font-semibold">{{ recAccepted.CorpName }}</span
+              >. I have known <span class="font-semibold">{{ recAccepted.Name }}</span>
+              <span class="font-semibold">{{ recAccepted.LastName }}</span> for
+              <input
+                type="number"
+                v-model="recommendationMonths"
+                class="input-signature w-12 text-center"
+              />
+              <span v-if="recommendationMonths != 1">months</span><span v-else>month</span> and
+              <input
+                type="number"
+                v-model="recommendationYears"
+                class="input-signature w-12 text-center"
+              />
+              <span v-if="recommendationYears > 1">years</span><span v-else>year</span> and
+              recommend <span class="font-semibold">{{ recAccepted.Name }}</span> to work with
+              minors at <span class="font-semibold">{{ recAccepted.CorpName }}</span
+              >. I am not aware of any reason that
+              <span class="font-semibold">{{ recAccepted.Name }}</span> should not be allowed to
+              work with minors at <span class="font-semibold">{{ recAccepted.CorpName }}</span> and
+              believe that <span class="font-semibold">{{ recAccepted.Name }}</span> is capable of
+              maintaining appropriate boundaries with minors.
+            </div>
+            <!-- Buttons -->
+            <div class="my-dialog-buttons">
+              <!-- Cancel -->
+              <MyButton color="bg-slate-600" @click="showDialogRecommendation == false"
+                >Cancel</MyButton
+              >
+              <!-- Accept -->
+              <MyButton
+                color=""
+                @click="onAcceptedRecommendation"
+                :class="[
+                  recommendationSignature.length > 2
+                    ? 'bg-green-600'
+                    : 'cursor-not-allowed bg-slate-500'
+                ]"
+                >Accept</MyButton
+              >
+            </div>
+          </div>
+        </div>
+      </DialogPanel>
+    </Dialog>
 
     <!-- Screening Cards Info -->
     <div class="flex flex-wrap justify-center gap-5">
@@ -512,6 +764,9 @@ function showFile(file) {
 </template>
 
 <style scoped>
+.input-signature {
+  @apply relative border-b border-slate-400 bg-slate-100 px-1 py-0.5 text-sm outline-none focus:border-blue-400 focus:shadow;
+}
 .content-height {
   max-height: calc(100vh - 80px);
 }

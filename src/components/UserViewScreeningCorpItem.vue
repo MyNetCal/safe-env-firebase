@@ -55,7 +55,9 @@ import {
   query,
   where,
   arrayRemove,
-  getDoc
+  getDoc,
+  or,
+  and
 } from 'firebase/firestore'
 import dayjs from 'dayjs'
 import { getEmailSECPrelature } from '@/stores/datadb'
@@ -70,6 +72,7 @@ import {
   PopoverPanel
 } from '@headlessui/vue'
 import MyButton from './MyButton.vue'
+import MySelectAuto from './MyInputs/MySelectAuto.vue'
 
 const props = defineProps({ item: String, userCorp: Object, user: Object, corp: Object })
 // item= [Application, Interview, Reference, Background, Code, Consent]
@@ -94,6 +97,8 @@ const filesData = computed(() => {
       return userCorp.value?.ScreeningReq?.Consent || []
     case 'Code':
       return userCorp.value?.ScreeningReq?.Code || []
+    case 'Application':
+      return recommendationsAcceptedValid.value
     default:
       return user.value?.[`ScreeningReqFiles${item.value}`] || []
   }
@@ -350,6 +355,11 @@ function downloadFile(f) {
 function deleteFile(e, f, index) {
   e.stopPropagation()
 
+  if (item.value == 'Application') {
+    deleteRecommendation(f)
+    return
+  }
+
   deleteObject(storageRef(storage, f.path))
     .then(() => {
       const allFiles = user.value?.[`ScreeningReqFiles${item.value}`]
@@ -361,6 +371,131 @@ function deleteFile(e, f, index) {
     .catch((error) => {
       console.log('Error: ', error)
     })
+}
+
+function deleteRecommendation(f) {
+  const toDelete = user.value.ScreeningFilesRecommendation.findIndex((r) => r.File == f.path)
+  updateDoc(doc(db, 'Users', user.value.id), {
+    ScreeningFilesRecommendation: arrayRemove(user.value.ScreeningFilesRecommendation[toDelete])
+  })
+  user.value.ScreeningFilesRecommendation.splice(toDelete, 1)
+}
+
+// *********************************
+// Diaolog to request recommendation
+// *********************************
+const showDialogRecommendation = ref(false)
+const allScreeningStaff = ref([])
+const staffRecommending = ref({ id: '', Name: '', Email: '' })
+
+const recommendationsAcceptedValid = ref([])
+
+if (item.value == 'Application') {
+  user.value.ScreeningFilesRecommendation?.forEach((recommendation) => {
+    console.log('Recommendation: ', recommendation)
+    console.log('corpId: ', corp.value.id)
+
+    const q = query(
+      collection(db, 'UsersCorporations'),
+      and(
+        where('Status', '==', 'Approved'),
+        where('Screening', '==', true),
+        where('UserId', '==', recommendation.StaffUserId),
+        or(where('CorporationId', '==', corp.value.id), where('CorporationName', '==', 'Prelature'))
+      )
+    )
+    getDocs(q).then((querySnapshot) => {
+      if (querySnapshot.size > 0) {
+        recommendationsAcceptedValid.value.push({
+          name: recommendation.StaffUserName,
+          byName: recommendation.IsPrelatureScreeningStaff ? 'Prelature' : corp.value.Short,
+          UserId: recommendation.StaffUserId,
+          path: recommendation.File
+        })
+      }
+      console.log('Recommendations Accepted: ', recommendationsAcceptedValid.value)
+    })
+  })
+}
+
+function openDialogRecommendation() {
+  getScreeningStaff()
+  showDialogRecommendation.value = true
+  staffRecommending.value = { id: '', Name: '', Email: '' }
+}
+
+const allStaffRef = computed(() =>
+  query(
+    collection(db, 'UsersCorporations'),
+    and(
+      where('Status', '==', 'Approved'),
+      where('Screening', '==', true),
+      or(where('CorporationId', '==', corp.value.id), where('CorporationName', '==', 'Prelature'))
+    )
+  )
+)
+
+async function getScreeningStaff() {
+  allScreeningStaff.value = []
+  const querySnapshot = await getDocs(allStaffRef.value)
+  querySnapshot.forEach((d) => {
+    // doc.data() is never undefined for query doc snapshots
+    getDoc(doc(db, 'Users', d.data().UserId)).then((user) => {
+      const userId = user.data().id
+      const exists = allScreeningStaff.value.some((staff) => staff.id === userId)
+
+      if (!exists) {
+        allScreeningStaff.value.push({
+          id: userId,
+          Name: user.data().Nickname + ' ' + user.data().LastName,
+          Email: user.data().Email
+        })
+      }
+    })
+  })
+}
+
+function sentEmailStaffRequestedRecommendation() {
+  store.createDocTriggerEmailTemplate(
+    'Screening-Recommendation-Staff-Requested',
+    {
+      StaffName: staffRecommending.value.Name,
+      NewUserName: user.value.Name,
+      NewUserLastName: user.value.LastName,
+      CorpName: corp.value.Name
+    },
+    [staffRecommending.value.Email]
+  )
+}
+
+function onStaffRecommended() {
+  showDialogRecommendation.value = false
+  console.log('Staff recommending userid: ', staffRecommending.value.id)
+  console.log('Email should be send to: ', staffRecommending.value.Email)
+
+  // update Staff Recommending in the User Collection with the request
+  updateDoc(doc(db, 'Users', staffRecommending.value.id), {
+    ScreenRecommendationNewUserRequested: arrayUnion({
+      Name: user.value.Name,
+      LastName: user.value.LastName,
+      CorpName: corp.value.Name,
+      UserId: user.value.id,
+      CorpId: corp.value.id,
+      UserCorpId: userCorp.value.id,
+      PostDate: dayjs().toISOString()
+    })
+  })
+
+  // update User asking for recommendation in the UserCorporations Collection
+  updateDoc(doc(db, 'UsersCorporations', userCorp.value.id), {
+    ScreenRecommendationStaffRequested: {
+      UserId: staffRecommending.value.id,
+      UserName: staffRecommending.value.Name,
+      PostDate: dayjs().toISOString()
+    }
+  })
+
+  sentEmailStaffRequestedRecommendation()
 }
 </script>
 
@@ -415,6 +550,39 @@ function deleteFile(e, f, index) {
           <FontAwesomeIcon icon="cloud-arrow-up" class="px-1" />
         </div>
         <div v-else></div>
+      </div>
+
+      <!-- Only for the Recommendation item -->
+      <div v-if="item == 'Application'" class="flex justify-center">
+        <div
+          v-if="!userCorp.ScreenRecommendationStaffRequested"
+          class="small-button"
+          @click="openDialogRecommendation"
+        >
+          Request Recommendation
+        </div>
+        <div v-else class="mb-0.5 max-w-56 rounded bg-green-300 px-2 py-0.5 text-sm">
+          <div>
+            <div class="flex">
+              Recommendation requested on
+              {{ dayjs(userCorp.ScreenRecommendationStaffRequested.PostDate).format('MMM. D') }} to
+              {{ userCorp.ScreenRecommendationStaffRequested.UserName }}
+              <div
+                class="px-1 text-slate-600"
+                v-if="userCorp.ScreenRecommendationStaffRequested.Denied"
+              >
+                <FontAwesomeIcon icon="trash" />
+              </div>
+            </div>
+
+            <div
+              v-if="userCorp.ScreenRecommendationStaffRequested.Denied"
+              class="rounded bg-red-700 py-0.5 text-white"
+            >
+              Denied
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Only for the Background Item -->
@@ -482,9 +650,7 @@ function deleteFile(e, f, index) {
             </div>
 
             <!-- BC has been requested to Presidium. File has to be uploaded -->
-            <div v-else>
-              Awaiting background check
-            </div>
+            <div v-else>Awaiting background check</div>
           </div>
         </div>
       </div>
@@ -512,11 +678,15 @@ function deleteFile(e, f, index) {
           <!-- File Icon and Name -->
           <div
             class="flex grow cursor-pointer place-items-center rounded pl-1 text-left text-xs hover:bg-blue-300"
-            :class="[f.by != store.loginCorporationId ? 'bg-orange-200' : 'bg-green-100']"
+            :class="[
+              f.by != store.loginCorporationId && f.UserId != store.loginUserId
+                ? 'bg-orange-200'
+                : 'bg-green-100'
+            ]"
             @click="downloadFile(f.path)"
           >
             <div class="py-1">
-              {{ n + 1 }}. {{ f.name }}
+              {{ n + 1 }}. {{ f.name }} {{ f.by }}
               <span v-if="f.by != store.loginCorporationId">[{{ f.byName }}]</span>
             </div>
             <div
@@ -563,6 +733,47 @@ function deleteFile(e, f, index) {
             <MyButton class="bg-red-600" @click="savingBackgroundNewDateExpired"
               >Yes, Continue</MyButton
             >
+          </div>
+        </div>
+      </DialogPanel>
+    </Dialog>
+
+    <!-- Select Name Requesting Recommendation -->
+    <Dialog
+      :open="showDialogRecommendation"
+      @close="showDialogRecommendation = false"
+      class="relative z-50"
+    >
+      <DialogPanel class="my-dialog">
+        <div class="my-dialog-overlay" />
+        <div class="my-dialog-outer">
+          <div class="my-dialog-inner w-96">
+            <DialogTitle class="my-dialog-title">
+              Request Recommendation
+              <FontAwesomeIcon @click="showDialogRecommendation = false" class="" icon="times" />
+            </DialogTitle>
+            <div class="my-dialog-content min-h-[250px]">
+              <MySelectAuto
+                v-model="staffRecommending"
+                :items="allScreeningStaff"
+                itemsKey="id"
+                itemsLabel="Name"
+                isFussy
+                class="max-h-[180px]"
+                label="Select screening staff to ask for recommendation"
+              />
+            </div>
+            <div class="my-dialog-buttons">
+              <MyButton @click="showDialogRecommendation = false" color="bg-slate-600"
+                >Close</MyButton
+              >
+              <MyButton
+                @click="onStaffRecommended"
+                color=""
+                :class="[staffRecommending.Name ? 'bg-green-700' : 'bg-slate-500']"
+                >Request Recommendation</MyButton
+              >
+            </div>
           </div>
         </div>
       </DialogPanel>

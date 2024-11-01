@@ -2,7 +2,7 @@ import { computed, ref, watch } from 'vue'
 import { defineStore } from 'pinia'
 import { useCollection, useDocument, useFirebaseAuth, useFirestore } from 'vuefire'
 import { onAuthStateChanged } from 'firebase/auth'
-import { addDoc, collection, doc, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore'
+import { addDoc, collection, doc, onSnapshot, query, setDoc, Timestamp, updateDoc, where } from 'firebase/firestore'
 import dayjs from 'dayjs'
 import router from '@/router'
 
@@ -162,6 +162,7 @@ export const useGeneralStore = defineStore('general', () => {
   const SCREENING_TITLE_APPLICATION = 'Recommendation from Screening Staff'
   const SCREENING_TITLE_INTERVIEW = 'Face-to-face interview'
   const SCREENING_TITLE_REFERENCE = 'Reference check'
+  const SCREENING_TITLE_REFERENCE_INTERNAL = 'Internal Reference check'
   const SCREENING_TITLE_BACKGROUND = 'Criminal background check'
   const SCREENING_TITLE_CODE = 'Code of conduct'
   const SCREENING_TITLE_CONSENT = 'Consent to Release and Share Information'
@@ -179,7 +180,8 @@ export const useGeneralStore = defineStore('general', () => {
     Reference: SCREENING_TITLE_REFERENCE,
     Background: SCREENING_TITLE_BACKGROUND,
     Code: SCREENING_TITLE_CODE,
-    Consent: SCREENING_TITLE_CONSENT
+    Consent: SCREENING_TITLE_CONSENT,
+    InternalReference: SCREENING_TITLE_REFERENCE_INTERNAL
   }
 
   const FUNCTION_BOARD = 'Board'
@@ -293,7 +295,8 @@ export const useGeneralStore = defineStore('general', () => {
           name: template,
           data
         },
-        to
+        to,
+        ExpiresAt: Timestamp.fromDate(new Date(dayjs().add(1, 'day').toISOString())),
       }).then((emailDoc) => {
         const unsub = onSnapshot(doc(db, 'mail-triggers', emailDoc.id), (d) => {
           const delivery = d.data().delivery
@@ -322,6 +325,7 @@ export const useGeneralStore = defineStore('general', () => {
       addDoc(collection(db, 'mail-triggers'), {
         to,
         message: { subject, html },
+        ExpiresAt: Timestamp.fromDate(new Date(dayjs().add(1, 'day').toISOString())),
       }).then((emailDoc) => {
         const unsub = onSnapshot(doc(db, 'mail-triggers', emailDoc.id), (d) => {
           const delivery = d.data().delivery
@@ -346,13 +350,14 @@ export const useGeneralStore = defineStore('general', () => {
         to,
         bcc,
         cc,
+        ExpiresAt: Timestamp.fromDate(new Date(dayjs().add(1, 'day').toISOString())),
         message: { subject, html },
         userId: loginUserId.value
       }).then((d) => {
         const emailId = d.id
         setDoc(doc(db, `Users/${loginUserId.value}/MessagesPending/${emailId}`), {
           type: "Email",
-          message: "Sending Email",
+          message: `Sending Email`,
           state: "PENDING",
           error: "",
           accepted: [],
@@ -372,7 +377,8 @@ export const useGeneralStore = defineStore('general', () => {
           name: template,
           data
         },
-        userId: loginUserId.value
+        userId: loginUserId.value,
+        ExpiresAt: Timestamp.fromDate(new Date(dayjs().add(1, 'day').toISOString())),
       }).then((d) => {
         const emailId = d.id
         setDoc(doc(db, `Users/${loginUserId.value}/MessagesPending/${emailId}`), {
@@ -440,6 +446,7 @@ export const useGeneralStore = defineStore('general', () => {
     SCREENING_TITLE_APPLICATION,
     SCREENING_TITLE_INTERVIEW,
     SCREENING_TITLE_REFERENCE,
+    SCREENING_TITLE_REFERENCE_INTERNAL,
     SCREENING_TITLE_BACKGROUND,
     SCREENING_TITLE_CONSENT,
     SCREENING_TITLE_CODE,
