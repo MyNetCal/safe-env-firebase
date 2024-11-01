@@ -88,8 +88,7 @@
               :class="[totVotesOther >= votesNeededFromCorp ? 'text-green-700' : 'text-red-700']"
               class="w-6"
             />
-            Total Votes from
-            <span class="font-semibold">{{ userCorp.CorporationName }}</span> Board:
+            Total votes from Safe Environment Committee:
             <span
               class="rounded px-1 py-0.5 font-semibold shadow"
               :class="[

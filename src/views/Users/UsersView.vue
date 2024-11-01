@@ -10,7 +10,7 @@
     </div>
 
     <!-- List of Users by cards -->
-    <div class="mx-auto mt-3 grow thinsb overflow-auto mb-5">
+    <div class="thinsb mx-auto mb-5 mt-3 grow overflow-auto">
       <!-- Users loop -->
       <TransitionGroup name="list">
         <template v-if="personnelOrder.length > 0">
@@ -35,9 +35,7 @@
                   @click="editUserInfo(p)"
                 >
                   <h3 class="font-semibold">
-                    <span v-if="!p.LastLogin" class="mr-1 font-bold text-orange-600"
-                      >&bull;</span
-                    >
+                    <span v-if="!p.LastLogin" class="mr-1 font-bold text-orange-600">&bull;</span>
                     <span
                       >{{ p.UserData.Nickname }} {{ p.UserData.Middle }}
                       {{ p.UserData.LastName }}</span
@@ -66,7 +64,7 @@
                     :class="[
                       p.userHasAllScreening
                         ? 'cursor-pointer text-green-700'
-                        : 'cursor-not-allowed text-red-700 pointer-events-none'
+                        : 'pointer-events-none cursor-not-allowed text-red-700'
                     ]"
                   >
                     <FontAwesomeIcon icon="check-to-slot" />
@@ -344,11 +342,13 @@ const userSelectedId = ref('')
 
 function getScreeningReqType(type) {
   const a = []
-  for (const [key, value] of Object.entries(corp.value?.Screening?.[type] || {})) {
-    if (value) {
-      a.push(key)
+  store.SCREENING_REQ.forEach((req) => {
+    if (corp.value?.Screening?.[type][req]) {
+      a.push(req)
     }
-  }
+  })
+  console.log('Req: ', a)
+
   return a
 }
 
