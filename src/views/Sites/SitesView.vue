@@ -2,14 +2,18 @@
 import MyFab from '@/components/MyFab.vue'
 import { FontAwesomeIcon, FontAwesomeLayers } from '@fortawesome/vue-fontawesome'
 import { ref, watchEffect, computed, watch, onUnmounted } from 'vue'
-import SitesViewEdit from '../Sites/SitesViewEdit.vue'
 import { initSite } from '@/stores/datadb'
 import { useGeneralStore } from '@/stores/general'
-import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore'
+import { arrayUnion, collection, doc, getDoc, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore'
 import { useDocument, useFirestore } from 'vuefire'
 import MySelectCorporation from '@/components/MySelect/MySelectCorporation.vue'
 import SitesViewSearch from '../Sites/SitesViewSearch.vue'
 import SitesViewShow from '../Sites/SitesViewShow.vue'
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/vue'
+import MyButton from '@/components/MyButton.vue'
+import MyInputText from '@/components/MyInputs/MyInputText.vue'
+import MyInputCheckBox from '@/components/MyInputs/MyInputCheckBox.vue'
+import MyInputTextArea from '@/components/MyInputs/MyInputTextArea.vue'
 
 const store = useGeneralStore()
 const db = useFirestore()
@@ -20,13 +24,8 @@ const showSitesViewShow = ref(false)
 
 const tabActive = ref(0)
 
-const tabLabels = [
-  { label: 'Approved', icon: 'thumbs-up' },
-  { label: 'Pending Approval', icon: 'check-to-slot' },
-  { label: 'Draft', icon: 'pen' }
-]
-
 const siteToEdit = ref({})
+const bothBranches = ref(false)
 
 const currentCorpId = ref(store.loginCorporationId)
 
@@ -39,75 +38,83 @@ const corpDocRef = computed(() =>
 )
 const currentCorp = useDocument(corpDocRef)
 
-function sitesRef() {
-  switch (tabActive.value) {
-    case 0:
-      return query(
-        collection(db, 'Sites'),
-        where('CorpIds', 'array-contains', currentCorpId.value),
-        where('Status', '==', 'Approved')
-      )
-
-    case 1:
-      return query(
-        collection(db, 'Sites'),
-        where('CreatedByCorp', '==', currentCorpId.value),
-        where('Status', '==', 'Waiting Approval')
-      )
-
-    case 2:
-      return query(
-        collection(db, 'Sites'),
-        where('CreatedByCorp', '==', currentCorpId.value),
-        where('Status', '==', 'In Review')
-      )
-
-    default:
-      return query(collection(db, 'Sites'), where('CorpIds', 'array-contains', currentCorpId.value))
-  }
-}
+console.log('currentCorp', currentCorp)
 
 function editLocation(site) {
   siteToEdit.value = initSite(site)
+  bothBranches.value = siteToEdit.value.Branch == 'both'
   showSitesViewEdit.value = true
 }
 
-function showSiteInfo(site) {
-  siteToEdit.value = site
-  showSitesViewShow.value = true
+function onSaveGeneralInfo() {
+  console.log('Saving')
+  const siteRefDB = doc(collection(db, 'Sites'))
+  siteToEdit.value.id = siteRefDB.value.id
+  siteToEdit.value.Branch = bothBranches.value ? 'both' : store.loginUser.Branch
+  siteToEdit.value.CorpIds = [currentCorpId.value.id]
+  siteToEdit.value.CreatedByUser = store.loginUserId
+  siteToEdit.value.CreatedByCorp = currentCorpId.value.id
+  setDoc(siteRefDB.value, siteToEdit.value)
+  updateDoc(doc(db, 'Corporations', currentCorpId.value.id), {
+    SiteIds: arrayUnion(siteToEdit.value.id)
+  })
+  showSitesViewEdit.value = false
+}
+
+function onUpdateGeneralInfo() {
+  console.log('Updating')
+  siteToEdit.value.Branch = bothBranches.value ? 'both' : store.loginUser.Branch
+  updateDoc(doc(db, 'Sites', siteToEdit.value.id), {
+    Address: siteToEdit.value.Address,
+    Branch: siteToEdit.value.Branch,
+    Name: siteToEdit.value.Name,
+    Notes: siteToEdit.value.Notes
+  })
+  showSitesViewEdit.value = false
+}
+
+
+const sites = ref([])
+
+const q = computed(() =>
+  query(collection(db, 'Sites'), where('CorpIds', 'array-contains', currentCorpId.value))
+)
+
+let unsubSites = null
+function getSites() {
+  unsubSites = onSnapshot(q.value, (res) => {
+    res.docChanges().forEach((change) => {
+      const { newIndex, oldIndex, doc: siteDoc } = change
+      if (change.type === 'added') {
+        sites.value.splice(newIndex, 0, siteDoc.data())
+        getDoc(doc(db, 'Corporations', siteDoc.data().CreatedByCorp)).then((d) => {
+          sites.value[newIndex].CreatedByCorpName = d.data().Short
+        })
+      }
+      if (change.type === 'modified') {
+        sites.value.splice(oldIndex, 1)
+        sites.value.splice(newIndex, 0, siteDoc.data())
+        getDoc(doc(db, 'Corporations', siteDoc.data().CreatedByCorp)).then((d) => {
+          sites.value[newIndex].CreatedByCorpName = d.data().Short
+        })
+      }
+      if (change.type === 'removed') {
+        sites.value.splice(oldIndex, 1)
+      }
+    })
+  })
 }
 
 //const sites = useCollection(sitesRef)
-const sites = ref([])
-let unsubSites = null
+
 watch(
-  [currentCorpId, tabActive],
+  [currentCorpId],
   () => {
     sites.value = []
     if (unsubSites) {
       unsubSites()
     }
-    unsubSites = onSnapshot(sitesRef(), (res) => {
-      res.docChanges().forEach((change) => {
-        const { newIndex, oldIndex, doc: siteDoc } = change
-        if (change.type === 'added') {
-          sites.value.splice(newIndex, 0, siteDoc.data())
-          getDoc(doc(db, 'Corporations', siteDoc.data().CreatedByCorp)).then((d) => {
-            sites.value[newIndex].CreatedByCorpName = d.data().Short
-          })
-        }
-        if (change.type === 'modified') {
-          sites.value.splice(oldIndex, 1)
-          sites.value.splice(newIndex, 0, siteDoc.data())
-          getDoc(doc(db, 'Corporations', siteDoc.data().CreatedByCorp)).then((d) => {
-            sites.value[newIndex].CreatedByCorpName = d.data().Short
-          })
-        }
-        if (change.type === 'removed') {
-          sites.value.splice(oldIndex, 1)
-        }
-      })
-    })
+    getSites()
   },
   { immediate: true }
 )
@@ -145,7 +152,7 @@ onUnmounted(() => {
           <template v-for="(site, index) in sites" :key="site.id">
             <tr
               class="cursor-pointer text-left hover:bg-slate-200"
-              @click="() => (tabActive == 2 ? editLocation(site) : showSiteInfo(site))"
+              @click="() => editLocation(site)"
             >
               <td class="py-2 pr-4">{{ index + 1 }}.</td>
               <td class="py-2 pr-4 text-left">{{ site.Name }}</td>
@@ -155,23 +162,40 @@ onUnmounted(() => {
         </tbody>
       </table>
     </div>
+  </div>
 
-    <!-- *********** -->
-    <!-- Tab Headers -->
-    <!-- *********** -->
-    <div class="flex justify-center">
-      <div class="tabs max-w-2xl grow">
-        <template v-for="(tabLabel, index) in tabLabels" :key="tabLabel">
-          <div class="tab" :class="{ 'tab-active': tabActive == index }" @click="tabActive = index">
-            <FontAwesomeIcon :icon="tabLabel.icon" size="2x" />
-            <div>
-              {{ tabLabel.label }}
+  <Dialog :open="showSitesViewEdit" @close="showSitesViewEdit = false" class="relative z-50">
+    <DialogPanel class="my-dialog">
+      <div class="my-dialog-overlay" />
+      <div class="my-dialog-outer">
+        <div class="my-dialog-inner">
+          <DialogTitle class="my-dialog-title">
+            Editing Site
+            <FontAwesomeIcon @click="showSitesViewEdit = false" class="" icon="times" />
+          </DialogTitle>
+          <div class="my-dialog-content">
+            <div class="mx-auto mb-3 max-w-md">
+              <!-- Name and Branch -->
+              <div class="flex flex-wrap gap-2">
+                <MyInputText v-model="siteToEdit.Name" label="Name" class="grow" />
+                <MyInputCheckBox v-model="bothBranches" label="Both Branches" />
+              </div>
+              <MyInputTextArea v-model="siteToEdit.Address" label="Address" />
+              <MyInputTextArea v-model="siteToEdit.Notes" label="Notes" />
             </div>
           </div>
-        </template>
+          <div class="my-dialog-buttons">
+            <MyButton @click="showSitesViewEdit = false">Close</MyButton>
+            <MyButton
+              @click="() => (siteToEdit.id == '' ? onSaveGeneralInfo() : onUpdateGeneralInfo())"
+              color="bg-green-600"
+              >Save</MyButton
+            >
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
+    </DialogPanel>
+  </Dialog>
 
   <!-- Add Site Button -->
   <MyFab @click="editLocation({})" class="!bottom-20 !right-2 !bg-green-600">
@@ -189,9 +213,9 @@ onUnmounted(() => {
     </FontAwesomeLayers>
   </MyFab>
 
-  <!-- Editing Site -->
+  <!-- Editing Site 
   <SitesViewEdit
-    v-if="showSitesViewEdit"
+    v-if=false
     :showModal="showSitesViewEdit"
     :site="siteToEdit"
     :corp="currentCorp"
@@ -203,7 +227,7 @@ onUnmounted(() => {
       }
     "
   />
-
+-->
   <!-- Show Site Info -->
   <SitesViewShow
     v-if="showSitesViewShow"
