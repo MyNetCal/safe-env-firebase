@@ -54,6 +54,7 @@ function onSaveGeneralInfo() {
   siteToEdit.value.CorpIds = [currentCorpId.value.id]
   siteToEdit.value.CreatedByUser = store.loginUserId
   siteToEdit.value.CreatedByCorp = currentCorpId.value.id
+  siteToEdit.value.Status = 'Approved'
   setDoc(siteRefDB.value, siteToEdit.value)
   updateDoc(doc(db, 'Corporations', currentCorpId.value.id), {
     SiteIds: arrayUnion(siteToEdit.value.id)

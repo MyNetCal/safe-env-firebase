@@ -3,7 +3,7 @@ import MyModal from '@/components/MyModal.vue'
 import MyButton from '@/components/MyButton.vue'
 import { computed, nextTick, onUnmounted, ref, toRefs, watch } from 'vue'
 import { FontAwesomeIcon, FontAwesomeLayers } from '@fortawesome/vue-fontawesome'
-import { useMediaQuery, watchThrottled } from '@vueuse/core'
+import { useFileDialog, useMediaQuery, watchThrottled } from '@vueuse/core'
 import MySwitchBothLabels from '@/components/MyInputs/MySwitchBothLabels.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import { initActivity } from '@/stores/datadb'
@@ -25,9 +25,12 @@ import { useCollection, useFirebaseStorage, useFirestore } from 'vuefire'
 import MyInputTextArea from '@/components/MyInputs/MyInputTextArea.vue'
 import dayjs from 'dayjs'
 import { useFuse } from '@vueuse/integrations/useFuse'
+import MyInputCheckBox from '@/components/MyInputs/MyInputCheckBox.vue'
 import {
+  deleteObject,
   getDownloadURL,
   ref as storageRef,
+  uploadBytes,
   uploadBytesResumable
 } from 'firebase/storage'
 import { useGeneralStore } from '@/stores/general'
@@ -46,7 +49,7 @@ const storage = useFirebaseStorage()
 const actToEdit = ref({ id: '' })
 
 const tabActive = ref(0)
-const tabTitles = ['General info', 'Staff', 'Participants']
+const tabTitles = ['General info', 'Checklist', 'Staff', 'Participants']
 
 const tabHasErrorChecklist = computed(() => {
   if (actToEdit.value.id == '') {
@@ -68,10 +71,18 @@ const tabHasErrorParticipants = computed(() => {
   if (actToEdit.value.id == '') {
     return false
   }
+  if (!isOvernightActivity.value) {
+    return actToEdit.value.Participants?.length == 0
+  }
   if (actToEdit.value.Participants?.length == 0) {
     return true
   }
-  return actToEdit.value.Participants?.length == 0
+  const totParticipants = actToEdit.value.Participants?.length || 0
+  const totSlips = actToEdit.value.Participants?.reduce(
+    (tot, el) => tot + actToEdit.value.Slips?.[el] || 0,
+    0
+  )
+  return totSlips < totParticipants && actToEdit.value.SlipsMissingReason == ''
 })
 
 const tabHasErrorStaff = computed(() => actToEdit.value.Staff?.length == 0)
@@ -298,6 +309,164 @@ function onUpdateInfo() {
     Ends: actToEdit.value.Ends
   })
 }
+
+// *************
+// Check List
+// *************
+function updateChecklist() {
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    Checklist: actToEdit.value.Checklist
+  })
+}
+
+function updateChecklistComments() {
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    ChecklistComments: actToEdit.value.ChecklistComments
+  })
+}
+
+// *****************
+// Photos: Checklist
+// *****************
+// #region Checklist
+const imageSrc = ref(null)
+const canvas = ref(null)
+const photoSize = ref({ h: 0, w: 0 })
+const photoLoaded = ref(false)
+const selectingFileFor = ref('')
+
+const { files, open, onChange } = useFileDialog({ accept: 'image/*' })
+
+function selectFile() {
+  selectingFileFor.value = 'CheckList'
+  open({ multiple: false })
+}
+
+onChange(() => {
+  if (selectingFileFor.value == 'CheckList') {
+    showPicture()
+  }
+  if (selectingFileFor.value == 'Participant') {
+    UploadFileParticipantNote()
+  }
+  if (selectingFileFor.value == 'SlipsMissing') {
+    UploadFileMissingSlipsReason()
+  }
+
+  selectingFileFor.value = ''
+})
+
+function showPicture() {
+  const data = files.value?.item(0)
+  if (data) {
+    var reader = new FileReader()
+    reader.addEventListener('load', () => {
+      console.log('Inside Reader Listener')
+      imageSrc.value = reader.result
+      const ctx = canvas.value.getContext('2d')
+      const img = new Image() // Create new img element
+      img.addEventListener('load', () => {
+        console.log('Image width: ', img.width)
+        console.log('Image height: ', img.height)
+        photoSize.value = { w: img.width, h: img.height }
+        let w = 160
+        let h = Math.floor((160 / img.width) * img.height)
+        let x = 0
+        let y = -Math.floor((h - 160) / 2)
+        if (img.width > img.height) {
+          h = 160
+          w = Math.floor((160 / img.height) * img.width)
+          x = -Math.floor((w - 160) / 2)
+          y = 0
+        }
+        ctx.drawImage(img, x, y, w, h)
+        photoLoaded.value = true
+        uploadPictureToServer()
+      })
+      img.src = reader.result
+    })
+    reader.readAsDataURL(data)
+  }
+}
+
+function clearInputs() {
+  const ctx = canvas.value.getContext('2d')
+  ctx.fillStyle = '#666'
+  ctx.fillRect(0, 0, 160, 160)
+  ctx.clearRect(3, 3, 154, 154)
+  ctx.fillStyle = '#000'
+  photoLoaded.value = false
+}
+
+function savePhotoInfo(filename) {
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    Photos: arrayUnion({
+      Name: filename
+    })
+  })
+}
+
+function uploadPictureToServer() {
+  const data = files.value?.item(0)
+  //const dataURI = canvas.value.toDataURL("image/jpeg", 1.0)
+
+  // Upload Thumbnail picture
+  canvas.value.toBlob(
+    (blob) => {
+      const fileRef = storageRef(storage, `Activities/${actToEdit.value.id}/Thumbnail/${data.name}`)
+      uploadBytes(fileRef, blob).then(() => {
+        console.log('********** Success!!!!!!!!!')
+      })
+    },
+    'image/jpeg',
+    1.0
+  )
+
+  // Upload Original Photo
+  if (data) {
+    store.isUploadingFiles = true
+    store.isUploadingFilesPercentage = 0
+    const fileRef = storageRef(storage, `Activities/${actToEdit.value.id}/Original/${data.name}`)
+    const uploadTask = uploadBytesResumable(fileRef, data)
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        store.isUploadingFilesPercentage = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+      },
+      (error) => {
+        store.isUploadingFiles = false
+        console.log('ERROR', error)
+      },
+      () => {
+        console.log('DONE')
+        store.isUploadingFiles = false
+        clearInputs()
+        savePhotoInfo(data.name)
+      }
+    )
+  }
+}
+
+function deletePhoto(index) {
+  const imgRefThumbnail = storageRef(
+    storage,
+    `Activities/${actToEdit.value.id}/Thumbnail/${actToEdit.value.Photos[index].Name}`
+  )
+  const imgRefOriginal = storageRef(
+    storage,
+    `Activities/${actToEdit.value.id}/Original/${actToEdit.value.Photos[index].Name}`
+  )
+  deleteObject(imgRefThumbnail).then(() => {
+    deleteObject(imgRefOriginal).then(() => {
+      updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+        Photos: arrayRemove({
+          Name: actToEdit.value.Photos[index].Name
+        })
+      })
+    })
+  })
+}
+// #endregion
 
 // ********************
 // Staff
@@ -764,6 +933,127 @@ function enterGroupParticipants() {
 }
 // #endregion
 
+// ******************
+// Participants Notes
+// ******************
+// #region Participant Notes
+const ParticipantNoteId = ref('')
+
+function uploadParticipantNote(id) {
+  selectingFileFor.value = 'Participant'
+  ParticipantNoteId.value = id
+  open({ multiple: false })
+}
+
+function UploadFileParticipantNote() {
+  const data = files.value?.item(0)
+  if (data) {
+    store.isUploadingFiles = true
+    store.isUploadingFilesPercentage = 0
+    const fileRef = storageRef(
+      storage,
+      `Activities/${actToEdit.value.id}/Slips/${ParticipantNoteId.value}`
+    )
+    const uploadTask = uploadBytesResumable(fileRef, data)
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        store.isUploadingFilesPercentage = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+      },
+      (error) => {
+        store.isUploadingFiles = false
+        console.log('ERROR', error)
+      },
+      () => {
+        console.log('DONE')
+        store.isUploadingFiles = false
+        saveSlipInfo()
+      }
+    )
+  }
+}
+
+function saveSlipInfo() {
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    [`Slips.${ParticipantNoteId.value}`]: true
+  })
+}
+
+function deleteSlip(id) {
+  deleteObject(storageRef(storage, actToEdit.value.SlipsURL[id]))
+    .then(() => {
+      delete actToEdit.value.Slips[id]
+      updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+        Slips: actToEdit.value.Slips
+      })
+    })
+    .catch((error) => {
+      console.log('Dleteting slip: ', error)
+    })
+}
+
+const participantsMissingSlip = computed(
+  () =>
+    actToEdit.value.Participants?.length -
+    actToEdit.value.Participants?.reduce((acc, p) => acc + (actToEdit.value?.Slips?.[p] ? 1 : 0), 0)
+)
+
+function updateMissingSlipReason() {
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    SlipsMissingReason: actToEdit.value.SlipsMissingReason
+  })
+}
+
+function selectFileSlipMissingReason() {
+  selectingFileFor.value = 'SlipsMissing'
+  open({ multiple: false })
+}
+
+function UploadFileMissingSlipsReason() {
+  const data = files.value?.item(0)
+  if (data) {
+    store.isUploadingFiles = true
+    store.isUploadingFilesPercentage = 0
+    const fileRef = storageRef(storage, `Activities/${actToEdit.value.id}/Slips/${data.name}`)
+    const uploadTask = uploadBytesResumable(fileRef, data)
+    uploadTask.on(
+      'state_changed',
+      (snapshot) => {
+        store.isUploadingFilesPercentage = (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+      },
+      (error) => {
+        store.isUploadingFiles = false
+        console.log('ERROR', error)
+      },
+      () => {
+        console.log('DONE')
+        store.isUploadingFiles = false
+        updateFilenameSlipsMissingReason()
+      }
+    )
+  }
+}
+
+function updateFilenameSlipsMissingReason() {
+  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+    FileSlipsMissingReason: files.value?.item(0).name
+  })
+}
+
+function dleteFileMissingSlipsReason() {
+  deleteObject(
+    storageRef(
+      storage,
+      `Activities/${actToEdit.value.id}/Slips/${actToEdit.value.FileSlipsMissingReason}`
+    )
+  ).then(() => {
+    updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+      FileSlipsMissingReason: null
+    })
+  })
+}
+// #endregion
+
 // ***************
 // PDF
 // ***************
@@ -1153,8 +1443,59 @@ async function createPDF() {
             </div>
           </div>
 
-          <!-- Tab: 3. Staff -->
+          <!-- Tab: 2. Check List -->
           <div v-show="tabActive == 1">
+            <div class="mx-auto mt-5 w-fit" v-if="actToEdit.Checklist?.length > 0">
+              <template v-for="(el, index) in actToEdit.Checklist" :key="el.Task">
+                <div class="mb-2 flex place-content-center">
+                  <div class="grow pr-4">
+                    <div class="font-semibold">{{ index + 1 }}. {{ el.Task }}</div>
+                    <div>{{ el.Comments }}</div>
+                  </div>
+                  <div>
+                    <MyInputCheckBox label="Done" v-model="el.Done" @click="updateChecklist" />
+                  </div>
+                </div>
+              </template>
+              <div :class="{ 'text-red-600': tabHasErrorChecklist }">
+                If not all items are checked explain:
+              </div>
+              <MyInputTextArea
+                v-model="actToEdit.ChecklistComments"
+                @change.self="updateChecklistComments"
+              />
+              <div class="mt-5">
+                <MyButton @click="selectFile">Upload Photo</MyButton>
+                <div>
+                  <canvas
+                    ref="canvas"
+                    width="160"
+                    height="160"
+                    class="invisible absolute rounded-l"
+                  >
+                    <img :src="imageSrc" />
+                  </canvas>
+                </div>
+              </div>
+              <div class="mt-5 flex justify-center gap-1">
+                <template v-for="(photo, index) in actToEdit.Photos" :key="photo.Name">
+                  <div v-if="photo.Url" class="relative">
+                    <img :src="photo.Url" width="180" height="180" />
+                    <div
+                      @click="deletePhoto(index)"
+                      class="absolute right-0 top-0 m-1 cursor-pointer rounded bg-slate-100/80 px-2 py-1 shadow-lg hover:bg-white/100"
+                    >
+                      <FontAwesomeIcon icon="trash" size="lg" class="text-red-800" />
+                    </div>
+                  </div>
+                </template>
+              </div>
+            </div>
+            <div v-else class="mx-autoo mt-10 text-center">No checklist for this site</div>
+          </div>
+
+          <!-- Tab: 3. Staff -->
+          <div v-show="tabActive == 2">
             <div class="text-right">
               <FontAwesomeIcon
                 :icon="store.loginUser.Settings?.ActiviyStaffTabByList ? 'table-list' : 'list'"
@@ -1327,7 +1668,7 @@ async function createPDF() {
           </div>
 
           <!-- Tab: 4. Participants -->
-          <div v-show="tabActive == 2">
+          <div v-show="tabActive == 3">
             <div class="text-right">
               <FontAwesomeIcon
                 :icon="
@@ -1364,6 +1705,20 @@ async function createPDF() {
                             {{ participant.Nickname }} {{ participant.LastName }}
                           </div>
                           <div class="flex">
+                            <div
+                              v-if="isOvernightActivity"
+                              class="selector-list-icon"
+                              @click.stop="uploadParticipantNote(participant.id)"
+                            >
+                              <FontAwesomeIcon
+                                icon="file-circle-question"
+                                :class="[
+                                  actToEdit?.Slips?.[participant.id]
+                                    ? 'text-green-800'
+                                    : 'text-red-600'
+                                ]"
+                              />
+                            </div>
                             <div
                               class="selector-list-icon"
                               @click.stop="moveParticipant(participant.id, 'down')"
@@ -1438,6 +1793,20 @@ async function createPDF() {
                         <div class="py-1">{{ p.item?.Nickname }} {{ p.item?.LastName }}</div>
                         <div class="flex">
                           <div
+                            v-if="isOvernightActivity"
+                            class="selector-list-icon"
+                            @click.stop="uploadParticipantNote(p.item.id)"
+                          >
+                            <FontAwesomeIcon
+                              :icon="
+                                actToEdit?.Slips?.[p.item?.id] ? 'file' : 'file-circle-question'
+                              "
+                              :class="[
+                                actToEdit?.Slips?.[p.item?.id] ? 'text-green-800' : 'text-red-600'
+                              ]"
+                            />
+                          </div>
+                          <div
                             class="selector-list-icon"
                             @click.stop="moveParticipant(p.item.id, 'up')"
                           >
@@ -1479,6 +1848,44 @@ async function createPDF() {
                 </div>
               </div>
 
+              <!-- Slips -->
+              <div v-if="isOvernightActivity">
+                <div class="mt-10 text-slate-600">
+                  Important: This is a overnight activity and you need to upload the slip consent
+                  for each participant.
+                  <div v-if="participantsMissingSlip > 0" class="text-red-600">
+                    Missing slips: <span class="font-semibold">{{ participantsMissingSlip }}</span>
+                  </div>
+                  <div v-else class="text-green-600">Good to go!</div>
+                  <div class="my-5 text-sm text-slate-600">
+                    If, for some very extraordinary reason
+                    <span class="font-semibold">NOT</span> every participant has its slip uploaded,
+                    explain:
+                    <MyInputTextArea
+                      v-model="actToEdit.SlipsMissingReason"
+                      @change.self="updateMissingSlipReason"
+                    />
+                  </div>
+
+                  <!-- Uplaod File -->
+                  <div v-if="!actToEdit.FileSlipsMissingReason">
+                    Or upload a file with the explanation:
+                    <MyButton @click.self="selectFileSlipMissingReason">Uplaod</MyButton>
+                  </div>
+                  <!-- There is a file -->
+                  <div v-else class="flex place-items-center">
+                    File explaining lack of slips:
+                    <span class="ml-5 text-blue-600 underline">{{
+                      actToEdit.FileSlipsMissingReason
+                    }}</span>
+                    <FontAwesomeIcon
+                      @click="dleteFileMissingSlipsReason"
+                      icon="trash"
+                      class="cursor-pointer rounded px-2 py-2 hover:bg-slate-200"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
             <div v-else class="text-slate-700">
               <div class="w-fit">
@@ -1496,6 +1903,7 @@ async function createPDF() {
                   <tr>
                     <th></th>
                     <th></th>
+                    <th colspan="2" v-if="isOvernightActivity" class="text-center">Slips</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1504,6 +1912,26 @@ async function createPDF() {
                     <td class="px-2">
                       {{ allParticipantsById[p]?.Nickname }}
                       {{ allParticipantsById[p]?.LastName }}
+                    </td>
+                    <td v-if="isOvernightActivity">
+                      <span v-if="actToEdit?.SlipsURL?.[p]"
+                        ><a :href="actToEdit?.SlipsURL?.[p]" target="_blank">Slip</a></span
+                      >
+                      <span v-else class="text-red-600">Missing </span>
+                    </td>
+                    <td v-if="isOvernightActivity">
+                      <FontAwesomeIcon
+                        v-if="actToEdit?.SlipsURL?.[p]"
+                        icon="trash"
+                        class="cursor-pointer rounded px-2 py-1 hover:bg-slate-200"
+                        @click="deleteSlip(p)"
+                      />
+                      <FontAwesomeIcon
+                        v-else
+                        icon="up-long"
+                        class="cursor-pointer rounded px-2 py-1 hover:bg-slate-200"
+                        @click="uploadParticipantNote(p)"
+                      />
                     </td>
                     <td
                       class="cursor-pointer px-2 py-1 text-slate-600"
@@ -1514,6 +1942,44 @@ async function createPDF() {
                   </tr>
                 </tbody>
               </table>
+              <!-- Slips -->
+              <div v-if="isOvernightActivity">
+                <div class="mt-10 text-slate-600">
+                  Important: This is a overnight activity and you need to upload the slip consent
+                  for each participant.
+                  <div v-if="participantsMissingSlip > 0" class="text-red-600">
+                    Missing slips: <span class="font-semibold">{{ participantsMissingSlip }}</span>
+                  </div>
+                  <div v-else class="text-green-600">Good to go!</div>
+                  <div class="my-5 text-sm text-slate-600">
+                    If, for some very extraordinary reason
+                    <span class="font-semibold">NOT</span> every participant has its slip uploaded,
+                    explain:
+                    <MyInputTextArea
+                      v-model="actToEdit.SlipsMissingReason"
+                      @change.self="updateMissingSlipReason"
+                    />
+                  </div>
+
+                  <!-- Uplaod File -->
+                  <div v-if="!actToEdit.FileSlipsMissingReason">
+                    Or upload a file with the explanation:
+                    <MyButton @click.self="selectFileSlipMissingReason">Uplaod</MyButton>
+                  </div>
+                  <!-- There is a file -->
+                  <div v-else class="flex place-items-center">
+                    File explaining lack of slips:
+                    <span class="ml-5 text-blue-600 underline">{{
+                      actToEdit.FileSlipsMissingReason
+                    }}</span>
+                    <FontAwesomeIcon
+                      @click="dleteFileMissingSlipsReason"
+                      icon="trash"
+                      class="cursor-pointer rounded px-2 py-2 hover:bg-slate-200"
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
 
             <!-- Adult Participants -->
@@ -1668,6 +2134,35 @@ async function createPDF() {
             <span class="mb-5 font-bold">General Comments:</span> {{ actToEdit.Comments }}
           </div>
 
+          <!-- Checklist -->
+          <div v-if="false" class="mb-2 font-bold">Checklist:</div>
+          <table class="mb-5">
+            <template v-for="(el, index) in actToEdit.Checklist" :key="el.Task">
+              <tr class="border-b border-t">
+                <td class="p-2">
+                  <div>{{ index + 1 }}. {{ el.Task }}</div>
+                  <div class="">{{ el.Comments }}</div>
+                </td>
+                <td class="pl-5" :class="[el.Done ? 'text-blue-800' : 'text-red-600']">
+                  {{ el.Done ? 'Yes' : 'No' }}
+                </td>
+              </tr>
+            </template>
+          </table>
+
+          <!-- Comments on the Checklist -->
+          <div class="mb-5">
+            <span class="mb-5 font-bold">Comments on the checklist: </span
+            >{{ actToEdit.ChecklistComments }}
+          </div>
+
+          <!-- Photos -->
+          <div class="mb-5 font-bold">
+            {{ actToEdit.Photos?.length || 0 }}
+            {{ (actToEdit.Photos?.length || 0) == 1 ? 'photo' : 'photos' }} uploaded in the
+            checklist section
+          </div>
+
           <!-- Staff -->
           <div class="mb-5">
             <div class="font-bold">Staff</div>
@@ -1688,9 +2183,23 @@ async function createPDF() {
                   <td class="pr-2">
                     {{ allParticipantsById[p]?.Nickname }} {{ allParticipantsById[p]?.LastName }}
                   </td>
+                  <td v-if="isOvernightActivity">
+                    <span v-if="actToEdit.Slips?.[p]"> Yes </span>
+                    <span v-else class="text-red-600">Missing</span>
+                  </td>
                 </tr>
               </template>
             </table>
+            <div v-if="isOvernightActivity" class="mt-3">
+              <div>
+                <span class="font-bold">Notes on Participants Slips:</span>
+                {{ actToEdit.SlipsMissingReason }}
+              </div>
+
+              <div v-if="actToEdit.FileSlipsMissingReason" class="mt-3 font-bold">
+                A file was uploaded about slips
+              </div>
+            </div>
             <div class="mt-2 font-bold">Adult participants</div>
             <div>
               <div v-for="(p, index) in actToEdit.AdultParticipants" :key="p">
