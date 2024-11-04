@@ -3,12 +3,26 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import dayjs from 'dayjs'
 import localizedFormat from 'dayjs/plugin/localizedFormat'
 import relativeTime from 'dayjs/plugin/relativeTime'
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
-import { onUnmounted, ref, toRefs, watch } from 'vue'
-import { useFirebaseStorage, useFirestore } from 'vuefire'
+import { collection, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore'
+import { computed, onUnmounted, ref, toRefs, watch } from 'vue'
+import { useCollection, useFirebaseStorage, useFirestore } from 'vuefire'
 import UsersViewTrainingListEdit from './UsersViewTrainingListEdit.vue'
 import { getDownloadURL } from 'firebase/storage'
 import { ref as storageRef } from 'firebase/storage'
+import MyFab from '@/components/MyFab.vue'
+import {
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  Listbox,
+  ListboxButton,
+  ListboxOption,
+  ListboxOptions
+} from '@headlessui/vue'
+import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
+import MyInputText from '@/components/MyInputs/MyInputText.vue'
+import MyButton from '@/components/MyButton.vue'
+import { useGeneralStore } from '@/stores/general'
 
 dayjs.extend(localizedFormat)
 dayjs.extend(relativeTime)
@@ -17,7 +31,7 @@ const props = defineProps({ user: Object })
 const { user } = toRefs(props)
 const db = useFirestore()
 const storage = useFirebaseStorage()
-
+const store = useGeneralStore()
 const training = ref([])
 
 const showDialogUploadTraining = ref(false)
@@ -143,6 +157,79 @@ function getUrl(p) {
     window.open(url, 'test.doc')
   })
 }
+
+// ****************************
+// Add Training
+// ****************************
+const queryOptioins = query(collection(db, 'Training'), orderBy('Title'))
+const presetOptions = useCollection(queryOptioins)
+
+const newTraining = ref({}) // user by both initial and ongoing training
+const newCompletedDays = ref(90) // user by both initial and ongoing training
+const newExpirationMonths = ref(60) // user by both initial and ongoing training
+const functionsSelected = ref(['Board']) // user by both initial and ongoing training
+
+const newStartsTraining = ref('') // user by ongoing training
+const newEndsTraining = ref('') // user by ongoing training
+
+const currentCorporation = ref(store.loginCorporationId)
+
+
+const showInitialTrainingDialog = ref(false)
+function addTraining() {
+  newTraining.value = {}
+  newCompletedDays.value = 90
+  newExpirationMonths.value = 60
+  functionsSelected.value = []
+  newStartsTraining.value = dayjs().add(1, 'year').startOf('year').format('YYYY-MM-DD')
+  newEndsTraining.value = dayjs().add(1, 'year').endOf('year').format('YYYY-MM-DD')
+  showInitialTrainingDialog.value = true
+}
+
+const isErrorStartTraining = computed(() => {
+  return {
+    formula:
+      !dayjs(newStartsTraining.value).isValid() ||
+      dayjs().add(1, 'day').isAfter(newStartsTraining.value),
+    label: !dayjs(newStartsTraining.value).isValid()
+      ? 'Invalid date'
+      : 'It should Starts after tomorrow'
+  }
+})
+
+const isErrorEndsTraining = computed(() => {
+  return {
+    formula:
+      !dayjs(newEndsTraining.value).isValid() ||
+      dayjs(newStartsTraining.value).add(1, 'month').isAfter(newEndsTraining.value),
+    label: !dayjs(newEndsTraining.value).isValid()
+      ? 'Invalid date'
+      : 'It should Ends after 1 month after Starts'
+  }
+})
+
+
+async function saveTraining() {
+  const trainingRef = doc(db, 'Training', newTraining.value.id)
+  const t = {
+    Functions: functionsSelected.value,
+    Complete: newCompletedDays.value,
+    Expiration: newExpirationMonths.value,
+    idRef: trainingRef,
+    Title: newTraining.value.Title,
+    idTitle: newTraining.value.id,
+    id: '',
+    IsOngoing: false,
+    Starts: newStartsTraining.value,
+    Ends: newEndsTraining.value
+  }
+  await setDoc(
+    doc(db, `Corporations/${currentCorporation.value}/Initial Training`, newTraining.value.id),
+    t
+  )
+  showInitialTrainingDialog.value = false
+}
+
 </script>
 
 <template>
@@ -236,11 +323,159 @@ function getUrl(p) {
         </template>
       </TransitionGroup>
     </div>
+    <MyFab @click="addTraining" class="-bottom-5 -right-2 bg-green-800/80">
+      <FontAwesomeIcon icon="plus" size="xl" />
+    </MyFab>
+
     <UsersViewTrainingListEdit
       v-model="showDialogUploadTraining"
       :training="trainingToEdit"
       :user="user"
     />
+    <Dialog
+      :open="showInitialTrainingDialog"
+      @close="showInitialTrainingDialog = false"
+      class="relative z-50"
+    >
+      <DialogPanel class="my-dialog">
+        <div class="my-dialog-overlay" />
+        <div class="my-dialog-outer">
+          <div class="my-dialog-inner">
+            <DialogTitle class="my-dialog-title">
+              Add Training Requirement
+              <FontAwesomeIcon
+                @click="showInitialTrainingDialog = false"
+                class=""
+                icon="times"
+                tabindex="0"
+              />
+            </DialogTitle>
+            <div class="my-dialog-content min-h-80">
+              <MySelectAuto
+                v-model="newTraining"
+                :items="presetOptions"
+                items-key="id"
+                items-label="Title"
+                customValues
+                class="max-h-60"
+                label="Training"
+                info
+                info-title="To add a new training requirement to the preset list, just type the name of the training in the input field and press enter."
+              />
+              <div class="flex flex-wrap gap-2">
+                <div class="flex gap-2">
+                  <MyInputText
+                    v-model="newStartsTraining"
+                    label="Starts on"
+                    typeInput="date"
+                    info
+                    info-title="Starts"
+                    :is-error="isErrorStartTraining"
+                  >
+                    Enter here the date on which this training will be required. Personnel will have
+                    however many days from this date as is included under “Complete [days]” to
+                    complete the training to be in compliance
+                  </MyInputText>
+                  <MyInputText
+                    v-model="newEndsTraining"
+                    label="Ends on"
+                    typeInput="date"
+                    info
+                    info-title="Ends"
+                    :is-error="isErrorEndsTraining"
+                  >
+                    Enter here the date on which this training will no longer be required. This does
+                    not affect the expiration date of the training.
+                  </MyInputText>
+                </div>
+                <div class="flex gap-2">
+                  <MyInputText
+                    v-model="newCompletedDays"
+                    label="Completed on [days]"
+                    typeInput="number"
+                    info-title="Complete [days]"
+                    info
+                    class="w-32"
+                  >
+                    Enter here how many days the personnel have to complete this training once they
+                    are approved. A value of 0 means that the training must be complete before they
+                    are approved to work with minors. If the training is not complete within this
+                    number of days from their approval date, they cannot be involved in any
+                    activities with minors until they have completed the training.
+                  </MyInputText>
+                  <MyInputText
+                    v-model="newExpirationMonths"
+                    label="Expires in [months]"
+                    typeInput="number"
+                    info
+                    info-title="Expires in [months]"
+                    class="w-32"
+                  >
+                    Enter here the number of months that must elapse once a training module has been
+                    completed for the training to expire
+                  </MyInputText>
+                </div>
+              </div>
+
+              <div>
+                <Listbox v-model="functionsSelected" multiple horizontal>
+                  <div class="relative mt-5 text-sm text-slate-600">
+                    <div class="text-xs text-slate-500">Functions</div>
+                    <ListboxButton
+                      class="relative min-h-10 w-full cursor-pointer rounded-md bg-white px-3 py-2 text-left ring-1 ring-slate-300"
+                    >
+                      {{ functionsSelected.join(', ') }}
+                    </ListboxButton>
+                    <ListboxOptions
+                      as="div"
+                      class="thinsb absolute flex h-fit w-full flex-wrap gap-x-2 gap-y-1 overflow-auto rounded-md p-1 ring-1 ring-slate-300"
+                    >
+                      <ListboxOption
+                        v-for="f in store.FUNCTIONS"
+                        :key="f"
+                        :value="f"
+                        as="template"
+                        v-slot="{ selected }"
+                      >
+                        <div
+                          class="cursor-pointer rounded-full border px-3 py-1 hover:shadow-md"
+                          :class="{ 'bg-slate-300': selected }"
+                        >
+                          {{ f }}
+                        </div>
+                      </ListboxOption>
+                    </ListboxOptions>
+                  </div>
+                </Listbox>
+              </div>
+            </div>
+            <div class="my-dialog-buttons">
+              <MyButton @click="showInitialTrainingDialog = false" class="bg-slate-500"
+                >Close</MyButton
+              >
+              <MyButton
+                @click="saveTraining"
+                class="bg-green-600"
+                :disabled="
+                  !newTraining.Title ||
+                  newTraining.Title?.length < 3 ||
+                  functionsSelected.length == 0
+                "
+                >Save</MyButton
+              >
+            </div>
+            <div
+              v-if="newTraining.Title?.length > 2 && !newTraining.id"
+              class="px-5 pb-3 text-xs text-slate-500"
+            >
+              Note: The training
+              <span class="font-semibold text-slate-700">"{{ newTraining.Title }}" </span>
+              will be added to the list of preset trainings.
+            </div>
+          </div>
+        </div>
+      </DialogPanel>
+    </Dialog>
   </div>
 </template>
 

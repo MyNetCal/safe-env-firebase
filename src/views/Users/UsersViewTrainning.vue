@@ -31,12 +31,13 @@
 import MyModal from '@/components/MyModal.vue'
 import MyButton from '@/components/MyButton.vue'
 import { toRefs } from 'vue'
-import UsersViewTrainingList from './UsersViewTrainingList.vue';
+import UsersViewTrainingList from './UsersViewTrainingList.vue'
 
 const props = defineProps({ showModal: Boolean, user: Object })
 const { showModal, user } = toRefs(props)
 
 function onOpenModal() {}
+
 </script>
 
 <style scoped></style>
