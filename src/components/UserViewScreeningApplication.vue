@@ -456,7 +456,7 @@ function openFileReference() {
                 <div class="flex">
                   Recommendation requested on
                   {{ dayjs(userCorp.ScreenRecommendationStaffRequested.PostDate).format('MMM. D') }}
-                  to
+                  from
                   {{ userCorp.ScreenRecommendationStaffRequested.UserName }}
                   <div
                     class="cursor-pointer px-1 text-slate-600"

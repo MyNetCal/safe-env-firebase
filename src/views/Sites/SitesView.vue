@@ -1,14 +1,13 @@
 <script setup>
 import MyFab from '@/components/MyFab.vue'
 import { FontAwesomeIcon, FontAwesomeLayers } from '@fortawesome/vue-fontawesome'
-import { ref, watchEffect, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted } from 'vue'
 import { initSite } from '@/stores/datadb'
 import { useGeneralStore } from '@/stores/general'
 import { arrayUnion, collection, doc, getDoc, onSnapshot, query, setDoc, updateDoc, where } from 'firebase/firestore'
 import { useDocument, useFirestore } from 'vuefire'
 import MySelectCorporation from '@/components/MySelect/MySelectCorporation.vue'
 import SitesViewSearch from '../Sites/SitesViewSearch.vue'
-import SitesViewShow from '../Sites/SitesViewShow.vue'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/vue'
 import MyButton from '@/components/MyButton.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
@@ -20,18 +19,11 @@ const db = useFirestore()
 
 const showSitesViewEdit = ref(false)
 const showSitesViewSearch = ref(false)
-const showSitesViewShow = ref(false)
-
-const tabActive = ref(0)
 
 const siteToEdit = ref({})
 const bothBranches = ref(false)
 
-const currentCorpId = ref(store.loginCorporationId)
-
-watchEffect(() => {
-  currentCorpId.value = store.loginCorporationId
-})
+const currentCorpId = computed(() => store.loginCorporationId)
 
 const corpDocRef = computed(() =>
   currentCorpId.value ? doc(db, 'Corporations', currentCorpId.value) : null
@@ -44,19 +36,23 @@ function editLocation(site) {
   siteToEdit.value = initSite(site)
   bothBranches.value = siteToEdit.value.Branch == 'both'
   showSitesViewEdit.value = true
+  console.log('siteToEdit after Init', siteToEdit.value);
+  
 }
 
 function onSaveGeneralInfo() {
   console.log('Saving')
   const siteRefDB = doc(collection(db, 'Sites'))
-  siteToEdit.value.id = siteRefDB.value.id
+  siteToEdit.value.id = siteRefDB.id
   siteToEdit.value.Branch = bothBranches.value ? 'both' : store.loginUser.Branch
-  siteToEdit.value.CorpIds = [currentCorpId.value.id]
+  siteToEdit.value.CorpIds = [currentCorpId.value]
   siteToEdit.value.CreatedByUser = store.loginUserId
-  siteToEdit.value.CreatedByCorp = currentCorpId.value.id
+  siteToEdit.value.CreatedByCorp = currentCorpId.value
   siteToEdit.value.Status = 'Approved'
-  setDoc(siteRefDB.value, siteToEdit.value)
-  updateDoc(doc(db, 'Corporations', currentCorpId.value.id), {
+  console.log('siteToEdit', siteToEdit.value);
+  
+  setDoc(siteRefDB, siteToEdit.value)
+  updateDoc(doc(db, 'Corporations', currentCorpId.value), {
     SiteIds: arrayUnion(siteToEdit.value.id)
   })
   showSitesViewEdit.value = false
@@ -229,21 +225,7 @@ onUnmounted(() => {
     "
   />
 -->
-  <!-- Show Site Info -->
-  <SitesViewShow
-    v-if="showSitesViewShow"
-    @onClose="showSitesViewShow = false"
-    :siteId="siteToEdit.id"
-    :corpId="currentCorpId"
-    :showModal="showSitesViewShow"
-    @onChangeTab="
-      (n) => {
-        tabActive = n
-        showSitesViewEdit = false
-      }
-    "
-  />
-
+  
   <!-- Search Sites -->
   <SitesViewSearch
     v-if="showSitesViewSearch"
