@@ -13,7 +13,6 @@ const card = ref({})
 card.value = JSON.parse(JSON.stringify(modelValue.value))
 
 function onSave() {
-  console.log('Saving')
   emits('update:modelValue', card.value)
   emits('onUpdate')
   emits('onClose')

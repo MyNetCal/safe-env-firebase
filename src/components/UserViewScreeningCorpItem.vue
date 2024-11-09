@@ -151,8 +151,6 @@ const backgroundNewDateDiologue = ref(false)
 const backgroundCheckExpiredFor = ref([])
 
 async function newBackgroudnDate() {
-  console.log('new date', bacgkroundNewDate.value)
-
   let backcgroundCheckExpiresOneCorporation = false
   backgroundCheckExpiredFor.value = []
   const userCorpsCollection = await getDocs(
@@ -392,9 +390,6 @@ const recommendationsAcceptedValid = ref([])
 
 if (item.value == 'Application') {
   user.value.ScreeningFilesRecommendation?.forEach((recommendation) => {
-    console.log('Recommendation: ', recommendation)
-    console.log('corpId: ', corp.value.id)
-
     const q = query(
       collection(db, 'UsersCorporations'),
       and(
@@ -413,7 +408,6 @@ if (item.value == 'Application') {
           path: recommendation.File
         })
       }
-      console.log('Recommendations Accepted: ', recommendationsAcceptedValid.value)
     })
   })
 }
@@ -470,9 +464,6 @@ function sentEmailStaffRequestedRecommendation() {
 
 function onStaffRecommended() {
   showDialogRecommendation.value = false
-  console.log('Staff recommending userid: ', staffRecommending.value.id)
-  console.log('Email should be send to: ', staffRecommending.value.Email)
-
   // update Staff Recommending in the User Collection with the request
   updateDoc(doc(db, 'Users', staffRecommending.value.id), {
     ScreenRecommendationNewUserRequested: arrayUnion({

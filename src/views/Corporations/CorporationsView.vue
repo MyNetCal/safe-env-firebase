@@ -77,7 +77,6 @@ function addNewPlace() {
 }
 
 function editCorporation(corporation) {
-  console.log('id: ', corporation.rowInfo.id)
   id.value = corporation.rowInfo.id
   rowSelected.value = { ...corporation.rowInfo }
   showEditPlaceModal.value = true

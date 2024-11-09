@@ -4,7 +4,7 @@ import dayjs from 'dayjs'
 import localizedFormat from 'dayjs/plugin/localizedFormat'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { collection, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore'
-import { computed, onUnmounted, ref, toRefs, watch } from 'vue'
+import { onUnmounted, ref, toRefs, watch } from 'vue'
 import { useCollection, useFirebaseStorage, useFirestore } from 'vuefire'
 import UsersViewTrainingListEdit from './UsersViewTrainingListEdit.vue'
 import { getDownloadURL } from 'firebase/storage'
@@ -14,15 +14,10 @@ import {
   Dialog,
   DialogPanel,
   DialogTitle,
-  Listbox,
-  ListboxButton,
-  ListboxOption,
-  ListboxOptions
 } from '@headlessui/vue'
 import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import MyButton from '@/components/MyButton.vue'
-import { useGeneralStore } from '@/stores/general'
 
 dayjs.extend(localizedFormat)
 dayjs.extend(relativeTime)
@@ -31,7 +26,6 @@ const props = defineProps({ user: Object })
 const { user } = toRefs(props)
 const db = useFirestore()
 const storage = useFirebaseStorage()
-const store = useGeneralStore()
 const training = ref([])
 
 const showDialogUploadTraining = ref(false)
@@ -167,69 +161,35 @@ const presetOptions = useCollection(queryOptioins)
 const newTraining = ref({}) // user by both initial and ongoing training
 const newCompletedDays = ref(90) // user by both initial and ongoing training
 const newExpirationMonths = ref(60) // user by both initial and ongoing training
-const functionsSelected = ref(['Board']) // user by both initial and ongoing training
-
-const newStartsTraining = ref('') // user by ongoing training
-const newEndsTraining = ref('') // user by ongoing training
-
-const currentCorporation = ref(store.loginCorporationId)
-
 
 const showInitialTrainingDialog = ref(false)
 function addTraining() {
   newTraining.value = {}
   newCompletedDays.value = 90
   newExpirationMonths.value = 60
-  functionsSelected.value = []
-  newStartsTraining.value = dayjs().add(1, 'year').startOf('year').format('YYYY-MM-DD')
-  newEndsTraining.value = dayjs().add(1, 'year').endOf('year').format('YYYY-MM-DD')
   showInitialTrainingDialog.value = true
 }
 
-const isErrorStartTraining = computed(() => {
-  return {
-    formula:
-      !dayjs(newStartsTraining.value).isValid() ||
-      dayjs().add(1, 'day').isAfter(newStartsTraining.value),
-    label: !dayjs(newStartsTraining.value).isValid()
-      ? 'Invalid date'
-      : 'It should Starts after tomorrow'
-  }
-})
-
-const isErrorEndsTraining = computed(() => {
-  return {
-    formula:
-      !dayjs(newEndsTraining.value).isValid() ||
-      dayjs(newStartsTraining.value).add(1, 'month').isAfter(newEndsTraining.value),
-    label: !dayjs(newEndsTraining.value).isValid()
-      ? 'Invalid date'
-      : 'It should Ends after 1 month after Starts'
-  }
-})
-
-
 async function saveTraining() {
-  const trainingRef = doc(db, 'Training', newTraining.value.id)
-  const t = {
-    Functions: functionsSelected.value,
+  const data = {
+    id: newTraining.value.id,
     Complete: newCompletedDays.value,
     Expiration: newExpirationMonths.value,
-    idRef: trainingRef,
+    Functions: user.value.Function,
     Title: newTraining.value.Title,
-    idTitle: newTraining.value.id,
-    id: '',
-    IsOngoing: false,
-    Starts: newStartsTraining.value,
-    Ends: newEndsTraining.value
+    UserId: user.value.UserId,
+    CorpId: user.value.CorporationId,
+    UserCorpId: user.value.id,
+    LastCompleted: '',
+    ExpiresOn: dayjs().add(newCompletedDays.value, 'days').format('YYYY-MM-DD'),
+    Active: true
   }
   await setDoc(
-    doc(db, `Corporations/${currentCorporation.value}/Initial Training`, newTraining.value.id),
-    t
+    doc(db, `UsersCorporations/${user.value.id}/UserCorpTraining`, newTraining.value.id),
+    data
   )
   showInitialTrainingDialog.value = false
 }
-
 </script>
 
 <template>
@@ -363,31 +323,7 @@ async function saveTraining() {
                 info-title="To add a new training requirement to the preset list, just type the name of the training in the input field and press enter."
               />
               <div class="flex flex-wrap gap-2">
-                <div class="flex gap-2">
-                  <MyInputText
-                    v-model="newStartsTraining"
-                    label="Starts on"
-                    typeInput="date"
-                    info
-                    info-title="Starts"
-                    :is-error="isErrorStartTraining"
-                  >
-                    Enter here the date on which this training will be required. Personnel will have
-                    however many days from this date as is included under “Complete [days]” to
-                    complete the training to be in compliance
-                  </MyInputText>
-                  <MyInputText
-                    v-model="newEndsTraining"
-                    label="Ends on"
-                    typeInput="date"
-                    info
-                    info-title="Ends"
-                    :is-error="isErrorEndsTraining"
-                  >
-                    Enter here the date on which this training will no longer be required. This does
-                    not affect the expiration date of the training.
-                  </MyInputText>
-                </div>
+                <div class="flex gap-2"></div>
                 <div class="flex gap-2">
                   <MyInputText
                     v-model="newCompletedDays"
@@ -415,38 +351,6 @@ async function saveTraining() {
                     completed for the training to expire
                   </MyInputText>
                 </div>
-              </div>
-
-              <div>
-                <Listbox v-model="functionsSelected" multiple horizontal>
-                  <div class="relative mt-5 text-sm text-slate-600">
-                    <div class="text-xs text-slate-500">Functions</div>
-                    <ListboxButton
-                      class="relative min-h-10 w-full cursor-pointer rounded-md bg-white px-3 py-2 text-left ring-1 ring-slate-300"
-                    >
-                      {{ functionsSelected.join(', ') }}
-                    </ListboxButton>
-                    <ListboxOptions
-                      as="div"
-                      class="thinsb absolute flex h-fit w-full flex-wrap gap-x-2 gap-y-1 overflow-auto rounded-md p-1 ring-1 ring-slate-300"
-                    >
-                      <ListboxOption
-                        v-for="f in store.FUNCTIONS"
-                        :key="f"
-                        :value="f"
-                        as="template"
-                        v-slot="{ selected }"
-                      >
-                        <div
-                          class="cursor-pointer rounded-full border px-3 py-1 hover:shadow-md"
-                          :class="{ 'bg-slate-300': selected }"
-                        >
-                          {{ f }}
-                        </div>
-                      </ListboxOption>
-                    </ListboxOptions>
-                  </div>
-                </Listbox>
               </div>
             </div>
             <div class="my-dialog-buttons">

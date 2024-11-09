@@ -192,7 +192,6 @@ function showPicture() {
   if (data) {
     var reader = new FileReader()
     reader.addEventListener('load', () => {
-      console.log('Inside Reader Listener')
       imageSrc.value = reader.result
       const ctx = canvas.value.getContext('2d')
       const img = new Image() // Create new img element

@@ -26,10 +26,9 @@ watch(model, () => {
   if (model.value) {
     store.isUploadingFiles = false
     store.isUploadingFilesPercentage = 0
-    console.log('Oppening dialog')
     reset()
   } else {
-    console.log('Closing dialog')
+    //
   }
 })
 
@@ -39,7 +38,7 @@ const filesUploaded = ref([])
 const { files: filesToUpload, open, onChange, reset } = useFileDialog()
 
 onChange(() => {
-  console.log('Files selected: ', filesToUpload.value?.item(0))
+  //
 })
 
 function addTrainigDate() {

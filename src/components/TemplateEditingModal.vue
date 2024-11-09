@@ -25,19 +25,17 @@ import { toRefs } from 'vue'
 
 const emit = defineEmits(['onClose', 'onUpdate'])
 const props = defineProps({ showModal: Boolean, id: String })
-const { showModal, id } = toRefs(props)
+const { showModal } = toRefs(props)
 
 function onOpenModal() {
-  console.log('oppening Modal: ', id.value)
+
 }
 
 function onDelete() {
-  console.log('Deleteing')
   emit('onUpdate')
 }
 
 function onSave() {
-  console.log('Saving')
   emit('onUpdate')
 }
 </script>

@@ -347,8 +347,6 @@ function getScreeningReqType(type) {
       a.push(req)
     }
   })
-  console.log('Req: ', a)
-
   return a
 }
 

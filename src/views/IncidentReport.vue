@@ -96,7 +96,6 @@ async function createSentReport() {
       }
     }
   }
-  console.log('Data ', data);
   setDoc(pdfRef, data)
 }
 </script>

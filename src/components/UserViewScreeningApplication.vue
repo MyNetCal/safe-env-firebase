@@ -128,9 +128,6 @@ const staffRecommending = ref({ id: '', Name: '', Email: '' })
 const recommendationsAcceptedValid = ref([])
 
 user.value.ScreeningFilesRecommendation?.forEach((recommendation) => {
-  console.log('Recommendation: ', recommendation)
-  console.log('corpId: ', corp.value.id)
-
   const q = query(
     collection(db, 'UsersCorporations'),
     and(
@@ -149,7 +146,6 @@ user.value.ScreeningFilesRecommendation?.forEach((recommendation) => {
         path: recommendation.File
       })
     }
-    console.log('Recommendations Accepted: ', recommendationsAcceptedValid.value)
   })
 })
 
@@ -209,9 +205,6 @@ function sentEmailStaffRequestedRecommendation() {
 
 function onStaffRecommended() {
   showDialogRecommendation.value = false
-  console.log('Staff recommending userid: ', staffRecommending.value.id)
-  console.log('Email should be send to: ', staffRecommending.value.Email)
-
   // update Staff Recommending in the User Collection with the request
   updateDoc(doc(db, 'Users', staffRecommending.value.id), {
     ScreenRecommendationNewUserRequested: arrayUnion({
@@ -266,7 +259,6 @@ function askInternalReferenceFrom() {
 }
 
 function saveInterviewer() {
-  console.log('staffRecommending: ', staffRecommending.value)
   open({ multiple: false })
 }
 
@@ -308,8 +300,6 @@ function uploadFile() {
       }
     )
   }
-
-  console.log('data: ', data)
 }
 
 function updateUserScreeningFiles(originalName, uiName) {

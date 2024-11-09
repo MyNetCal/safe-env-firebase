@@ -8,9 +8,9 @@ const model = defineModel()
 
 watch(model, () => {
   if (model.value) {
-    console.log('Oppening dialog')
+    // 
   } else {
-    console.log('Closing dialog')
+    // 
   }
 })
 </script>

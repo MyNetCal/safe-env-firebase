@@ -69,7 +69,6 @@ const isCountingListAll = computed(() => store.countListAll > 0)
 
 watch(showModal, (nv) => {
   if (nv) {
-    console.log('on watch');
     emit('onOpenModal')
   } else {
     emit('onCloseModal')

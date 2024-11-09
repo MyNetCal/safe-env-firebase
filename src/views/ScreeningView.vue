@@ -33,7 +33,6 @@ const editingValues = ref(null)
 const currentScreeningType = ref(store.SCREENING_TYPES[0])
 
 watchEffect(() => {
-  console.log('Getting new data!!!!')
   if (currentCorporationDoc.value?.Screening) {
     editingValues.value = JSON.parse(JSON.stringify(currentCorporationDoc.value?.Screening))
   }

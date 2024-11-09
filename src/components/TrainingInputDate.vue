@@ -94,12 +94,11 @@ const db = useFirestore()
 
 const newDate = ref(dayjs().format('YYYY-MM-DD'))
 
-console.log('Oppening training editing')
 
 const { files: filesToUpload, open, onChange, reset } = useFileDialog()
 
 onChange(() => {
-  console.log('Files selected: ', filesToUpload.value?.item(0))
+  //
 })
 
 const filesUploaded = ref([])
@@ -125,10 +124,8 @@ function getUrl(name) {
 }
 
 function uploadFilesServer() {
-  console.log('About to uploading File...')
   // addTrainigDate()
   if (!filesToUpload.value) {
-    console.log('No files uploaded')
     addTrainigDate()
     return
   }
@@ -154,7 +151,6 @@ function uploadFilesServer() {
         console.log('ERROR', error)
       },
       () => {
-        console.log('Uploaded Success')
         count--
         filesUploaded.value.push({ uuid: uuidAndExt, name: file.name })
         if (count == 0) {

@@ -117,7 +117,6 @@ watch(
       watch(useElementHover(el), (nv) => {
         if (nv) {
           const { top, left } = useElementBounding(el)
-          console.log(' Showing top: ', top.value)
           divuser.value.innerHTML = el.dataset.u
           divuser.value.style.top = top.value - 50 + 'px'
           divuser.value.style.left = left.value - 50 + 'px'
@@ -172,7 +171,6 @@ getUsersByCorp(
 )
 
 function voteForSEC(p) {
-  console.log('Adding: ', p.id)
   if (p.UserId == store.loginUserId) {
     return
   }
@@ -268,8 +266,6 @@ function updateAppendix() {
 uploadFile(() => {
   if (!fileToUpload.value) return
   const fileName = fileToUpload.value.item(0).name
-  console.log('Uploading ', updating, '   File: ', fileName)
-  console.log('Corp id: ', currentCorpId.value)
   store.isUploadingFiles = true
   store.isUploadingFilesPercentage = 0
   const fileRef = storageRef(

@@ -80,6 +80,12 @@ const router = createRouter({
       name: 'Dashboard',
       component: () => import('../views/DashboardVue.vue'),
       props: true
+    },
+    {
+      path: '/setup',
+      name: 'Setup',
+      component: () => import('../views/SetUpView.vue'),
+      props: true
     }
   ]
 })
@@ -91,10 +97,11 @@ router.beforeEach(async (to) => {
     console.log('Should go to the Welcome Page!', to.query.id)
     return '/welcome/' + to.query.id
   }
-  if (!currentUser && to.name !== 'Login' && to.name !== 'Welcome') {
+  if (!currentUser && to.name !== 'Login' && to.name !== 'Welcome' && to.name !== 'Setup') {
     console.log('Lets go to login!!! to.name= ', to.name);
     return { name: 'Login' }
   }
+  return
 })
 
 export default router

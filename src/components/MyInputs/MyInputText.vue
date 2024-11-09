@@ -138,7 +138,6 @@ export default {
       }
     },
     validateEmail(email) {
-      console.log('validating...', email)
       if (!this.requiered && email == '') {
         this.$emit('update:isValid', true)
         return
@@ -146,7 +145,6 @@ export default {
       // eslint-disable-next-line no-useless-escape
       const b = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)
       this.$emit('update:isValid', b)
-      console.log('b: ', b)
     },
     onInput(e) {
       this.$emit('update:modelValue', e.target.value)

@@ -5,10 +5,8 @@ import { useGeneralStore } from '@/stores/general'
 import { useCollection, useDocument, useFirestore } from 'vuefire'
 import {
   collection,
-  collectionGroup,
   deleteDoc,
   doc,
-  getDocs,
   orderBy,
   setDoc,
   where
@@ -102,19 +100,6 @@ function editTraining(training) {
   showInitialTrainingDialog.value = true
 }
 
-async function test() {
-  const q = query(collectionGroup(db, 'Ongoing Training'), where('Ends', '==', '2025-01-01'))
-  const docsRef = await getDocs(q)
-  const tCollection = docsRef.docs.map((t) => {
-    return {
-      ...t.data(),
-      id: t.id,
-      corpId: t.ref.parent.parent.id
-    }
-  })
-  console.log(tCollection)
-}
-
 const isErrorStartTraining = computed(() => {
   return {
     formula:
@@ -186,7 +171,7 @@ function deleteTraining() {
 
 <template>
   <div class="m-2">
-    <h1 @click="test">Training</h1>
+    <h1>Training</h1>
     <div class="mt-5 flex justify-center place-self-center">
       <div class="flex gap-x-2 text-left">
         <MySelectCorporation v-model="currentCorporation" v-if="store.isUserBoardPrelature" />

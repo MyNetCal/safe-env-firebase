@@ -142,7 +142,6 @@ unsubCorp.value = onSnapshot(doc(db, 'Corporations', corpId.value), (res) => {
 })
 
 function subAct(id) {
-  console.log('Getting act: ', id)
   unsubAct.value = onSnapshot(doc(db, 'Activities', id), (res) => {
     actToEdit.value = res.data()
     actToEdit.value.SlipsURL = {}
@@ -237,7 +236,6 @@ function filterSites() {
 }
 
 function onCreateActivity() {
-  console.log('Saving', id.value)
   const index = sitesInfo.value.findIndex((el) => el.id == actToEdit.value.Site)
   actToEdit.value.Checklist = JSON.parse(JSON.stringify(sitesInfo.value[index].CheckList))
   actToEdit.value.Repeats = !typeActivity.value
@@ -262,7 +260,6 @@ const isValidStarts = computed(
 )
 
 function onInputStarts() {
-  console.log('Updating end time')
   if (isValidStarts.value) {
     actToEdit.value.Ends = actToEdit.value.Starts
   }
@@ -288,7 +285,6 @@ const isValidAllCreateAct = computed(
 )
 
 function onUpdateInfo() {
-  console.log('Updatein info')
   if (actToEdit.value.id == '') {
     return
   }
@@ -698,7 +694,6 @@ const adultParticipants = useCollection(() =>
 )
 
 function addAdultParticipant() {
-  console.log('New Adult Participant: ', newAdultParticipant.value)
   if (!newAdultParticipant.value.id) {
     addDoc(collection(db, 'AdultParticipants'), {
       Name: newAdultParticipant.value.Name,
@@ -782,7 +777,6 @@ function updateFinalComments() {
 }
 
 function updateSignature() {
-  console.log('Updating signature;')
   updateDoc(doc(db, 'Activities', actToEdit.value.id), {
     Signature: actToEdit.value.Signature
   })
@@ -872,20 +866,6 @@ async function createPDF() {
                 statusCreatingPdf.value = 'Error Sending Email: ' + res.data.message
               }
             })
-
-          // getDownloadURL(uploadTask.snapshot.ref).then((url) => {
-          //   pdfURL.value = url
-          //   execute({
-          //     params: {
-          //       email: corp.value.EmailFiles,
-          //       subject: 'New Activity from ' + corp.value.Short,
-          //       link: url,
-          //       linkText: actToEdit.value.Title + ' @ ' + siteName.value
-          //     }
-          //   }).then(() => {
-          //     console.log('******* file', emailData.value)
-          //   })
-          // })
         }
       )
     },

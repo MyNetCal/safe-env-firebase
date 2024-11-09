@@ -401,7 +401,6 @@ async function onAcceptedRecommendation() {
 
 async function onDeclineRecommendation(request) {
   // GEt Email of SEC of the Corporation
-  console.log('Decline Recommendation', request)
   const q = query(
     collection(db, 'UsersCorporations'),
     where('CorporationId', '==', request.CorpId),
@@ -415,10 +414,7 @@ async function onDeclineRecommendation(request) {
   const corpInfo = await getDoc(doc(db, `Corporations/${request.CorpId}`))
   const userCorpInfo = await getDoc(doc(db, `UsersCorporations/${request.UserCorpId}`))
   const screeningType = store.getScreening(userCorpInfo.data().Function)
-  console.log('Screening Type', screeningType);
-  console.log('CorpInfo', corpInfo.data().Screening[screeningType]);
-  
-  
+
   const internalReferences = corpInfo.data().Screening[screeningType].InternalReference
   const externalReferences = corpInfo.data().Screening[screeningType].Reference
 
@@ -429,11 +425,9 @@ async function onDeclineRecommendation(request) {
     InternalReferences: internalReferences,
     ExternalReferences: externalReferences
   }
-  console.log('Data Email', dataEmail);
-  
-  console.log('Email', email)
+
   store.createDocTriggerEmailTemplate('Screening-Recommendation-Declined', dataEmail, [email])
-  
+
   updateDoc(doc(db, `Users/${store.loginUserId}`), {
     ScreenRecommendationNewUserRequested: arrayRemove(request)
   })
@@ -441,10 +435,8 @@ async function onDeclineRecommendation(request) {
   const userCorporationRef = doc(db, 'UsersCorporations', request.UserCorpId)
 
   updateDoc(userCorporationRef, {
-    "ScreenRecommendationStaffRequested.denied": true
+    'ScreenRecommendationStaffRequested.denied': true
   })
-
-
 }
 </script>
 
@@ -559,18 +551,19 @@ async function onDeclineRecommendation(request) {
               <span class="font-semibold">{{ recAccepted.LastName }}</span> for
               <input
                 type="number"
-                v-model="recommendationMonths"
-                class="input-signature w-12 text-center"
-              />
-              <span v-if="recommendationMonths != 1">months</span><span v-else>month</span> and
-              <input
-                type="number"
                 v-model="recommendationYears"
                 class="input-signature w-12 text-center"
               />
               <span v-if="recommendationYears > 1">years</span><span v-else>year</span> and
-              recommend <span class="font-semibold">{{ recAccepted.Name }}</span> to work with
-              minors at <span class="font-semibold">{{ recAccepted.CorpName }}</span
+              <input
+                type="number"
+                v-model="recommendationMonths"
+                class="input-signature w-12 text-center"
+              />
+              <span v-if="recommendationMonths != 1"> months </span>
+              <span v-else>month</span> and recommend
+              <span class="font-semibold">{{ recAccepted.Name }}</span> to work with minors at
+              <span class="font-semibold">{{ recAccepted.CorpName }}</span
               >. I am not aware of any reason that
               <span class="font-semibold">{{ recAccepted.Name }}</span> should not be allowed to
               work with minors at <span class="font-semibold">{{ recAccepted.CorpName }}</span> and

@@ -298,7 +298,6 @@ export const useGeneralStore = defineStore('general', () => {
       }).then((emailDoc) => {
         const unsub = onSnapshot(doc(db, 'mail-triggers', emailDoc.id), (d) => {
           const delivery = d.data().delivery
-          console.log('delivery state: ', delivery?.state);
           if (delivery?.state == 'SUCCESS') {
             unsub()
             console.log('Email has been sent!');

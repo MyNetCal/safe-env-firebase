@@ -50,7 +50,6 @@ const db = useFirestore()
 const corpToEdit = ref({})
 
 function openModal() {
-  console.log('Oppening modal')
   corpToEdit.value = JSON.parse(JSON.stringify(corp.value))
 }
 

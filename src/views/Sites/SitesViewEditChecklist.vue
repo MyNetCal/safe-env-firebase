@@ -30,7 +30,6 @@ function addTask() {
 }
 
 function deleteCard(index) {
-  console.log(index)
   updateDoc(siteRef.value, {
     CheckList: arrayRemove(siteDB.value.CheckList[index])
   })

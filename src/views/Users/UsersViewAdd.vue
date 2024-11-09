@@ -108,7 +108,6 @@ function onSave() {
     dataToEdit.value.Branch = 'both'
   }
   saveUser(dataToEdit.value).then((res) => {
-    console.log('res: ', res)
     if (dataToEdit.value.id == '') {
       dataToEdit.value.id = res.id
     }

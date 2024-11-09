@@ -117,7 +117,6 @@ async function backgroundRequested(user) {
     getBackgroundChecksNeedRequest()
     return
   }
-  console.log(user)
   const allSECEmails = await getEmailsAllSEC()
   const emailSECPrelature = await getEmailSECPrelature()
   const files = user.ScreeningReqFilesBackground && user.ScreeningReqFilesBackground.length > 0
@@ -154,7 +153,6 @@ async function backgroundRequested(user) {
       emailSEC
     )
   }
-  console.log('data: ', data)
   store.createDocTriggerEmailTemplate(templateGuy, data, user.Email)
   await updateDoc(doc(db, 'Users', user.id), {
     ScreeningBackgroundCheckRenewalRequested: true

@@ -26,15 +26,11 @@ const props = defineProps(['modelValue', 'id'])
 
 const { id } = toRefs(props)
 
-console.log('id:', id.value)
-
 function onDelete() {
-  console.log('Deleteing')
   emit('onUpdate')
 }
 
 function onSave() {
-  console.log('Saving')
   emit('onUpdate')
 }
 </script>

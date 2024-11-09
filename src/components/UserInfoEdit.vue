@@ -62,10 +62,8 @@ function onClickUserFromOtherCorporation() {
 }
 
 async function checkEmailStatus() {
-  console.log(' New email: ', userToEdit.value.Email)
   // eslint-disable-next-line no-useless-escape
   if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(userToEdit.value.Email)) {
-    console.log('Email is Valid')
     const userQuery = query(collection(db, 'Users'), where('Email', '==', userToEdit.value.Email))
     const userRef = await getDocs(userQuery)
     if (userRef.size > 0) {

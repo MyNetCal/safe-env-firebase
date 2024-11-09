@@ -36,12 +36,9 @@ function editLocation(site) {
   siteToEdit.value = initSite(site)
   bothBranches.value = siteToEdit.value.Branch == 'both'
   showSitesViewEdit.value = true
-  console.log('siteToEdit after Init', siteToEdit.value);
-  
 }
 
 function onSaveGeneralInfo() {
-  console.log('Saving')
   const siteRefDB = doc(collection(db, 'Sites'))
   siteToEdit.value.id = siteRefDB.id
   siteToEdit.value.Branch = bothBranches.value ? 'both' : store.loginUser.Branch
@@ -49,7 +46,6 @@ function onSaveGeneralInfo() {
   siteToEdit.value.CreatedByUser = store.loginUserId
   siteToEdit.value.CreatedByCorp = currentCorpId.value
   siteToEdit.value.Status = 'Approved'
-  console.log('siteToEdit', siteToEdit.value);
   
   setDoc(siteRefDB, siteToEdit.value)
   updateDoc(doc(db, 'Corporations', currentCorpId.value), {
@@ -59,7 +55,6 @@ function onSaveGeneralInfo() {
 }
 
 function onUpdateGeneralInfo() {
-  console.log('Updating')
   siteToEdit.value.Branch = bothBranches.value ? 'both' : store.loginUser.Branch
   updateDoc(doc(db, 'Sites', siteToEdit.value.id), {
     Address: siteToEdit.value.Address,

@@ -103,10 +103,8 @@ function addTrainingtoCorporation() {
 function addRequirement() {
   editingIndex.value = -1
   if (optionSelected.value.id == null) {
-    console.log('IT needs to add training')
     addDoc(collection(db, 'Training'), { Title: optionSelected.value.Title, id: '' }).then(
       (docRef) => {
-        console.log('New Training Id ', docRef.id)
         optionSelected.value.id = docRef.id
         addTrainingtoCorporation()
       }

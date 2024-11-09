@@ -14,7 +14,8 @@ import {
   arrayUnion,
   getDocs,
   getDoc,
-  arrayRemove
+  arrayRemove,
+  setDoc
 } from 'firebase/firestore'
 import { watch, onUnmounted, ref } from 'vue'
 import dayjs from 'dayjs'
@@ -36,12 +37,13 @@ function initUser(user) {
     id: '',
     CurrentUsersCorporationsId: '',
     DOB: '', // format: 'yyyy-mm-dd'
-    Branch: store.loginUser.Branch, // values: men, women, both
+    Branch: 'men', // values: men, women, both
     EmailSent: false,
     LastLogin: '',
-    ScreeningReqFilesApplication: [],
-    ScreeningReqFilesInterview: [],
-    ScreeningReqFilesReference: [],
+    ScreeningFilesRecommendation: [],
+    ScreeningFilesInterview: [],
+    ScreeningFilesInternalReference: [],
+    ScreeningFilesReference: [],
     ScreeningReqFilesBackground: [],
     CorpsActiveAtLeastOne: false,
     CorpsActiveIds: [],
@@ -57,9 +59,11 @@ function createUser(user) {
     user.CorpsActiveAtLeastOne = false
     user.CorpsActiveIds = []
     user.CorpsIds = []
-    addDoc(collection(db, 'Users'), user).then(
-      (d) => {
-        res(d)
+    const userId = user.Name + user.LastName + user.DOB
+    user.id = userId
+    setDoc(doc(db, 'Users', userId), user).then(
+      () => {
+        res(user)
       },
       (e) => err(e)
     )
@@ -78,7 +82,6 @@ function updateUser(user) {
 }
 
 function saveUser(user) {
-  console.log('Save user!')
   return new Promise((res, err) => {
     if (user.id && user.id != '') {
       updateUser(user).then(
@@ -90,7 +93,6 @@ function saveUser(user) {
         }
       )
     } else {
-      console.log('* create user')
       createUser(user).then(
         (u) => {
           res(u)
@@ -194,8 +196,7 @@ async function createUserCorp(userCorp, userId) {
         const dob = u.data().DOB
         const uData = u.data()
         if (dayjs().diff(dayjs(dob), 'years') < 18) {
-          console.log('Adding Minor to Participants');
-          const p = initParticipant({ Name: uData.Name, LastName: uData.LastName, Nickname: uData.Nickname, DOB: uData.DOB, CorpId: userCorp.CorporationId, id:'' })
+          const p = initParticipant({ Name: uData.Name, LastName: uData.LastName, Nickname: uData.Nickname, DOB: uData.DOB, CorpId: userCorp.CorporationId, id: '' })
           addDoc(collection(db, 'Participants'), p)
         }
         res(d)
@@ -348,8 +349,6 @@ function getUsersByCorp(personnel, triggers, conds) {
     const q = query(collection(db, 'UsersCorporations'), ...aQuery)
 
     unsubUserCorp = onSnapshot(q, { includeMetadataChanges: true }, (querySnapshot) => {
-      //console.log('Starting onSnapshot. Is from Cache:', querySnapshot.metadata.fromCache)
-      //console.log('Total records: ', querySnapshot.size)
       count.value = 0
       querySnapshot.docChanges().forEach((change) => {
         // The userCoporation has been modified
@@ -367,7 +366,6 @@ function getUsersByCorp(personnel, triggers, conds) {
               const index = personnel.value.findIndex((el) => el.UserId == res.id)
               personnel.value[index].UserData = res.data()
               personnel.value[index].UserData.id = res.data().id
-              console.log('All new record attached to Array Index: ', data)
             })
             unsubUser[data.UserId] = u
           }
@@ -401,7 +399,6 @@ function getUsersByCorp(personnel, triggers, conds) {
           const data = change.doc.data()
           const index = personnel.value.findIndex((el) => el.id == change.doc.id)
           if (index >= 0) {
-            console.log('Lets remove index: ', index)
             unsubUser[data.UserId]()
             personnel.value.splice(index, 1)
           }
@@ -414,7 +411,6 @@ function getUsersByCorp(personnel, triggers, conds) {
     triggers,
     (nv) => {
       if (nv != 'xxx') {
-        console.log('!!Calling getpersonnel: ', triggers[0].value)
         getPersonnel()
       }
     },

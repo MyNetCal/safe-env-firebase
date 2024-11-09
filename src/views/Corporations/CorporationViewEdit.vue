@@ -170,7 +170,7 @@ import { toRefs, ref, computed } from 'vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import { useGeneralStore } from '@/stores/general'
 import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
-import { addDoc, collection, doc, updateDoc } from 'firebase/firestore'
+import { doc, setDoc, updateDoc } from 'firebase/firestore'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
 import dayjs from 'dayjs'
 import { useFileDialog } from '@vueuse/core'
@@ -212,6 +212,8 @@ function initPlace() {
     Roles: [],
     BackgroundCheckValidFor: 2,
     CodeOfConductValidFor: 1,
+    VotesNeeded: 2,
+    SitesIds: [],
     Screening: {
       Staff: {
         Application: true,
@@ -326,7 +328,7 @@ function onSave() {
     emit('onUpdate')
     return
   }
-  addDoc(collection(db, 'Corporations'), dataToEdit.value)
+  setDoc(doc(db, 'Corporations', dataToEdit.value.Short), dataToEdit.value)
 
   emit('onUpdate')
 }

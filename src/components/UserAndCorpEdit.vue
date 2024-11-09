@@ -21,7 +21,6 @@ const userToEdit = ref({})
 const isAllValid = ref(false)
 
 function onOpenModal() {
-  console.log('Oppening usercorp edit')
   userCorpToEdit.value = JSON.parse(JSON.stringify(userCorp.value))
   userToEdit.value = {
     ...JSON.parse(JSON.stringify(userCorp.value.UserData)),
@@ -75,8 +74,6 @@ async function onSave() {
 
 async function emailAppLink() {
   const { newUser, newCorp } = await onSave()
-  console.log('+++++++++++New User: ', newUser.id)
-  console.log('+++++++++++New UserCorp: ', newCorp.id)
   store.createDocTriggerEmailTemplate(
     'SignUpInfo',
     {

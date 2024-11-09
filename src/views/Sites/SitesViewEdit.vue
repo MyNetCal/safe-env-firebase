@@ -37,7 +37,6 @@ siteRefDB.value =
   siteToEdit.value.id == '' ? doc(collection(db, 'Sites')) : doc(db, 'Sites', siteToEdit.value.id)
 
 function onSaveGeneralInfo() {
-  console.log('Saving')
   siteToEdit.value.id = siteRefDB.value.id
   siteToEdit.value.Branch = bothBranches.value ? 'both' : store.loginUser.Branch
   siteToEdit.value.CorpIds = [corp.value.id]
@@ -50,7 +49,6 @@ function onSaveGeneralInfo() {
 }
 
 function onUpdateGeneralInfo() {
-  console.log('Updating')
   siteToEdit.value.Branch = bothBranches.value ? 'both' : store.loginUser.Branch
   updateDoc(doc(db, 'Sites', siteToEdit.value.id), {
     Address: siteToEdit.value.Address,
@@ -61,7 +59,6 @@ function onUpdateGeneralInfo() {
 }
 
 function onUpdateDetails(field) {
-  console.log('Updating Details: ', siteToEdit.value[field])
   updateDoc(doc(db, 'Sites', siteToEdit.value.id), {
     [field]: siteToEdit.value[field]
   })

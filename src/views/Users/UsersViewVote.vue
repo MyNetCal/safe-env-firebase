@@ -230,14 +230,12 @@ const alreadyVoted = ref(false)
 const userCorp = ref(null)
 
 function calcVotes() {
-  console.log('Claclutating votes: ', userCorp.value?.ApprovedBy)
   totVotesPrelature.value = 0
   totVotesOther.value = 0
   voteFromSFCPrelature.value = false
   voteFromSFCCorporation.value = false
   alreadyVoted.value = false
   userCorp.value?.ApprovedBy?.forEach(async (el, index) => {
-    console.log('Each vote: ', el)
     if (el.idUserCorp == store.loginCurrentUsersCorporationsId) {
       alreadyVoted.value = true
     }
@@ -262,7 +260,6 @@ let unsubUserCorp = null
 function getUserCorp() {
   unsubUserCorp = onSnapshot(doc(db, 'UsersCorporations', userCorpId.value), (d) => {
     userCorp.value = { ...d.data(), id: d.id }
-    console.log('Just got ApprovedBy: ', userCorp.value.ApprovedBy)
     getDoc(doc(db, 'Users', userCorp.value.UserId)).then((d) => {
       userCorp.value.UserData = d.data()
     })
@@ -295,7 +292,6 @@ const hasAllVotesNeeded = computed(
 )
 
 function getVotesNeeded() {
-  console.log('getting votes needed...')
   getDocs(query(collection(db, 'Corporations'), where('Short', '==', 'Prelature'))).then((docs) => {
     docs.forEach((doc) => {
       votesNeededFromPrelature.value = doc.data().VotesNeeded
