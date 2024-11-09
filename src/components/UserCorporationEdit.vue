@@ -1,6 +1,6 @@
 <script setup>
 import { useGeneralStore } from '@/stores/general'
-import { computed, watchEffect, ref } from 'vue'
+import { computed, watchEffect, ref, toRefs } from 'vue'
 import MySelectCorporation from './MySelect/MySelectCorporation.vue'
 import MySelectAuto from './MyInputs/MySelectAuto.vue'
 import { arrayRemove, arrayUnion, doc, getDoc, updateDoc } from 'firebase/firestore'
@@ -13,8 +13,14 @@ import { Dialog, DialogPanel, DialogTitle } from '@headlessui/vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import dayjs from 'dayjs'
 
-const props = defineProps({ modelValue: Object })
-const emit = defineEmits(['update:modelValue', 'onClose'])
+const props = defineProps({
+  user: Object
+})
+const { user } = toRefs(props)
+const emit = defineEmits(['onClose'])
+
+
+const model = defineModel()
 
 const store = useGeneralStore()
 const db = useFirestore()
@@ -22,21 +28,12 @@ const db = useFirestore()
 const showDialogDeactivate = ref(false)
 const showDialogReactivate = ref(false)
 
-const corpToEdit = computed({
-  get() {
-    return props.modelValue
-  },
-  set(value) {
-    emit('update:modelValue', value)
-  }
-})
-
 watchEffect(() => {
-  corpToEdit.value.Function = store.getFunction(corpToEdit.value.Role)
+  model.value.Function = store.getFunction(model.value.Role)
 })
 
 function newSelCorporation(val) {
-  corpToEdit.value.CorporationName = val.Short
+  model.value.CorporationName = val.Short
 }
 
 const isUserAMinor = computed(() => dayjs().diff(dayjs(user.value?.DOB), 'years') < 18)
@@ -51,42 +48,32 @@ const roles = computed(() => {
 })
 
 function roleSelected() {
-  corpToEdit.value.Screening = corpToEdit.value.Role == store.ROLE_BOARD
-  corpToEdit.value.Board = corpToEdit.value.Role == store.ROLE_BOARD
+  model.value.Screening = model.value.Role == store.ROLE_BOARD
+  model.value.Board = model.value.Role == store.ROLE_BOARD
   if (
-    corpToEdit.value.Role == store.ROLE_JUNIOR_COUNSELOR ||
-    corpToEdit.value.Role == store.ROLE_LOW_ACCESS_STAFF
+    model.value.Role == store.ROLE_JUNIOR_COUNSELOR ||
+    model.value.Role == store.ROLE_LOW_ACCESS_STAFF
   ) {
-    corpToEdit.value.Entity = store.ENTITY_PARTY
+    model.value.Entity = store.ENTITY_PARTY
   }
-  if (corpToEdit.value.Role == store.ROLE_PRIEST) {
-    corpToEdit.value.Entity = store.ENTITY_PRELATURE
+  if (model.value.Role == store.ROLE_PRIEST) {
+    model.value.Entity = store.ENTITY_PRELATURE
   }
 }
 
 const isErrorRole = computed(() => {
-  const formula = corpToEdit.value.Role == ''
+  const formula = model.value.Role == ''
   const label = 'Role no valid'
   return { formula, label }
 })
 
 const corpEntity = ref({})
-const user = ref({})
 const corp = ref({})
 watchEffect(() => {
-  if (corpToEdit.value.CorporationId) {
-    getDoc(doc(db, 'Corporations', corpToEdit.value.CorporationId)).then((d) => {
+  if (model.value.CorporationId) {
+    getDoc(doc(db, 'Corporations', model.value.CorporationId)).then((d) => {
       corpEntity.value = d.data().Entity
       corp.value = d.data()
-    })
-  }
-  if (corpToEdit.value.UserId) {
-    getDoc(doc(db, 'Users', corpToEdit.value.UserId)).then((d) => {
-      user.value = d.data()
-      if (isUserAMinor.value) {
-        corpToEdit.value.Role = store.ROLE_JUNIOR_COUNSELOR
-        corpToEdit.value.Entity = store.ENTITY_PARTY
-      }
     })
   }
 })
@@ -94,12 +81,12 @@ watchEffect(() => {
 const entities = computed(() => {
   if (!corpEntity.value) return ''
   if (
-    corpToEdit.value.Role == store.ROLE_JUNIOR_COUNSELOR ||
-    corpToEdit.value.Role == store.ROLE_LOW_ACCESS_STAFF
+    model.value.Role == store.ROLE_JUNIOR_COUNSELOR ||
+    model.value.Role == store.ROLE_LOW_ACCESS_STAFF
   ) {
     return [store.ENTITY_PARTY]
   }
-  if (corpToEdit.value.Role == store.ROLE_PRIEST) {
+  if (model.value.Role == store.ROLE_PRIEST) {
     return [store.ENTITY_PRELATURE]
   }
 
@@ -117,28 +104,28 @@ async function deactivateEmailNotification() {
   const html = `<p>Name: ${user.value.Name} ${user.value.LastName}</p>
               <p>Email: ${user.value.Email}</p>
               <p>Corporation: ${corp.value.Name}</p>
-              <p>Role: ${corpToEdit.value.Role}</p>
-              <p>Entity: ${corpToEdit.value.Entity}</p>
-              <p>Board: ${corpToEdit.value.Board ? 'Yes' : 'No'}</p>
-              <p>Screening: ${corpToEdit.value.Screening ? 'Yes' : 'No'}</p>`
+              <p>Role: ${model.value.Role}</p>
+              <p>Entity: ${model.value.Entity}</p>
+              <p>Board: ${model.value.Board ? 'Yes' : 'No'}</p>
+              <p>Screening: ${model.value.Screening ? 'Yes' : 'No'}</p>`
   store.createDocTriggerEmail(subject, html, to, [], cc)
 }
 
 async function deactivateUser() {
   deactivateEmailNotification()
-  updateDoc(doc(db, 'UsersCorporations', corpToEdit.value.id), {
+  updateDoc(doc(db, 'UsersCorporations', model.value.id), {
     Active: false,
     Status: 'Inactive',
     StatusRquiringAttentionReasons: arrayUnion('No Active'),
     InactiveSince: dayjs().toISOString(),
     ApprovedOn: ''
   })
-  await updateDoc(doc(db, 'Users', corpToEdit.value.UserId), {
-    CorpsActiveIds: arrayRemove(corpToEdit.value.CorporationId)
+  await updateDoc(doc(db, 'Users', model.value.UserId), {
+    CorpsActiveIds: arrayRemove(model.value.CorporationId)
   })
-  const u = await getDoc(doc(db, 'Users', corpToEdit.value.UserId))
+  const u = await getDoc(doc(db, 'Users', model.value.UserId))
   const userCorps = u.data().CorpsActiveIds
-  updateDoc(doc(db, 'Users', corpToEdit.value.UserId), {
+  updateDoc(doc(db, 'Users', model.value.UserId), {
     CorpsActiveAtLeastOne: userCorps.length > 0
   })
   showDialogDeactivate.value = false
@@ -146,10 +133,10 @@ async function deactivateUser() {
 }
 
 async function reactivateUser() {
-  const inactiveSince = dayjs(corpToEdit.value.InactiveSince)
+  const inactiveSince = dayjs(model.value.InactiveSince)
   const dayLimit = dayjs().subtract(6, 'M')
   const needsBackgroundCheck = inactiveSince.isBefore(dayLimit)
-  updateDoc(doc(db, 'UsersCorporations', corpToEdit.value.id), {
+  updateDoc(doc(db, 'UsersCorporations', model.value.id), {
     Active: true,
     Status: store.USER_STATUS_ATTENTION,
     StatusRquiringAttentionReasons: arrayUnion('No Active'),
@@ -157,12 +144,12 @@ async function reactivateUser() {
     ApprovedOn: '',
     ApprovedBy: []
   })
-  await updateDoc(doc(db, 'Users', corpToEdit.value.UserId), {
-    CorpsActiveIds: arrayUnion(corpToEdit.value.CorporationId),
+  await updateDoc(doc(db, 'Users', model.value.UserId), {
+    CorpsActiveIds: arrayUnion(model.value.CorporationId),
     CorpsActiveAtLeastOne: true
   })
   if (needsBackgroundCheck) {
-    updateDoc(doc(db, 'UsersCorporations', corpToEdit.value.id), {
+    updateDoc(doc(db, 'UsersCorporations', model.value.id), {
       StatusRquiringAttentionReasons: arrayUnion('Background Check Expired'),
       ScreeningReqFlagBackground: false,
       BackgroundCheckExpiresOn: dayLimit.format('YYYY-MM-DD')
@@ -178,24 +165,24 @@ async function reactivateUser() {
     <div class="min-h-52">
       <!-- Title -->
       <h2 class="text-center font-medium text-blue-500">
-        Personnel Role at {{ corpToEdit.CorporationName }}
+        Personnel Role at {{ model.CorporationName }}
       </h2>
       <div class="mb-5 text-center text-sm text-slate-500">
-        [This information is specific to {{ corpToEdit.CorporationName }}]
+        [This information is specific to {{ model.CorporationName }}]
       </div>
-
-      <div v-if="isUserAMinor">The user is a Minor</div>
+     
+      <div v-if="isUserAMinor" class="bg-red-200 w-fit px-2 rounded text-slate-700">The user is a minor</div>
 
       <!-- Select Corporation -->
-      <div v-if="corpToEdit.id == '' && store.isUserBoardPrelature">
-        <MySelectCorporation v-model="corpToEdit.CorporationId" @newEntry="newSelCorporation" />
+      <div v-if="model.id == '' && store.isUserBoardPrelature">
+        <MySelectCorporation v-model="model.CorporationId" @newEntry="newSelCorporation" />
       </div>
 
       <div class="flex flex-wrap gap-x-2">
         <div class="w-40 grow">
           <MySelectAuto
             :items="roles"
-            v-model="corpToEdit.Role"
+            v-model="model.Role"
             :id="null"
             label="Role (Choose the first option that applies)"
             :isError="isErrorRole"
@@ -214,7 +201,7 @@ async function reactivateUser() {
           <MySelectAuto
             label="Entity"
             :items="entities"
-            v-model="corpToEdit.Entity"
+            v-model="model.Entity"
             :id="null"
             info
             info-title="Entity"
@@ -233,28 +220,28 @@ async function reactivateUser() {
 
       <div class="flex gap-x-2">
         <MyInputCheckBox
-          v-if="corpToEdit.Role != store.ROLE_JUNIOR_COUNSELOR"
-          :disable="store.getFunction(corpToEdit.Role) == store.FUNCTION_BOARD"
-          v-model="corpToEdit.Board"
+          v-if="model.Role != store.ROLE_JUNIOR_COUNSELOR"
+          :disable="store.getFunction(model.Role) == store.FUNCTION_BOARD"
+          v-model="model.Board"
           label="Board Member also"
         ></MyInputCheckBox>
         <MyInputCheckBox
           v-if="
-            store.getFunction(corpToEdit.Role) == store.FUNCTION_BOARD ||
-            store.getFunction(corpToEdit.Role) == store.FUNCTION_DIRECTOR ||
-            corpToEdit.Role == store.ROLE_LOW_ACCESS_STAFF
+            store.getFunction(model.Role) == store.FUNCTION_BOARD ||
+            store.getFunction(model.Role) == store.FUNCTION_DIRECTOR ||
+            model.Role == store.ROLE_LOW_ACCESS_STAFF
           "
-          :disable="store.getFunction(corpToEdit.Role) == store.FUNCTION_BOARD"
-          v-model="corpToEdit.Screening"
+          :disable="store.getFunction(model.Role) == store.FUNCTION_BOARD"
+          v-model="model.Screening"
           label="Screening staff"
         ></MyInputCheckBox>
       </div>
 
       <div class="flex gap-x-2">
-        <MyInputTextArea class="w-full" v-model="corpToEdit.Notes" label="Notes" />
+        <MyInputTextArea class="w-full" v-model="model.Notes" label="Notes" />
       </div>
-      <div v-if="corpToEdit.id" class="my-2 text-center">
-        <MyButton v-if="corpToEdit.Active" class="bg-red-600" @click="showDialogDeactivate = true"
+      <div v-if="model.id" class="my-2 text-center">
+        <MyButton v-if="model.Active" class="bg-red-600" @click="showDialogDeactivate = true"
           >Not active anymore</MyButton
         >
         <MyButton v-else class="bg-grean-600" @click="showDialogReactivate = true"

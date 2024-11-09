@@ -8,29 +8,11 @@ import { useFirestore } from 'vuefire'
 import { useGeneralStore } from '@/stores/general'
 import MySelectAuto from './MyInputs/MySelectAuto.vue'
 
-const props = defineProps({ modelValue: Object, isAllValidInfo: Boolean })
-const emit = defineEmits(['update:modelValue', 'update:isAllValidInfo'])
-
 const db = useFirestore()
 const store = useGeneralStore()
 
-const userToEdit = computed({
-  get() {
-    return props.modelValue
-  },
-  set(value) {
-    emit('update:modelValue', value)
-  }
-})
-
-const isAllValid = computed({
-  get() {
-    return props.isAllValidInfo
-  },
-  set(value) {
-    emit('update:isAllValidInfo', value)
-  }
-})
+const model = defineModel()
+const isAllValidInfo = defineModel('isAllValidInfo')
 
 const searchBoxIsClosed = ref(false)
 
@@ -58,17 +40,17 @@ async function getAllUsersNames() {
 getAllUsersNames()
 
 function onClickUserFromOtherCorporation() {
-  userToEdit.value = JSON.parse(JSON.stringify(userSelected.value))
+  model.value = JSON.parse(JSON.stringify(userSelected.value))
 }
 
 async function checkEmailStatus() {
   // eslint-disable-next-line no-useless-escape
-  if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(userToEdit.value.Email)) {
-    const userQuery = query(collection(db, 'Users'), where('Email', '==', userToEdit.value.Email))
+  if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(model.value.Email)) {
+    const userQuery = query(collection(db, 'Users'), where('Email', '==', model.value.Email))
     const userRef = await getDocs(userQuery)
     if (userRef.size > 0) {
       const user = userRef.docs[0].data()
-      userToEdit.value = {
+      model.value = {
         id: user.id,
         Name: user.Name,
         LastName: user.LastName,
@@ -91,31 +73,31 @@ async function checkEmailStatus() {
 const isValidEmail = ref(true)
 
 const isErrorName = computed(() => {
-  const formula = userToEdit.value?.Name?.length < 2
+  const formula = model.value?.Name?.length < 2
   const label = ''
   return { formula, label }
 })
 
 const isErrorLastName = computed(() => {
-  const formula = userToEdit.value?.LastName?.length < 2
+  const formula = model.value?.LastName?.length < 2
   const label = ''
   return { formula, label }
 })
 
 const isErrorDOB = computed(() => {
   const formula = !(
-    dayjs(userToEdit.value.DOB).isValid() &&
-    dayjs().diff(dayjs(userToEdit.value.DOB), 'y') < 100 
+    dayjs(model.value.DOB).isValid() &&
+    dayjs().diff(dayjs(model.value.DOB), 'y') < 100 
   )
   const label =
-    dayjs(userToEdit.value.DOB).isValid() && dayjs().diff(dayjs(userToEdit.value.DOB), 'y') < 18
-      ? 'The User is a Minor'
-      : ''
+    dayjs(model.value.DOB).isValid() && dayjs().diff(dayjs(model.value.DOB), 'y') < 18
+      ? 'The User is a minor'
+      : 'O.k'
   return { formula, label }
 })
 
 watchEffect(() => {
-  isAllValid.value =
+  isAllValidInfo.value =
     !(isErrorName.value.formula || isErrorLastName.value.formula) &&
     isValidEmail.value &&
     !isErrorDOB.value.formula
@@ -133,7 +115,7 @@ watchEffect(() => {
 
     <!-- Search User Outer Box -->
     <div
-      v-if="userToEdit.id == '' && !searchBoxIsClosed"
+      v-if="model.id == '' && !searchBoxIsClosed"
       class="mb-5 rounded border border-slate-300 p-2 text-slate-600 shadow"
     >
       <!-- Title and DOB Input -->
@@ -164,22 +146,22 @@ watchEffect(() => {
       <MyInputText
         label="Name"
         class="grow"
-        v-model="userToEdit.Name"
+        v-model="model.Name"
         :isError="isErrorName"
         @on-focus="searchBoxIsClosed = true"
-        :deactivated="userToEdit.id != ''"
+        :deactivated="model.id != ''"
       >
       </MyInputText>
-      <MyInputText label="Middle" class="w-20" v-model="userToEdit.Middle"> </MyInputText>
+      <MyInputText label="Middle" class="w-20" v-model="model.Middle"> </MyInputText>
       <MyInputText
         label="Last Name"
         class="grow"
-        v-model="userToEdit.LastName"
+        v-model="model.LastName"
         :isError="isErrorLastName"
-        :deactivated="userToEdit.id != ''"
+        :deactivated="model.id != ''"
       >
       </MyInputText>
-      <MyInputText label="Nickname" class="w-28" v-model="userToEdit.Nickname"> </MyInputText>
+      <MyInputText label="Nickname" class="w-28" v-model="model.Nickname"> </MyInputText>
     </div>
 
     <!-- Email -->
@@ -187,17 +169,17 @@ watchEffect(() => {
       <div class="w-full">
         <MyInputText
           label="Email"
-          v-model="userToEdit.Email"
+          v-model="model.Email"
           type-input="email"
           v-model:isValid="isValidEmail"
-          :deactivated="userToEdit.id != ''"
+          :deactivated="model.id != ''"
           @update:model-value="checkEmailStatus"
         >
         </MyInputText>
       </div>
       <div>
         <MyInputText
-          v-model="userToEdit.DOB"
+          v-model="model.DOB"
           type-input="date"
           label="DOB"
           :isError="isErrorDOB"

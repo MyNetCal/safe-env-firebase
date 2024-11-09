@@ -19,17 +19,11 @@
           </MyInputText>
           <MyInputText label="Short Name" v-model="dataToEdit.Short" :isError="isErrorShort">
           </MyInputText>
-          <div>
-            <MySelectAuto
-              v-model="dataToEdit.Entity"
-              label="Entity"
-              :items="entities"
-            ></MySelectAuto>
-          </div>
+        
         </div>
 
         <!-- Updating Code, Handbook & Appendix -->
-        <div class="mt-6 flex max-w-lg flex-wrap mx-auto">
+        <div class="mx-auto mt-6 flex max-w-lg flex-wrap">
           <!-- Code of Conduct -->
           <div class="w-40 grow text-center">
             <MyButton class="h-16 bg-green-600" @click="openCodeEditor"
@@ -39,8 +33,8 @@
           <!-- Safe Environment Handbook -->
           <div class="w-40 grow text-center">
             <MyButton class="h-16 bg-green-600" @click="updateHandbook">
-              <span v-if="dataToEdit?.FileHandbook">Update</span
-              ><span v-else>Upload</span> Safe Environment Handbook
+              <span v-if="dataToEdit?.FileHandbook">Update</span><span v-else>Upload</span> Safe
+              Environment Handbook
             </MyButton>
           </div>
           <!-- Directors’ Appendix -->
@@ -54,24 +48,22 @@
 
         <!-- Roles -->
         <div class="mt-5">
-          <div class="text-xs text-slate-600">
-            Roles [Check all that apply to this corporation]
-          </div>
+          <div class="text-xs text-slate-600">Roles [Check all that apply to this corporation]</div>
           <div
             class="min-h-[52px] rounded border-0 bg-slate-100 p-1 outline-none ring-1 ring-slate-300 hover:shadow-md hover:ring-slate-400"
           >
             <div class="flex flex-wrap gap-1">
-              <template v-for="(role, index) in roles" :key="role.id">
+              <template v-for="role in roles" :key="role.id">
                 <div
                   class="flex w-[158px] cursor-pointer rounded border px-1.5 text-sm"
                   :class="[
                     dataToEdit.Roles?.includes(role)
                       ? 'bg-orange-300 text-slate-900'
-                      : 'bg-stone-200  text-slate-700'
+                      : 'bg-stone-200 text-slate-700'
                   ]"
                   @click="toggleRole(role)"
                 >
-                  <div class="py-1">{{ index + 1 }}. {{ role }}</div>
+                  <div class="py-1">{{ role }}</div>
                 </div>
               </template>
             </div>
@@ -169,13 +161,11 @@ import MyButton from '@/components/MyButton.vue'
 import { toRefs, ref, computed } from 'vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import { useGeneralStore } from '@/stores/general'
-import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 import { doc, setDoc, updateDoc } from 'firebase/firestore'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
 import dayjs from 'dayjs'
 import { useFileDialog } from '@vueuse/core'
 import { ref as storageRef, uploadBytesResumable } from '@firebase/storage'
-
 
 const emit = defineEmits(['onClose', 'onUpdate'])
 const props = defineProps({ showModal: Boolean, id: String, branch: String, rowSelected: Object })
@@ -186,7 +176,6 @@ const store = useGeneralStore()
 const storage = useFirebaseStorage()
 
 const roles = computed(() => store.ROLES)
-const entities = store.entities
 
 const codeEditing = ref(false)
 
@@ -208,7 +197,7 @@ function initPlace() {
     Short: '',
     Branch: branch.value,
     Code: '',
-    Entity: '',
+    Entity: 'Both',
     Roles: [],
     BackgroundCheckValidFor: 2,
     CodeOfConductValidFor: 1,
@@ -353,10 +342,7 @@ uploadFile(() => {
   console.log('Corp id: ', dataToEdit.value)
   store.isUploadingFiles = true
   store.isUploadingFilesPercentage = 0
-  const fileRef = storageRef(
-    storage,
-    `Corporations/${id.value}/${updating}/${fileName}`
-  )
+  const fileRef = storageRef(storage, `Corporations/${id.value}/${updating}/${fileName}`)
   const uploadTask = uploadBytesResumable(fileRef, fileToUpload.value.item(0))
   uploadTask.on(
     'state_changed',

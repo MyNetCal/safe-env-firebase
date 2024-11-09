@@ -158,6 +158,7 @@ async function onCreatingEmailingCode() {
       name: 'Code',
       data: {
         Nickname: store.loginUser.Nickname,
+        Name: store.loginUser.Name,
         file_link: '',
         corp: store.loginCorporation.Name,
         corpShort: store.loginCorporation.Short,

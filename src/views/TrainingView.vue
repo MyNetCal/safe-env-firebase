@@ -3,14 +3,7 @@ import { ref, computed, watchEffect } from 'vue'
 import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 import { useGeneralStore } from '@/stores/general'
 import { useCollection, useDocument, useFirestore } from 'vuefire'
-import {
-  collection,
-  deleteDoc,
-  doc,
-  orderBy,
-  setDoc,
-  where
-} from 'firebase/firestore'
+import { collection, deleteDoc, doc, orderBy, setDoc, where } from 'firebase/firestore'
 import MyButton from '@/components/MyButton.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
@@ -45,6 +38,13 @@ const showInitialTrainingDialog = ref(false)
 
 const showDeleteTrainingDialog = ref(false)
 const trainingToDelete = ref({})
+
+const commonFunctions = computed(() => {
+  if (!dataCurrentCorporation.value || !dataCurrentCorporation.value.Roles) return []
+  return store.FUNCTIONS.filter(
+    (func) => dataCurrentCorporation.value.Roles.includes(func) || func == store.FUNCTION_SCREENING
+  )
+})
 
 watchEffect(() => {
   currentCorporation.value = loginCorporationId.value
@@ -175,7 +175,7 @@ function deleteTraining() {
     <div class="mt-5 flex justify-center place-self-center">
       <div class="flex gap-x-2 text-left">
         <MySelectCorporation v-model="currentCorporation" v-if="store.isUserBoardPrelature" />
-        <MySelectAuto v-model="currentFunction" label="Function" :items="functions"> </MySelectAuto>
+        <MySelectAuto v-model="currentFunction" label="Role" :items="functions"> </MySelectAuto>
       </div>
     </div>
     <!-- Tabs -->
@@ -245,7 +245,11 @@ function deleteTraining() {
             </div>
           </div>
           <div v-else class="mt-10 text-center">None</div>
-          <MyFab @click="addTraining" class="-bottom-5 -right-2 bg-green-800/80" v-if="store.accessLevel > 2">
+          <MyFab
+            @click="addTraining"
+            class="-bottom-5 -right-2 bg-green-800/80"
+            v-if="store.accessLevel > 2"
+          >
             <FontAwesomeIcon icon="plus" />
           </MyFab>
         </div>
@@ -304,7 +308,11 @@ function deleteTraining() {
             </div>
           </div>
           <div v-else class="mt-10 text-center">None</div>
-          <MyFab @click="addTraining" class="-bottom-5 -right-2 bg-green-800/80" v-if="store.accessLevel > 2">
+          <MyFab
+            @click="addTraining"
+            class="-bottom-5 -right-2 bg-green-800/80"
+            v-if="store.accessLevel > 2"
+          >
             <FontAwesomeIcon icon="plus" />
           </MyFab>
         </div>
@@ -372,7 +380,7 @@ function deleteTraining() {
                   <div class="flex gap-2">
                     <MyInputText
                       v-model="newCompletedDays"
-                      label="Completed on [days]"
+                      label="Completed in [days]"
                       typeInput="number"
                       info-title="Complete [days]"
                       info
@@ -401,7 +409,7 @@ function deleteTraining() {
                 <div>
                   <Listbox v-model="functionsSelected" multiple horizontal>
                     <div class="relative mt-5 text-sm text-slate-600">
-                      <div class="text-xs text-slate-500">Functions</div>
+                      <div class="text-xs text-slate-500">Roles</div>
                       <ListboxButton
                         class="relative min-h-10 w-full cursor-pointer rounded-md bg-white px-3 py-2 text-left ring-1 ring-slate-300"
                       >
@@ -412,7 +420,7 @@ function deleteTraining() {
                         class="thinsb absolute flex h-fit w-full flex-wrap gap-x-2 gap-y-1 overflow-auto rounded-md p-1 ring-1 ring-slate-300"
                       >
                         <ListboxOption
-                          v-for="f in store.FUNCTIONS"
+                          v-for="f in commonFunctions"
                           :key="f"
                           :value="f"
                           as="template"

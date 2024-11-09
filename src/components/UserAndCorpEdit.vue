@@ -103,7 +103,7 @@ async function emailAppLink() {
       <div>
         <div>
           <UserInfoEdit v-model="userToEdit" v-model:isAllValidInfo="isAllValid" />
-          <UserCorporationEdit v-model="userCorpToEdit" class="mt-5" />
+          <UserCorporationEdit v-model="userCorpToEdit" :user="userToEdit" class="mt-5" />
         </div>
 
         <!-- Buttons -->

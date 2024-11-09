@@ -67,9 +67,12 @@ const userCanEdit = computed(() => {
 
 function backgroundCheckExpiring() {
   if (!userCanEdit.value) return
-  backgroundCheckValidFor.value == 99
-    ? (backgroundCheckValidFor.value = 2)
-    : (backgroundCheckValidFor.value = 99)
+  if (backgroundCheckValidFor.value != 99) {
+    backgroundCheckValidFor.value = 99
+  } else {
+    backgroundCheckValidFor.value = 2
+  }
+  savesBackgroundCheckValidFor()
 }
 
 function openCodeEditor() {
@@ -268,10 +271,7 @@ uploadFile(() => {
   const fileName = fileToUpload.value.item(0).name
   store.isUploadingFiles = true
   store.isUploadingFilesPercentage = 0
-  const fileRef = storageRef(
-    storage,
-    `Corporations/${currentCorpId.value}/${updating}/${fileName}`
-  )
+  const fileRef = storageRef(storage, `Corporations/${currentCorpId.value}/${updating}/${fileName}`)
   const uploadTask = uploadBytesResumable(fileRef, fileToUpload.value.item(0))
   uploadTask.on(
     'state_changed',
@@ -440,7 +440,8 @@ uploadFile(() => {
         <!-- Directors’ Appendix -->
         <div class="w-40 grow text-center">
           <MyButton :disabled="!userCanEdit" class="h-16 bg-green-600" @click="updateAppendix">
-            <span v-if="currentCorpData?.FileAppendix">Update</span><span v-else>Upload</span>  Directors’ Appendix
+            <span v-if="currentCorpData?.FileAppendix">Update</span
+            ><span v-else>Upload</span> Directors’ Appendix
           </MyButton>
         </div>
       </div>

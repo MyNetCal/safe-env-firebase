@@ -72,6 +72,7 @@ function saveChanges(type) {
         Staff
       </div>
       <div
+        v-if="currentCorporationDoc?.Roles?.includes(store.ROLE_JUNIOR_COUNSELOR)"
         class="tab border-b border-b-slate-400"
         :class="{ 'tab-active': currentScreeningType == store.SCREENING_JUNIOR_COUNSELOR }"
         @click="currentScreeningType = store.SCREENING_JUNIOR_COUNSELOR"
@@ -79,6 +80,7 @@ function saveChanges(type) {
         Junior Counselor
       </div>
       <div
+        v-if="currentCorporationDoc?.Roles?.includes(store.ROLE_LOW_ACCESS_STAFF)"
         class="tab border-b border-b-slate-400"
         :class="{ 'tab-active': currentScreeningType == store.SCREENING_LOW_ACCESS }"
         @click="currentScreeningType = store.SCREENING_LOW_ACCESS"
@@ -104,7 +106,7 @@ function saveChanges(type) {
 
           <!-- Interview & References -->
           <div
-            class="ml-10 mt-1 mb-2 overflow-hidden transition-all text-slate-700"
+            class="mb-2 ml-10 mt-1 overflow-hidden text-slate-700 transition-all"
             :style="{
               height: editingValues[currentScreeningType].Application ? height + 'px' : '0px'
             }"
