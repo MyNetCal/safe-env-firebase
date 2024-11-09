@@ -11,7 +11,7 @@
     >
       <div>
         <div class="mt-3">
-          <UserCorporationEdit v-model="corpToEdit" @onClose="emit('onClose')" />
+          <UserCorporationEdit v-model="corpToEdit" :user="user" @onClose="emit('onClose')" />
         </div>
 
         <!-- Buttons -->
@@ -40,7 +40,7 @@ import { useGeneralStore } from '@/stores/general'
 import { collection, doc, getDoc, getDocs, query, updateDoc, where } from 'firebase/firestore'
 import { useFirestore } from 'vuefire'
 
-const props = defineProps({ showModal: Boolean, corp: Object })
+const props = defineProps({ showModal: Boolean, corp: Object, user: Object })
 const emit = defineEmits(['onClose'])
 const { showModal, corp } = toRefs(props)
 

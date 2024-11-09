@@ -93,6 +93,7 @@ const yPx = computed(() => y.value + 'px')
     <ListCorpsByUserEdit
       :show-modal="showEditCorp"
       :corp="corpToEdit"
+      :user="user"
       :corp-id="idToEdit"
       @onClose="showEditCorp = false"
     />
