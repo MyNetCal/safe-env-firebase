@@ -31,14 +31,14 @@ const siteRefDB = ref()
 
 siteToEdit.value = JSON.parse(JSON.stringify(site.value))
 const bothBranches = ref(false)
-bothBranches.value = siteToEdit.value.Branch == 'both'
+bothBranches.value = siteToEdit.value.Branch == 'Both'
 
 siteRefDB.value =
   siteToEdit.value.id == '' ? doc(collection(db, 'Sites')) : doc(db, 'Sites', siteToEdit.value.id)
 
 function onSaveGeneralInfo() {
   siteToEdit.value.id = siteRefDB.value.id
-  siteToEdit.value.Branch = bothBranches.value ? 'both' : store.loginUser.Branch
+  siteToEdit.value.Branch = bothBranches.value ? 'Both' : store.loginUser.Branch
   siteToEdit.value.CorpIds = [corp.value.id]
   siteToEdit.value.CreatedByUser = store.loginUserId
   siteToEdit.value.CreatedByCorp = corp.value.id
@@ -49,7 +49,7 @@ function onSaveGeneralInfo() {
 }
 
 function onUpdateGeneralInfo() {
-  siteToEdit.value.Branch = bothBranches.value ? 'both' : store.loginUser.Branch
+  siteToEdit.value.Branch = bothBranches.value ? 'Both' : store.loginUser.Branch
   updateDoc(doc(db, 'Sites', siteToEdit.value.id), {
     Address: siteToEdit.value.Address,
     Branch: siteToEdit.value.Branch,

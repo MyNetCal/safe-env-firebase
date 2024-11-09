@@ -40,7 +40,7 @@ export const useGeneralStore = defineStore('general', () => {
     }
   })
 
-  const currentBranch = computed(() => loginUser.value?.Branch || 'men')
+  const currentBranch = computed(() => loginUser.value?.Branch || 'Men')
 
   watch(loginUserId, (id) => {
     console.log('New loginID: ', id);

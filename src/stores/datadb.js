@@ -37,7 +37,7 @@ function initUser(user) {
     id: '',
     CurrentUsersCorporationsId: '',
     DOB: '', // format: 'yyyy-mm-dd'
-    Branch: 'men', // values: men, women, both
+    Branch: 'Men', // values: Men, Women, Both
     EmailSent: false,
     LastLogin: '',
     ScreeningFilesRecommendation: [],
@@ -442,7 +442,7 @@ function initSite(site) {
     Lodging: '',
     Bathroom: '',
     Monitoring: '',
-    Branch: store.loginUser.Branch, // values: men, women, both
+    Branch: store.loginUser.Branch, // values: Men, Women, Both
     ApprovedBy: [],
     Status: 'In Review', // Status: ['In Review'|'Waiting Approval'|'Approved']
     CreatedByUser: '',

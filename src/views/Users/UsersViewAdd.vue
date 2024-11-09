@@ -99,13 +99,13 @@ function onOpenModal() {
   sf.value = false
   const newUser = JSON.parse(JSON.stringify(user.value))
   dataToEdit.value = initUser(newUser)
-  sf.value = dataToEdit.value.Branch == 'both'
+  sf.value = dataToEdit.value.Branch == 'Both'
 }
 
 function onSave() {
   dataToEdit.value.Branch = store.loginUser.Branch
   if (sf.value) {
-    dataToEdit.value.Branch = 'both'
+    dataToEdit.value.Branch = 'Both'
   }
   saveUser(dataToEdit.value).then((res) => {
     if (dataToEdit.value.id == '') {
