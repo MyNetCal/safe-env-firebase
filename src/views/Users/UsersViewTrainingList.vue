@@ -195,7 +195,7 @@ async function saveTraining() {
     id: newTraining.value.id,
     Complete: newCompletedDays.value,
     Expiration: newExpirationMonths.value,
-    Functions: user.value.Function,
+    Functions: [user.value.Function],
     Title: newTraining.value.Title,
     UserId: user.value.UserId,
     CorpId: user.value.CorporationId,
@@ -318,6 +318,7 @@ async function saveTraining() {
       :open="showInitialTrainingDialog"
       @close="showInitialTrainingDialog = false"
       class="relative z-50"
+      
     >
       <DialogPanel class="my-dialog">
         <div class="my-dialog-overlay" />
@@ -357,6 +358,7 @@ async function saveTraining() {
                       v-model="newStartsTraining"
                       label="Starts on"
                       typeInput="date"
+                      tabindex="0"
                       info
                       info-title="Starts"
                       :is-error="isErrorStartTraining"
