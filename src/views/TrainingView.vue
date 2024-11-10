@@ -331,7 +331,7 @@ function deleteTraining() {
           <div class="my-dialog-outer">
             <div class="my-dialog-inner">
               <DialogTitle class="my-dialog-title">
-                Add Initial Training Requirement
+                Add Training Requirement
                 <FontAwesomeIcon
                   @click="showInitialTrainingDialog = false"
                   class=""

@@ -4,17 +4,13 @@ import dayjs from 'dayjs'
 import localizedFormat from 'dayjs/plugin/localizedFormat'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { collection, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/firestore'
-import { onUnmounted, ref, toRefs, watch } from 'vue'
+import { computed, onUnmounted, ref, toRefs, watch } from 'vue'
 import { useCollection, useFirebaseStorage, useFirestore } from 'vuefire'
 import UsersViewTrainingListEdit from './UsersViewTrainingListEdit.vue'
 import { getDownloadURL } from 'firebase/storage'
 import { ref as storageRef } from 'firebase/storage'
 import MyFab from '@/components/MyFab.vue'
-import {
-  Dialog,
-  DialogPanel,
-  DialogTitle,
-} from '@headlessui/vue'
+import { Dialog, DialogPanel, DialogTitle } from '@headlessui/vue'
 import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import MyButton from '@/components/MyButton.vue'
@@ -161,6 +157,30 @@ const presetOptions = useCollection(queryOptioins)
 const newTraining = ref({}) // user by both initial and ongoing training
 const newCompletedDays = ref(90) // user by both initial and ongoing training
 const newExpirationMonths = ref(60) // user by both initial and ongoing training
+const newStartsTraining = ref('') // user by both initial and ongoing training
+const newEndsTraining = ref('') // user by both initial and ongoing training
+newStartsTraining.value = dayjs().add(1, 'day').format('YYYY-MM-DD')
+newEndsTraining.value = dayjs().add(1, 'year').format('YYYY-MM-DD')
+
+const isErrorStartTraining = computed(() => {
+  return {
+    formula: !dayjs(newStartsTraining.value).isValid() || dayjs().isAfter(newStartsTraining.value),
+    label: !dayjs(newStartsTraining.value).isValid()
+      ? 'Invalid date'
+      : 'It should Starts after tomorrow'
+  }
+})
+
+const isErrorEndsTraining = computed(() => {
+  return {
+    formula:
+      !dayjs(newEndsTraining.value).isValid() ||
+      dayjs(newStartsTraining.value).add(1, 'month').isAfter(newEndsTraining.value),
+    label: !dayjs(newEndsTraining.value).isValid()
+      ? 'Invalid date'
+      : 'It should Ends after 1 month after Starts'
+  }
+})
 
 const showInitialTrainingDialog = ref(false)
 function addTraining() {
@@ -292,6 +312,8 @@ async function saveTraining() {
       :training="trainingToEdit"
       :user="user"
     />
+
+    <!-- Add Especific Training -->
     <Dialog
       :open="showInitialTrainingDialog"
       @close="showInitialTrainingDialog = false"
@@ -301,6 +323,7 @@ async function saveTraining() {
         <div class="my-dialog-overlay" />
         <div class="my-dialog-outer">
           <div class="my-dialog-inner">
+            <!-- Title -->
             <DialogTitle class="my-dialog-title">
               Add Training Requirement
               <FontAwesomeIcon
@@ -310,7 +333,10 @@ async function saveTraining() {
                 tabindex="0"
               />
             </DialogTitle>
+
+            <!-- Content Diaolog -->
             <div class="my-dialog-content min-h-80">
+              <!-- Select training -->
               <MySelectAuto
                 v-model="newTraining"
                 :items="presetOptions"
@@ -322,9 +348,36 @@ async function saveTraining() {
                 info
                 info-title="To add a new training requirement to the preset list, just type the name of the training in the input field and press enter."
               />
+
+              <!-- Input Completed on... -->
               <div class="flex flex-wrap gap-2">
-                <div class="flex gap-2"></div>
                 <div class="flex gap-2">
+                  <div v-if="false" class="flex gap-2">
+                    <MyInputText
+                      v-model="newStartsTraining"
+                      label="Starts on"
+                      typeInput="date"
+                      info
+                      info-title="Starts"
+                      :is-error="isErrorStartTraining"
+                    >
+                      Enter here the date on which this training will be required. Personnel will
+                      have however many days from this date as is included under “Complete [days]”
+                      to complete the training to be in compliance
+                    </MyInputText>
+                    <MyInputText
+                      v-model="newEndsTraining"
+                      label="Ends on"
+                      typeInput="date"
+                      info
+                      info-title="Ends"
+                      :is-error="isErrorEndsTraining"
+                    >
+                      Enter here the date on which this training will no longer be required. This
+                      does not affect the expiration date of the training.
+                    </MyInputText>
+                  </div>
+
                   <MyInputText
                     v-model="newCompletedDays"
                     label="Completed on [days]"
@@ -333,11 +386,10 @@ async function saveTraining() {
                     info
                     class="w-32"
                   >
-                    Enter here how many days the personnel have to complete this training once they
-                    are approved. A value of 0 means that the training must be complete before they
-                    are approved to work with minors. If the training is not complete within this
-                    number of days from their approval date, they cannot be involved in any
-                    activities with minors until they have completed the training.
+                    Enter here how many days the personnel have to complete this training from
+                    today. If the training is not complete within this number of days, they cannot
+                    be involved in any activities with minors until they have completed the
+                    training.
                   </MyInputText>
                   <MyInputText
                     v-model="newExpirationMonths"
@@ -353,6 +405,8 @@ async function saveTraining() {
                 </div>
               </div>
             </div>
+
+            <!-- Buttons -->
             <div class="my-dialog-buttons">
               <MyButton @click="showInitialTrainingDialog = false" class="bg-slate-500"
                 >Close</MyButton
@@ -360,11 +414,7 @@ async function saveTraining() {
               <MyButton
                 @click="saveTraining"
                 class="bg-green-600"
-                :disabled="
-                  !newTraining.Title ||
-                  newTraining.Title?.length < 3 ||
-                  functionsSelected.length == 0
-                "
+                :disabled="!newTraining.Title || newTraining.Title?.length < 3"
                 >Save</MyButton
               >
             </div>

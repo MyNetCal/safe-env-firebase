@@ -36,7 +36,7 @@ function initUser(user) {
     Email: '',
     id: '',
     CurrentUsersCorporationsId: '',
-    DOB: '', // format: 'yyyy-mm-dd'
+    DOB: '2000-01-01', // format: 'yyyy-mm-dd'
     Branch: 'Men', // values: Men, Women, Both
     EmailSent: false,
     LastLogin: '',

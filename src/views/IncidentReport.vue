@@ -16,14 +16,14 @@ const db = useFirestore()
 dayjs.extend(LocalizedFormat)
 
 const typesIncident = ref([
-  '(1) General Policy Violation',
-  '(2) Adult-to-Minor Boundary Violation',
-  '(3) Bullying / Hazing',
-  '(4) Verbal Assault',
-  '(5) Physical Assault',
-  '(6) Minor-to-Minor Sexual Activity',
-  '(7) Adult-to-Minor Sexual Abuse',
-  '(8) Other'
+  'General Policy Violation',
+  'Adult-to-Minor Boundary Violation',
+  'Bullying / Hazing',
+  'Verbal Assault',
+  'Physical Assault',
+  'Minor-to-Minor Sexual Activity',
+  'Adult-to-Minor Sexual Abuse',
+  'Other'
 ])
 const date = ref(dayjs().format('YYYY-MM-DD'))
 const time = ref(dayjs().format('HH:mm'))
