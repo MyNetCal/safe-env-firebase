@@ -237,7 +237,7 @@ function downloadFile(dirFile) {
             />
             <MyInputText
               v-model="participant.LastName"
-              label="Lastname"
+              label="Last name"
               class="grow"
               :isError="isErrorLastName"
             />

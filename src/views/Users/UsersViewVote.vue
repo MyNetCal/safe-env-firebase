@@ -116,7 +116,8 @@
               class="w-6"
             />
 
-            Total votes from the <span class="font-semibold">Prelature</span> Board:
+            Total votes from the <span class="font-semibold">Prelature</span> Safe Environment
+            Committee:
             <span
               class="rounded px-1 py-0.5 font-semibold shadow"
               :class="[

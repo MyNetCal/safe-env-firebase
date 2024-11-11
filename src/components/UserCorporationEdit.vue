@@ -99,7 +99,6 @@ const entities = computed(() => {
 
 async function deactivateEmailNotification() {
   const to = await getEmailSECPrelature()
-  const cc = 'casedu@gmail.com'
   const subject = `${user.value.Name} ${user.value.LastName} is no longer Active`
   const html = `<p>Name: ${user.value.Name} ${user.value.LastName}</p>
               <p>Email: ${user.value.Email}</p>
@@ -108,7 +107,7 @@ async function deactivateEmailNotification() {
               <p>Entity: ${model.value.Entity}</p>
               <p>Board: ${model.value.Board ? 'Yes' : 'No'}</p>
               <p>Screening: ${model.value.Screening ? 'Yes' : 'No'}</p>`
-  store.createDocTriggerEmail(subject, html, to, [], cc)
+  store.createDocTriggerEmail(subject, html, to, [], [])
 }
 
 async function deactivateUser() {

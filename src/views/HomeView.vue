@@ -567,7 +567,7 @@ async function onDeclineRecommendation(request) {
               />
               <span v-if="recommendationMonths != 1"> months </span>
               <span v-else>month</span> and recommend
-              <span class="font-semibold">{{ recAccepted.Name }}</span> to work with minors at
+              <span class="font-semibold mr-1">{{ recAccepted.Name }}</span> to work with minors at
               <span class="font-semibold">{{ recAccepted.CorpName }}</span
               >. I am not aware of any reason that
               <span class="font-semibold">{{ recAccepted.Name }}</span> should not be allowed to

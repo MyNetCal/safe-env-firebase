@@ -198,6 +198,7 @@ function initPlace() {
     Branch: branch.value,
     Code: '',
     Entity: 'Both',
+    EmailFiles: '',
     Roles: [],
     BackgroundCheckValidFor: 2,
     CodeOfConductValidFor: 1,
