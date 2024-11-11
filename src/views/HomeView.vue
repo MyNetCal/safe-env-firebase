@@ -217,6 +217,8 @@ async function onCreatingEmailingCode() {
   }
 
   // add doc. The server will be listening
+  console.log('data', data);
+  
   setDoc(pdfRef, data)
 }
 
@@ -299,6 +301,8 @@ async function onCreatingEmailingConsent() {
   }
 
   // add doc. The server will be listening
+  console.log('data', data);
+  
   setDoc(pdfRef, data)
 }
 

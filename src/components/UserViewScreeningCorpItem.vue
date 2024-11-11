@@ -230,7 +230,6 @@ async function sentEmailRequestingBackground(type) {
     `<p>${type} Requested for ${user.value.Name} ${user.value.LastName}</p>
               <p>Email: ${user.value.Email}</p>
               <p>Corporation: ${corp.value.Name}</p>
-              <p>Activity: ${store.activities[userCorp.value.Activity].Name}</p>
               <p>Role: ${userCorp.value.Role}</p>
               <p>Entity: ${userCorp.value.Entity}</p>
               <p>Board: ${userCorp.value.Board ? 'Yes' : 'No'}</p>
