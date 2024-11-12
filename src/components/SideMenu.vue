@@ -56,7 +56,7 @@
       </div>
       <!-- Menu: Corporations -->
       <div
-        v-if="accessLevel >= 3"
+        v-if="accessLevel >= 4"
         @click="goto('/corporations')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >
