@@ -54,7 +54,18 @@ const corporationRef = computed(() => doc(db, 'Corporations', currentCorporation
 
 const dataCurrentCorporation = useDocument(corporationRef)
 
-const functions = store.FUNCTIONS.toSpliced(0, 0, 'All')
+// const functions = store.FUNCTIONS.toSpliced(0, 0, 'All')
+
+const functions = computed(() => {
+ 
+  if (!dataCurrentCorporation.value || !dataCurrentCorporation.value.Roles) return []
+  const a = ['All']
+  return a.concat(
+    store.FUNCTIONS.filter(
+      (func) => dataCurrentCorporation.value.Roles.includes(func) || func == store.FUNCTION_SCREENING
+    )
+  )
+})
 
 const trainingRef = computed(() => {
   const typeTraining = currentTab.value === 0 ? 'Initial Training' : 'Ongoing Training'

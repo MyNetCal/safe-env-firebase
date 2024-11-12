@@ -115,6 +115,9 @@ export const useGeneralStore = defineStore('general', () => {
     if (loginUserCorporation.value?.Board) {
       return 'Board of the Corporation' // 2
     }
+    if (loginUserCorporation.value?.Screening) {
+      return 1.5
+    }
     if (loginUserCorporation.value?.Function == FUNCTION_DIRECTOR) {
       return 'Activity Director' // 1
     }
@@ -217,6 +220,9 @@ export const useGeneralStore = defineStore('general', () => {
     }
     if (loginUserCorporation.value?.Board) {
       return 2
+    }
+    if (loginUserCorporation.value?.Screening) {
+      return 1.5
     }
     if (loginUserCorporation.value?.Function == FUNCTION_DIRECTOR) {
       return 1

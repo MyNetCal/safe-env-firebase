@@ -169,7 +169,7 @@ getUsersByCorp(
   [currentCorpId],
   [
     ['CorporationId', '==', currentCorpId],
-    ['Board', '==', isBoard, 'Screening', '==', isScreening]
+    ['Board', '==', isBoard]
   ]
 )
 

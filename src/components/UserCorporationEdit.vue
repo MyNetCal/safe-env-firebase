@@ -48,7 +48,6 @@ const roles = computed(() => {
 })
 
 function roleSelected() {
-  model.value.Screening = model.value.Role == store.ROLE_BOARD
   model.value.Board = model.value.Role == store.ROLE_BOARD
   if (
     model.value.Role == store.ROLE_JUNIOR_COUNSELOR ||
@@ -230,7 +229,6 @@ async function reactivateUser() {
             store.getFunction(model.Role) == store.FUNCTION_DIRECTOR ||
             model.Role == store.ROLE_LOW_ACCESS_STAFF
           "
-          :disable="store.getFunction(model.Role) == store.FUNCTION_BOARD"
           v-model="model.Screening"
           label="Screening staff"
         ></MyInputCheckBox>

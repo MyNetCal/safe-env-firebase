@@ -59,6 +59,7 @@
                     <FontAwesomeIcon icon="list-check" />
                   </div>
                   <div
+                  v-if="store.accessLevel >= 2"
                     class="click-icon"
                     @click="openUsersViewVote(p.id)"
                     :class="[
