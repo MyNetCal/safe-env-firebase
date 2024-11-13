@@ -36,6 +36,7 @@ import {
 import MyButton from './MyButton.vue'
 import MySelectAuto from './MyInputs/MySelectAuto.vue'
 import { useFileDialog } from '@vueuse/core'
+import MyInputTextArea from './MyInputs/MyInputTextArea.vue'
 
 const props = defineProps({ userCorp: Object, user: Object, corp: Object })
 // item= [Application, Interview, Reference, Background, Code, Consent]
@@ -124,6 +125,7 @@ const dialogRecommendationTitle = ref('')
 const dialogRecommendationLabel = ref('')
 const allScreeningStaff = ref([])
 const staffRecommending = ref({ id: '', Name: '', Email: '' })
+const commentsRecommendation = ref('')
 
 const recommendationsAcceptedValid = ref([])
 
@@ -197,7 +199,8 @@ function sentEmailStaffRequestedRecommendation() {
       StaffName: staffRecommending.value.Name,
       NewUserName: user.value.Name,
       NewUserLastName: user.value.LastName,
-      CorpName: corp.value.Name
+      CorpName: corp.value.Name,
+      Comments: commentsRecommendation.value
     },
     [staffRecommending.value.Email]
   )
@@ -214,7 +217,8 @@ function onStaffRecommended() {
       UserId: user.value.id,
       CorpId: corp.value.id,
       UserCorpId: userCorp.value.id,
-      PostDate: dayjs().toISOString()
+      PostDate: dayjs().toISOString(),
+      Comments: commentsRecommendation.value
     })
   })
 
@@ -692,7 +696,7 @@ function openFileReference() {
               {{ dialogRecommendationTitle }}
               <FontAwesomeIcon @click="showDialogRecommendation = false" class="" icon="times" />
             </DialogTitle>
-            <div class="my-dialog-content min-h-[250px]">
+            <div class="my-dialog-content">
               <MySelectAuto
                 v-model="staffRecommending"
                 :items="allScreeningStaff"
@@ -702,6 +706,9 @@ function openFileReference() {
                 class="max-h-[180px]"
                 :label="dialogRecommendationLabel"
               />
+            </div>
+            <div>
+              <MyInputTextArea label="Comments" class="p-3 mb-16" v-model="commentsRecommendation"/>
             </div>
             <div class="my-dialog-buttons">
               <MyButton @click="showDialogRecommendation = false" color="bg-slate-600">

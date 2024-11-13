@@ -590,7 +590,7 @@ function onStaffRecommended() {
             v-model="bacgkroundNewDate"
           />
 
-          <!-- Expiers On -->
+          <!-- Expires On -->
           <div class="mb-1 text-xs text-slate-600">
             <!-- BC already Expired -->
             <div v-if="lastFileExpired" class="font-semibold text-red-700">

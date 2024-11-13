@@ -120,8 +120,12 @@ async function backgroundRequested(user) {
   const allSECEmails = await getEmailsAllSEC()
   const emailSECPrelature = await getEmailSECPrelature()
   const files = user.ScreeningReqFilesBackground && user.ScreeningReqFilesBackground.length > 0
-  const templateSEC = files ? 'Background-Check-Renewal-AllSEC-Notification' : 'Background-Check-New-AllSEC-Notification'
-  const templateGuy = files ? 'Background-Check-Renewal-Instructions' : 'Background-Check-New-Instructions'
+  const templateSEC = files
+    ? 'Background-Check-Renewal-AllSEC-Notification'
+    : 'Background-Check-New-AllSEC-Notification'
+  const templateGuy = files
+    ? 'Background-Check-Renewal-Instructions'
+    : 'Background-Check-New-Instructions'
   const data = {
     Nickname: user.Nickname,
     ExpirationDate: dayjs(user.ExpiresOn).format('MMMM D, YYYY'),
@@ -274,13 +278,11 @@ function getUrlReport(path) {
                     </DisclosureButton>
                   </div>
 
-                 
-
                   <div
                     class="mt-2 cursor-pointer rounded py-1 text-sm hover:bg-slate-300"
                     @click.prevent="backgroundRequested(user)"
                   >
-                    Done:
+                    Requested:
                     <FontAwesomeIcon
                       class="ml-3"
                       size="xl"
@@ -304,10 +306,10 @@ function getUrlReport(path) {
                 <DisclosurePanel>
                   <!-- gray title -->
                   <div class="thinsb max-h-60 overflow-auto">
-                     <!-- Email -->
-                  <div class="mt-2">
-                    <div>Email: {{ user.Email }}</div>
-                  </div>
+                    <!-- Email -->
+                    <div class="mt-2">
+                      <div>Email: {{ user.Email }}</div>
+                    </div>
                     <div v-for="userCorp in user.Corps" :key="userCorp.id">
                       <div class="ml-3">&bull; {{ userCorp.CorpInfo?.Short }}</div>
 

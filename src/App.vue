@@ -15,7 +15,7 @@ const storeGeneral = useGeneralStore()
 const {
   countRequests,
   loginUser,
-  loginUserCorporationCollection,
+  loginUserActiveCorporationCollection,
   loginUserId,
   loginUserCorporation,
   accessLevelName
@@ -62,7 +62,7 @@ function deleteMessage(id) {
         <div class="ml-1 flex grow place-items-center" v-if="loginUser">
           <FontAwesomeIcon v-if="isLargeScreen" icon="shop" class="ml-3" />
           <MyListBox
-            :items="loginUserCorporationCollection"
+            :items="loginUserActiveCorporationCollection"
             v-model="selUserCorp"
             title="CorporationName"
             @update:model-value="saveNuewLoginCorp"
@@ -88,7 +88,7 @@ function deleteMessage(id) {
       <div
         class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-300 px-3 text-slate-800 print:hidden"
       >
-        <div>v.6.3.6</div>
+        <div>v.6.3.7</div>
         <div class="flex">{{ accessLevelName }} [{{ storeGeneral.accessLevel }}]</div>
       </div>
     </div>

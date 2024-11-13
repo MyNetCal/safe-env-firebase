@@ -88,7 +88,7 @@
               :class="[totVotesOther >= votesNeededFromCorp ? 'text-green-700' : 'text-red-700']"
               class="w-6"
             />
-            Total votes from Safe Environment Committee:
+            Total votes from {{ userCorp.CorporationName }} Safe Environment Committee:
             <span
               class="rounded px-1 py-0.5 font-semibold shadow"
               :class="[
@@ -116,7 +116,7 @@
               class="w-6"
             />
 
-            Total votes from the <span class="font-semibold">Prelature</span> Safe Environment
+            Total votes from the <span class="">Prelature</span> Safe Environment
             Committee:
             <span
               class="rounded px-1 py-0.5 font-semibold shadow"

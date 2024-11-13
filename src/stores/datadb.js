@@ -122,6 +122,7 @@ function initUserCorp(user, corp) {
     Board: false,
     CorporationId: corp?.id || 'xxx',
     CorporationName: corp?.Short || '',
+    Committee: false,
     Entity: entities(corp?.Entity)[0],
     Function: store.getFunction(store.ROLES),
     Role: store.ROLES[0],

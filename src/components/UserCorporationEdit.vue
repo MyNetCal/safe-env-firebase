@@ -1,6 +1,6 @@
 <script setup>
 import { useGeneralStore } from '@/stores/general'
-import { computed, watchEffect, ref, toRefs } from 'vue'
+import { computed, watchEffect, ref, toRefs, watch } from 'vue'
 import MySelectCorporation from './MySelect/MySelectCorporation.vue'
 import MySelectAuto from './MyInputs/MySelectAuto.vue'
 import { arrayRemove, arrayUnion, doc, getDoc, updateDoc } from 'firebase/firestore'
@@ -75,6 +75,10 @@ watchEffect(() => {
       corp.value = d.data()
     })
   }
+})
+
+watch(() => model.value.Committee, (nv) => {
+  model.value.Screening = nv
 })
 
 const entities = computed(() => {
@@ -225,12 +229,20 @@ async function reactivateUser() {
         ></MyInputCheckBox>
         <MyInputCheckBox
           v-if="
+            model.Role != store.ROLE_JUNIOR_COUNSELOR
+          "
+          v-model="model.Committee"
+          label="Safe Environment Committee Member"
+        ></MyInputCheckBox>
+        <MyInputCheckBox
+          v-if="
             store.getFunction(model.Role) == store.FUNCTION_BOARD ||
             store.getFunction(model.Role) == store.FUNCTION_DIRECTOR ||
             model.Role == store.ROLE_LOW_ACCESS_STAFF
           "
           v-model="model.Screening"
           label="Screening staff"
+          :disable="model.Committee"
         ></MyInputCheckBox>
       </div>
 

@@ -38,8 +38,7 @@ const currentCorpId = ref(store.loginCorporationId || 'xxx')
 const currentCorpData = ref({})
 
 const personnel = ref([])
-const isBoard = ref(true)
-const isScreening = ref(true)
+const isTrueRef = ref(true)
 
 const votesNeeded = ref(0)
 const emailFiles = ref('')
@@ -61,7 +60,7 @@ const userCanEdit = computed(() => {
     if (store.loginUserCorporation.SEC) return true
     return false
   }
-  if (store.accessLevel > 2) return true
+  if (store.accessLevel >= 3) return true
   return false
 })
 
@@ -169,7 +168,7 @@ getUsersByCorp(
   [currentCorpId],
   [
     ['CorporationId', '==', currentCorpId],
-    ['Board', '==', isBoard]
+    ['Committee', '==', isTrueRef]
   ]
 )
 

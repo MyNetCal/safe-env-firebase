@@ -81,6 +81,11 @@ export const useGeneralStore = defineStore('general', () => {
   )
   const loginUserCorporationCollection = useCollection(loginUsersCorporationsQuery)
 
+  const loginUsersActiveCorporationsQuery = computed(() =>
+    query(collection(db, 'UsersCorporations'), where('UserId', '==', loginUserId.value) , where('Active', '==', true))
+  )
+  const loginUserActiveCorporationCollection = useCollection(loginUsersActiveCorporationsQuery)
+
   const loginCorporationId = computed(() => loginUserCorporation.value?.CorporationId || 'xxx')
 
   const loginCorporationRef = computed(() =>
@@ -105,12 +110,18 @@ export const useGeneralStore = defineStore('general', () => {
       if (loginUserCorporation.value?.SEC) {
         return 'SEC of the Prelature' // 5
       }
+      if (loginUserCorporation.value?.Committee) {
+        return 'Safe Environment Committee Member' // 4.5
+      }
       if (loginUserCorporation.value?.Board) {
         return 'Board of the Prelature' // 4
       }
     }
     if (loginUserCorporation.value?.SEC) {
       return 'SEC of the Corporation' // 3
+    }
+    if (loginUserCorporation.value?.Committee) {
+      return 'Safe Environment Committee Member' // 2.5
     }
     if (loginUserCorporation.value?.Board) {
       return 'Board of the Corporation' // 2
@@ -165,9 +176,9 @@ export const useGeneralStore = defineStore('general', () => {
   const SCREENING_TITLE_APPLICATION = 'Recommendation from Screening Staff'
   const SCREENING_TITLE_INTERVIEW = 'Face-to-face interview'
   const SCREENING_TITLE_REFERENCE = 'Reference check'
-  const SCREENING_TITLE_REFERENCE_INTERNAL = 'Internal Reference check'
-  const SCREENING_TITLE_BACKGROUND = 'Criminal background check'
-  const SCREENING_TITLE_CODE = 'Code of conduct'
+  const SCREENING_TITLE_REFERENCE_INTERNAL = 'Internal Reference Check'
+  const SCREENING_TITLE_BACKGROUND = 'Criminal Background Check'
+  const SCREENING_TITLE_CODE = 'Code of Conduct'
   const SCREENING_TITLE_CONSENT = 'Consent to Release and Share Information'
   const SCREENING_REQ_TITLES = [
     'Recommendation from Screening Staff',
@@ -211,12 +222,18 @@ export const useGeneralStore = defineStore('general', () => {
       if (loginUserCorporation.value?.SEC) {
         return 5
       }
-      if (loginUserCorporation.value?.Board) {
+      if (loginUserCorporation.value?.Committee) {
+        return 4.5
+      }
+        if (loginUserCorporation.value?.Board) {
         return 4
       }
     }
     if (loginUserCorporation.value?.SEC) {
       return 3
+    }
+    if (loginUserCorporation.value?.Committee) {
+      return 2.5
     }
     if (loginUserCorporation.value?.Board) {
       return 2
@@ -405,6 +422,7 @@ export const useGeneralStore = defineStore('general', () => {
   return {
     loginUserCorporationCollection,
     loginCurrentUsersCorporationsId,
+    loginUserActiveCorporationCollection,
     loginUserCorporation,
     loginCorporationId,
     loginCorporation,

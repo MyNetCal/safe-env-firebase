@@ -239,7 +239,7 @@ async function saveTraining() {
                   <span class="font-semibold">{{ dayjs(t.LastCompleted).format('LL') }}</span>
                 </div>
                 <div>
-                  Expiers on
+                  Expires on
                   <span class="font-semibold">{{ dayjs(t.ExpiresOn).format('LL') }}</span>
                   <span class="text-slate-500"> ({{ dayjs(t.ExpiresOn).fromNow() }})</span>
                 </div>

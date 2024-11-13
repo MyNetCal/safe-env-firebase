@@ -37,7 +37,7 @@
       </div>
       <!-- Menu: Board -->
       <div
-        v-if="accessLevel > 1"
+        v-if="accessLevel >= 2"
         @click="goto('/board')"
         class="flex cursor-pointer place-items-center rounded p-2 pl-1 text-slate-700 hover:bg-slate-400"
       >

@@ -363,7 +363,8 @@ async function onAcceptedRecommendation() {
   const userCorporationRef = doc(db, 'UsersCorporations', recAccepted.value.UserCorpId)
 
   updateDoc(userCorporationRef, {
-    ScreenRecommendationStaffRequested: deleteField()
+    ScreenRecommendationStaffRequested: deleteField(),
+    ScreeningReqFlagApplication: true
   })
 
   // 2. Remove entry from array Staff Recommending in the User Collection
@@ -520,6 +521,9 @@ async function onDeclineRecommendation(request) {
               <span class="font-semibold">{{ request.Name }} {{ request.LastName }}</span>
               has requested your recommendation for work with minors at
               <span class="font-semibold">{{ request.CorpName }}</span>
+            </div>
+            <div class="p-2 text-left">
+              {{ request.Comments }}
             </div>
             <div class="mt-2">
               <MyButton color="bg-green-700" @click="onToAcceptReq(request)">Recommend</MyButton>
