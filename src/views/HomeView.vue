@@ -45,6 +45,17 @@ const corpId = computed(() => store.loginCorporationId)
 const loginUser = computed(() => store.loginUser)
 const loginUserCorporation = computed(() => store.loginUserCorporation)
 
+
+// eslint-disable-next-line no-unused-vars
+async function updateDatabase() {
+  const querySnapshot = await getDocs(collection(db, 'Users'))
+  querySnapshot.forEach((d) => {
+    updateDoc(doc(db, 'Users', d.id), {
+      Country: 'United States'
+    })
+  })
+}
+
 watch(
   corpId,
   (nv) => {
@@ -217,8 +228,8 @@ async function onCreatingEmailingCode() {
   }
 
   // add doc. The server will be listening
-  console.log('data', data);
-  
+  console.log('data', data)
+
   setDoc(pdfRef, data)
 }
 
@@ -301,8 +312,8 @@ async function onCreatingEmailingConsent() {
   }
 
   // add doc. The server will be listening
-  console.log('data', data);
-  
+  console.log('data', data)
+
   setDoc(pdfRef, data)
 }
 
@@ -453,7 +464,6 @@ async function onDeclineRecommendation(request) {
   >
     <h1
       class="select-none text-center"
-      @click="showFile('gs://vue-safe-env-pdfs/recomendation-test.pdf')"
     >
       {{ store.loginUser.Nickname }} {{ store.loginUser.LastName }}
     </h1>
@@ -571,7 +581,7 @@ async function onDeclineRecommendation(request) {
               />
               <span v-if="recommendationMonths != 1"> months </span>
               <span v-else>month</span> and recommend
-              <span class="font-semibold mr-1">{{ recAccepted.Name }}</span> to work with minors at
+              <span class="mr-1 font-semibold">{{ recAccepted.Name }}</span> to work with minors at
               <span class="font-semibold">{{ recAccepted.CorpName }}</span
               >. I am not aware of any reason that
               <span class="font-semibold">{{ recAccepted.Name }}</span> should not be allowed to

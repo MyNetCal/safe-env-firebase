@@ -233,7 +233,9 @@ async function sentEmailRequestingBackground(type) {
               <p>Role: ${userCorp.value.Role}</p>
               <p>Entity: ${userCorp.value.Entity}</p>
               <p>Board: ${userCorp.value.Board ? 'Yes' : 'No'}</p>
-              <p>Screening: ${userCorp.value.Screening ? 'Yes' : 'No'}</p>`,
+              <p>Screening: ${userCorp.value.Screening ? 'Yes' : 'No'}</p>
+              <p>Country: ${user.value.Country}</p>
+`,
     [emailSECPrelature]
   )
   updateDoc(doc(db, 'Users', user.value.id), {

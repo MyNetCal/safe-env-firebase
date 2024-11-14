@@ -16,6 +16,16 @@ const isAllValidInfo = defineModel('isAllValidInfo')
 
 const searchBoxIsClosed = ref(false)
 
+const countries = ref([
+  { id: 'Canada', label: 'Canada' },
+  { id: 'United States', label: 'United States' }
+])
+const countrySelected = ref({ id: model.value.Country, label: model.value.Country })
+
+function countryUpdated() {
+  model.value.Country = countrySelected.value.id
+}
+
 const allusers = ref([])
 const userSelected = ref({})
 async function getAllUsersNames() {
@@ -33,7 +43,8 @@ async function getAllUsersNames() {
       Middle: d.data().Middle,
       Email: d.data().Email,
       DOB: d.data().DOB,
-      EmailSent: d.data().EmailSent
+      EmailSent: d.data().EmailSent,
+      Country: d.data().Country
     })
   })
 }
@@ -59,7 +70,8 @@ async function checkEmailStatus() {
         Middle: user.Middle,
         Email: user.Email,
         DOB: user.DOB,
-        EmailSent: user.EmailSent
+        EmailSent: user.EmailSent,
+        Country: user.Country
       }
 
       return
@@ -86,8 +98,7 @@ const isErrorLastName = computed(() => {
 
 const isErrorDOB = computed(() => {
   const formula = !(
-    dayjs(model.value.DOB).isValid() &&
-    dayjs().diff(dayjs(model.value.DOB), 'y') < 100 
+    dayjs(model.value.DOB).isValid() && dayjs().diff(dayjs(model.value.DOB), 'y') < 100
   )
   const label =
     dayjs(model.value.DOB).isValid() && dayjs().diff(dayjs(model.value.DOB), 'y') < 18
@@ -166,7 +177,7 @@ watchEffect(() => {
 
     <!-- Email -->
     <div class="mt-1 flex gap-2">
-      <div class="w-full">
+      <div class="grow">
         <MyInputText
           label="Email"
           v-model="model.Email"
@@ -176,6 +187,9 @@ watchEffect(() => {
           @update:model-value="checkEmailStatus"
         >
         </MyInputText>
+      </div>
+      <div class="w-fit">
+        <MySelectAuto v-model="countrySelected" label="Country" :items="countries" itemsLabel="label" @update:model-value="countryUpdated"/>
       </div>
       <div>
         <MyInputText

@@ -35,6 +35,7 @@ function initUser(user) {
     Nickname: '',
     Email: '',
     id: '',
+    Country: 'United States',
     CurrentUsersCorporationsId: '',
     DOB: '2000-01-01', // format: 'yyyy-mm-dd'
     Branch: 'Men', // values: Men, Women, Both
