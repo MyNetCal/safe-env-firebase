@@ -321,7 +321,7 @@ function updateUserScreeningFiles(originalName, uiName) {
 
 const showDialogDeleteFile = ref(false)
 const typeFileToDelete = ref('')
-const entryFile =  ref('')
+const entryFile = ref('')
 
 function deleteInterview(e, f) {
   e.stopPropagation()
@@ -706,10 +706,15 @@ function openFileReference() {
                 class="max-h-[180px]"
                 :label="dialogRecommendationLabel"
               />
+              <div>
+                <MyInputTextArea
+                  label="Comments"
+                  class="mb-16"
+                  v-model="commentsRecommendation"
+                />
+              </div>
             </div>
-            <div>
-              <MyInputTextArea label="Comments" class="p-3 mb-16" v-model="commentsRecommendation"/>
-            </div>
+
             <div class="my-dialog-buttons">
               <MyButton @click="showDialogRecommendation = false" color="bg-slate-600">
                 Close
