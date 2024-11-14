@@ -6,7 +6,7 @@
 
 import { useGeneralStore } from '@/stores/general'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { toRefs, computed, ref } from 'vue'
+import { toRefs, computed, ref, watch } from 'vue'
 import { getDownloadURL, ref as storageRef, uploadBytesResumable } from 'firebase/storage'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
 import {
@@ -68,6 +68,15 @@ const hasAll = computed(
   () =>
     hasRecommendation.value ||
     (hasInterview.value && (hasInternalReference.value || hasReference.value))
+)
+
+watch(
+  () => hasAll,
+  () => {
+    updateDoc(doc(db, 'UsersCorporations', userCorp.value.id), {
+      ScreeningReqFlagApplication: hasAll.value
+    })
+  }
 )
 
 const colorBlock = computed(() => {
@@ -707,11 +716,7 @@ function openFileReference() {
                 :label="dialogRecommendationLabel"
               />
               <div>
-                <MyInputTextArea
-                  label="Comments"
-                  class="mb-16"
-                  v-model="commentsRecommendation"
-                />
+                <MyInputTextArea label="Comments" class="mb-16" v-model="commentsRecommendation" />
               </div>
             </div>
 

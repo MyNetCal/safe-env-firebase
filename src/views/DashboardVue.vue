@@ -60,6 +60,8 @@ function getBackgroundChecksNeedRequest() {
   needBackgroundRequest.value = {}
   const userCorps = []
   unsubNeedBackgroundRequest = onSnapshot(q, async (res) => {
+    console.log('Background Check Requested', res.size);
+    
     res.docChanges().forEach((change) => {
       const { newIndex, oldIndex, doc: userDoc } = change
       const userCorp = userDoc.data()
@@ -314,7 +316,6 @@ function getUrlReport(path) {
                       <div class="ml-3">&bull; {{ userCorp.CorpInfo?.Short }}</div>
 
                       <div class="ml-10">
-                        <div>Activity: {{ store.activities[userCorp.Activity]?.Name }}</div>
                         <div>Role: {{ userCorp?.Role }}</div>
 
                         <div>Entity: {{ userCorp?.Entity }}</div>
