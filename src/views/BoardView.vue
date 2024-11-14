@@ -422,7 +422,7 @@ uploadFile(() => {
       </div>
 
       <!-- Updating Code, Handbook & Appendix -->
-      <div class="mt-6 flex max-w-lg flex-wrap">
+      <div class="mt-6 flex max-w-lg flex-wrap" v-if="store.loginCorporationId == currentCorpId">
         <!-- Code of Conduct -->
         <div class="w-40 grow text-center">
           <MyButton :disabled="!userCanEdit" class="h-16 bg-green-600" @click="openCodeEditor"
