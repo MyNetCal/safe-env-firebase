@@ -13,6 +13,7 @@
         class="mostly-customized-scrollbar relative w-full rounded border-0 bg-white px-1 py-1 text-sm text-sky-900 placeholder-gray-400 shadow outline-none hover:shadow-md focus:outline-none focus:ring-1 focus:ring-blue-300"
         :class="{ 'ring-1 ring-red-500': isError.formula }"
         v-bind="$attrs"
+        :disabled="disabled"
       ></textarea>
       <div
         v-if="clear && modelValue != ''"
@@ -50,7 +51,8 @@ export default {
     },
     info: { type: Boolean, default: false },
     infoTitle: { type: String, default: '' },
-    rows: { type: String, default: '3' }
+    rows: { type: String, default: '3' },
+    disabled: { type: Boolean, default: false }
   },
   emits: ['update:modelValue'],
   data() {

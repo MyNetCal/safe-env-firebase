@@ -7,6 +7,7 @@
       :multiple="isMultiple"
       :modelValue="modelValue"
       @update:modelValue="(value) => emit('update:modelValue', value)"
+      :disabled="disabled"
     >
       <div class="relative">
         <div class="relative w-full">
@@ -34,8 +35,11 @@
             <ComboboxInput
               ref="target"
               autocomplete="off"
-              class="input-ring relative w-full rounded border-0 bg-white py-2 pl-2 pr-6 text-sm outline-none ring-1 placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-300"
-              :class="[isError.formula ? 'ring-red-500' : '']"
+              class="input-ring relative w-full rounded border-0 py-2 pl-2 pr-6 text-sm outline-none ring-1 placeholder:text-gray-300 focus:outline-none focus:ring-1 focus:ring-blue-300"
+              :class="[
+                isError.formula ? 'ring-red-500' : '',
+                disabled ? 'bg-slate-100 text-slate-400' : 'bg-white'
+              ]"
               @change="query = $event.target.value"
               @focus="query = ''"
               :displayValue="(item) => (itemsLabel ? item[itemsLabel] : item)"
@@ -116,6 +120,7 @@ const props = defineProps({
   info: { type: Boolean, default: false },
   infoTitle: { type: String, default: '' },
   items: Array,
+  disabled: { type: Boolean, default: false },
   itemsKey: { type: String, default: 'id' },
   itemsLabel: { type: String, default: null },
   isError: {

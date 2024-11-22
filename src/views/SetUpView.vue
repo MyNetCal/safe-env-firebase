@@ -122,7 +122,8 @@ const isErrorDOB = computed(() => {
 async function addUser() {
   // User
   let user = initUser(userToEdit.value)
-  userId = user.Name + user.LastName + user.DOB
+  const randomId = Math.floor(1000 + Math.random() * 9000).toString()
+  userId = (user.Name + user.LastName + randomId).replace(/\s+/g, '')
   if (user.Nickname == '') {
     user.Nickname = user.Name
   }
@@ -260,7 +261,7 @@ function goToLogin() {
           <!-- Add -->
           <div v-if="!isUser" class="step-box">
             <div class="text-left">
-              2. Please enter you information. You will be the SEC of the Prelature automatically
+              2. Please enter your information. You will be the SEC of the Prelature automatically
             </div>
 
             <!-- Data -->

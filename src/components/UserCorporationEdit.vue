@@ -19,7 +19,6 @@ const props = defineProps({
 const { user } = toRefs(props)
 const emit = defineEmits(['onClose'])
 
-
 const model = defineModel()
 
 const store = useGeneralStore()
@@ -27,6 +26,8 @@ const db = useFirestore()
 
 const showDialogDeactivate = ref(false)
 const showDialogReactivate = ref(false)
+
+const isCommittee = computed(() => store.accessLevel == 2.5 || store.accessLevel == 4.5)
 
 watchEffect(() => {
   model.value.Function = store.getFunction(model.value.Role)
@@ -77,9 +78,12 @@ watchEffect(() => {
   }
 })
 
-watch(() => model.value.Committee, (nv) => {
-  model.value.Screening = nv
-})
+watch(
+  () => model.value.Committee,
+  (nv) => {
+    model.value.Screening = nv
+  }
+)
 
 const entities = computed(() => {
   if (!corpEntity.value) return ''
@@ -172,8 +176,10 @@ async function reactivateUser() {
       <div class="mb-5 text-center text-sm text-slate-500">
         [This information is specific to {{ model.CorporationName }}]
       </div>
-     
-      <div v-if="isUserAMinor" class="bg-red-200 w-fit px-2 rounded text-slate-700">The user is a minor</div>
+
+      <div v-if="isUserAMinor" class="w-fit rounded bg-red-200 px-2 text-slate-700">
+        The user is a minor
+      </div>
 
       <!-- Select Corporation -->
       <div v-if="model.id == '' && store.isUserBoardPrelature">
@@ -189,6 +195,7 @@ async function reactivateUser() {
             label="Role (Choose the first option that applies)"
             :isError="isErrorRole"
             @update:model-value="roleSelected"
+            :disabled="!isCommittee"
             info
             info-title="Role"
           >
@@ -207,6 +214,7 @@ async function reactivateUser() {
             :id="null"
             info
             info-title="Entity"
+            :disabled="!isCommittee"
           >
             <p>
               Choose “Prelature” for anyone who will be staff for any traditional means of
@@ -223,16 +231,15 @@ async function reactivateUser() {
       <div class="flex gap-x-2">
         <MyInputCheckBox
           v-if="model.Role != store.ROLE_JUNIOR_COUNSELOR"
-          :disable="store.getFunction(model.Role) == store.FUNCTION_BOARD"
+          :disable="!isCommittee"
           v-model="model.Board"
           label="Board Member also"
         ></MyInputCheckBox>
         <MyInputCheckBox
-          v-if="
-            model.Role != store.ROLE_JUNIOR_COUNSELOR
-          "
+          v-if="model.Role != store.ROLE_JUNIOR_COUNSELOR"
           v-model="model.Committee"
           label="Safe Environment Committee Member"
+          :disable="!isCommittee"
         ></MyInputCheckBox>
         <MyInputCheckBox
           v-if="
@@ -242,12 +249,12 @@ async function reactivateUser() {
           "
           v-model="model.Screening"
           label="Screening staff"
-          :disable="model.Committee"
+          :disable="model.Committee || !isCommittee"
         ></MyInputCheckBox>
       </div>
 
       <div class="flex gap-x-2">
-        <MyInputTextArea class="w-full" v-model="model.Notes" label="Notes" />
+        <MyInputTextArea class="w-full" v-model="model.Notes" label="Notes" :disabled="!isCommittee"/>
       </div>
       <div v-if="model.id" class="my-2 text-center">
         <MyButton v-if="model.Active" class="bg-red-600" @click="showDialogDeactivate = true"

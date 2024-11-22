@@ -60,7 +60,8 @@ function createUser(user) {
     user.CorpsActiveAtLeastOne = false
     user.CorpsActiveIds = []
     user.CorpsIds = []
-    const userId = user.Name + user.LastName + user.DOB
+    const randomId = Math.floor(1000 + Math.random() * 9000).toString()
+    const userId = (user.Name + user.LastName + randomId).replace(/\s+/g, '')
     user.id = userId
     setDoc(doc(db, 'Users', userId), user).then(
       () => {
