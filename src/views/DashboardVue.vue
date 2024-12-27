@@ -60,8 +60,8 @@ function getBackgroundChecksNeedRequest() {
   needBackgroundRequest.value = {}
   const userCorps = []
   unsubNeedBackgroundRequest = onSnapshot(q, async (res) => {
-    console.log('Background Check Requested', res.size);
-    
+    console.log('Background Check Requested', res.size)
+
     res.docChanges().forEach((change) => {
       const { newIndex, oldIndex, doc: userDoc } = change
       const userCorp = userDoc.data()
@@ -95,7 +95,8 @@ function getBackgroundChecksNeedRequest() {
         Name: user?.Name,
         LastName: user?.LastName,
         Nickname: user?.Nickname,
-        Email: user.Email,
+        Email: user?.Email,
+        Country: user?.Country,
         ExpiresOn: userCorp.BackgroundCheckExpiresOn,
         ScreeningBackgroundCheckRenewalRequested: user.ScreeningBackgroundCheckRenewalRequested,
         ScreeningBackgroundCheckRequested: user.ScreeningBackgroundCheckRequested
@@ -255,9 +256,7 @@ function getUrlReport(path) {
                   <!-- Name and Date -->
                   <div class="flex place-items-center justify-between">
                     <div>
-                      <div class="pr-5 font-semibold">
-                        {{ user?.Nickname }} {{ user?.LastName }}
-                      </div>
+                      <div class="pr-5 font-semibold">{{ user?.Name }} {{ user?.LastName }}</div>
                       <div v-if="user.ExpiresOn">
                         Background check expires on
                         <div class="font-semibold">
@@ -311,20 +310,10 @@ function getUrlReport(path) {
                     <!-- Email -->
                     <div class="mt-2">
                       <div>Email: {{ user.Email }}</div>
+                      <div>Country: {{ user.Country }}</div>
                     </div>
                     <div v-for="userCorp in user.Corps" :key="userCorp.id">
                       <div class="ml-3">&bull; {{ userCorp.CorpInfo?.Short }}</div>
-
-                      <div class="ml-10">
-                        <div>Role: {{ userCorp?.Role }}</div>
-
-                        <div>Entity: {{ userCorp?.Entity }}</div>
-                        <div>
-                          Board:
-                          {{ userCorp?.Board ? '&check;' : '&#x2715;' }} - Screening:
-                          {{ userCorp?.Screening ? '&check;' : '&#x2715;' }}
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </DisclosurePanel>

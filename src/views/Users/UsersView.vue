@@ -179,7 +179,7 @@
       />
     </div>
 
-    <MyFab @click="addNewUser" color="bg-green-600" posY="bottom-14">
+    <MyFab @click="addNewUser" color="bg-green-600" posY="bottom-14" v-if="isCommittee">
       <FontAwesomeIcon icon="user-plus" />
     </MyFab>
   </div>
@@ -206,6 +206,8 @@ const store = useGeneralStore()
 const { isUserBoardPrelature, loginCorporation } = storeToRefs(store)
 
 const currentCorpId = ref(store.loginCorporationId || 'xxx')
+
+const isCommittee = computed(() => store.accessLevel == 2.5 || store.accessLevel == 4.5)
 
 watchEffect(() => {
   currentCorpId.value = store.loginCorporationId

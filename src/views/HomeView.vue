@@ -642,7 +642,7 @@ async function onDeclineRecommendation(request) {
           class="cursor-pointer p-2 text-blue-600 underline"
         >
           {{
-            dayjs(store.loginUserCorporation?.ScreeningReq?.Consent?.Date).format('MMM DD, YYYY')
+            dayjs(store.loginUserCorporation?.ScreeningReq?.Consent?.[0].Date).format('MMM DD, YYYY')
           }}
         </div>
       </div>
@@ -659,6 +659,11 @@ async function onDeclineRecommendation(request) {
         >Safe Environment Handbook<FontAwesomeIcon class="ml-2" icon="file-pdf"
       /></MyButton>
       <MyButton v-if="store.loginCorporation?.FileAppendix"
+      @click="
+          showFile(
+            `Corporations/${store.loginCorporationId}/Appendix/${store.loginCorporation?.FileAppendix}`
+          )
+        "
         >Directors’ Appendix<FontAwesomeIcon class="ml-2" icon="file-pdf"
       /></MyButton>
     </div>

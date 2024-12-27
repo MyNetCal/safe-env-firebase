@@ -23,7 +23,7 @@ const showSitesViewSearch = ref(false)
 const siteToEdit = ref({})
 const bothBranches = ref(false)
 
-const currentCorpId = computed(() => store.loginCorporationId)
+const currentCorpId = ref(store.loginCorporationId)
 
 const corpDocRef = computed(() =>
   currentCorpId.value ? doc(db, 'Corporations', currentCorpId.value) : null
