@@ -5,17 +5,7 @@ import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
 import ParticipantsViewEdit from './ParticipantsViewEdit.vue'
 import { useGeneralStore } from '@/stores/general'
 import MySelectCorporation from '@/components/MySelect/MySelectCorporation.vue'
-import {
-  addDoc,
-  arrayUnion,
-  collection,
-  doc,
-  getDocs,
-  onSnapshot,
-  query,
-  updateDoc,
-  where
-} from '@firebase/firestore'
+import { addDoc, collection, getDocs, onSnapshot, query, where } from '@firebase/firestore'
 import { useFirestore } from 'vuefire'
 import dayjs from 'dayjs'
 import { useFileDialog } from '@vueuse/core'
@@ -89,7 +79,6 @@ const showListDialog = ref(false)
 const showInstructionsDialog = ref(false)
 const listToImport = ref([])
 const thereAreDuplicates = ref(false)
-const groupsAll = ref(new Set())
 
 const { open, reset, onCancel, onChange } = useFileDialog({
   accept: '.csv',
@@ -126,7 +115,7 @@ async function parseData(list) {
   const participantsRef = collection(db, 'Participants')
   listToImport.value = []
   thereAreDuplicates.value = false
-  groupsAll.value.clear()
+  // groupsAll.value.clear()
   list.forEach(async (d) => {
     const groups = []
     if (d.Group0) {
@@ -147,7 +136,7 @@ async function parseData(list) {
     if (d.Group5) {
       groups.push(d.Group5)
     }
-    groupsAll.value = new Set([...groupsAll.value, ...groups])
+    // groupsAll.value = new Set([...groupsAll.value, ...groups])
 
     if (!d.Name || !d.LastName) {
       return
@@ -182,7 +171,7 @@ async function parseData(list) {
       id: ''
     })
   })
-  console.log('Groups: ', [...groupsAll.value])
+  // console.log('Groups: ', [...groupsAll.value])
 }
 
 onCancel(() => {
@@ -190,12 +179,12 @@ onCancel(() => {
 })
 
 function importList() {
-  const corpRef = doc(db, 'Corporations', currentCorpId.value)
-  groupsAll.value.forEach(async (g) => {
-    await updateDoc(corpRef, {
-      ActivityGroups: arrayUnion(g)
-    })
-  })
+  // const corpRef = doc(db, 'Corporations', currentCorpId.value)
+  // groupsAll.value.forEach(async (g) => {
+  //   await updateDoc(corpRef, {
+  //     ActivityGroups: arrayUnion(g)
+  //   })
+  // })
   listToImport.value.forEach(async (p) => {
     if (p.Error || p.Duplicate) {
       return
