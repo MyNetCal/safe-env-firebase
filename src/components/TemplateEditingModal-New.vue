@@ -25,6 +25,7 @@ const emit = defineEmits(['onClose', 'onUpdate', 'update:modelValue'])
 const props = defineProps(['modelValue', 'id'])
 
 const { id } = toRefs(props)
+console.log(id.value)
 
 function onDelete() {
   emit('onUpdate')

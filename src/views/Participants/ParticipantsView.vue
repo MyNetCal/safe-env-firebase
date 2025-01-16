@@ -227,7 +227,7 @@ function importList() {
       <h1 class="mb-6 mt-2 text-blue-700">Participants</h1>
 
       <!-- Corporation Selector -->
-      <div class="mx-auto w-fit" v-if="store.isUserBoardPrelature">
+      <div v-if="store.isUserBoardPrelature" class="mx-auto w-fit">
         <MySelectCorporation v-model="currentCorpId" />
       </div>
     </div>
@@ -261,11 +261,11 @@ function importList() {
     </div>
 
     <!-- Fab Buttons -->
-    <MyFab @click="openInstructions" class="!bottom-20 !right-2 !bg-green-600">
+    <MyFab class="!bottom-20 !right-2 !bg-green-600" @click="openInstructions">
       <FontAwesomeIcon icon="file-csv" size="2xl" />
     </MyFab>
 
-    <MyFab @click="editParticipant('')" class="!bottom-20 !right-20 !bg-green-600">
+    <MyFab class="!bottom-20 !right-20 !bg-green-600" @click="editParticipant('')">
       <FontAwesomeLayers>
         <FontAwesomeIcon icon="child" transform="left-2 down-4" size="2xl" />
         <FontAwesomeIcon icon="plus" transform="up-12 right-8" size="lg" />
@@ -275,17 +275,17 @@ function importList() {
     <!-- Editin Participant -->
     <ParticipantsViewEdit
       v-if="showParticipantsEdit"
-      :showModal="showParticipantsEdit"
       :id="idEditing"
-      :corpId="currentCorpId"
-      @onClose="showParticipantsEdit = false"
+      :show-modal="showParticipantsEdit"
+      :corp-id="currentCorpId"
+      @on-close="showParticipantsEdit = false"
     />
 
     <!-- Instructions for the CVS file -->
     <Dialog
       :open="showInstructionsDialog"
-      @close="showInstructionsDialog = false"
       class="relative z-50"
+      @close="showInstructionsDialog = false"
     >
       <DialogPanel class="my-dialog">
         <div class="my-dialog-overlay" />
@@ -293,7 +293,7 @@ function importList() {
           <div class="my-dialog-inner">
             <DialogTitle class="my-dialog-title">
               CSV File Format
-              <FontAwesomeIcon @click="showInstructionsDialog = false" class="" icon="times" />
+              <FontAwesomeIcon icon="times" @click="showInstructionsDialog = false" />
             </DialogTitle>
             <div class="my-dialog-content">
               <div class="mt-2">The CSV file may have the following columns:</div>
@@ -371,14 +371,14 @@ function importList() {
     </Dialog>
 
     <!-- List of Participants to import -->
-    <Dialog :open="showListDialog" @close="showListDialog = false" class="relative z-50">
+    <Dialog :open="showListDialog" class="relative z-50" @close="showListDialog = false">
       <DialogPanel class="my-dialog">
         <div class="my-dialog-overlay" />
         <div class="my-dialog-outer">
           <div class="my-dialog-inner max-w-4xl">
             <DialogTitle class="my-dialog-title">
               List of participants to import
-              <FontAwesomeIcon @click="showListDialog = false" class="" icon="times" />
+              <FontAwesomeIcon icon="times" @click="showListDialog = false" />
             </DialogTitle>
             <div class="my-dialog-content">
               <div>

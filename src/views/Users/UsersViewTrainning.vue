@@ -11,8 +11,11 @@
     >
       <div class="relative">
         <div class="m-2 text-center">
-          <h1 class="mb-3 text-blue-600">Training</h1>
-
+          <h1 class="mb-1 text-blue-600">Training</h1>
+          <div class="mx-auto mb-5 max-w-[480px] text-left text-sm text-slate-600">
+            Please upload a training completion certificate and confirm the date on which the
+            training was completed for each requirement listed below
+          </div>
           <UsersViewTrainingList :user="user" />
 
           <!-- isLoading lists -->
@@ -37,7 +40,6 @@ const props = defineProps({ showModal: Boolean, user: Object })
 const { showModal, user } = toRefs(props)
 
 function onOpenModal() {}
-
 </script>
 
 <style scoped></style>

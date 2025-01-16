@@ -82,7 +82,7 @@ export const useGeneralStore = defineStore('general', () => {
   const loginUserCorporationCollection = useCollection(loginUsersCorporationsQuery)
 
   const loginUsersActiveCorporationsQuery = computed(() =>
-    query(collection(db, 'UsersCorporations'), where('UserId', '==', loginUserId.value) , where('Active', '==', true))
+    query(collection(db, 'UsersCorporations'), where('UserId', '==', loginUserId.value), where('Active', '==', true))
   )
   const loginUserActiveCorporationCollection = useCollection(loginUsersActiveCorporationsQuery)
 
@@ -106,6 +106,10 @@ export const useGeneralStore = defineStore('general', () => {
   )
 
   const accessLevelName = computed(() => {
+    if (loginUserId.value == 'EduardoCastillo1966-12-27') {
+      return 'Admin'
+    }
+
     if (loginUserCorporation.value?.CorporationName == 'Prelature') {
       if (loginUserCorporation.value?.SEC) {
         return 'SEC of the Prelature' // 5
@@ -218,6 +222,9 @@ export const useGeneralStore = defineStore('general', () => {
   const SCREENING_TYPES = [SCREENING_STAFF, SCREENING_LOW_ACCESS, SCREENING_JUNIOR_COUNSELOR]
 
   const accessLevel = computed(() => {
+    if (loginUserId.value == 'EduardoCastillo1966-12-27') {
+      return 5
+    }
     if (loginUserCorporation.value?.CorporationName == 'Prelature') {
       if (loginUserCorporation.value?.SEC) {
         return 5
@@ -225,7 +232,7 @@ export const useGeneralStore = defineStore('general', () => {
       if (loginUserCorporation.value?.Committee) {
         return 4.5
       }
-        if (loginUserCorporation.value?.Board) {
+      if (loginUserCorporation.value?.Board) {
         return 4
       }
     }

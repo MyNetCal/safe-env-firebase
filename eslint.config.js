@@ -1,7 +1,7 @@
 import globals from "globals";
 import pluginJs from "@eslint/js";
 import pluginVue from "eslint-plugin-vue";
-// import skipFormatting from '@vue/eslint-config-prettier/skip-formatting'
+import skipFormatting from '@vue/eslint-config-prettier/skip-formatting'
 
 
 export default [
@@ -13,10 +13,10 @@ export default [
 
   {
     name: 'app/files-to-ignore',
-    ignores: ['**/dist/**', '**/dist-ssr/**', '**/coverage/**', '**/dev-dist/**'],
+    ignores: ['**/dist/**', '**/dist-ssr/**', '**/coverage/**', '**/dev-dist/**', '*.config.*'],
   },
 
   pluginJs.configs.recommended,
-  ...pluginVue.configs["flat/essential"],
-  // skipFormatting,
+  ...pluginVue.configs["flat/strongly-recommended"],
+  skipFormatting,
 ];

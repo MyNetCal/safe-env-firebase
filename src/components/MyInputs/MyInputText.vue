@@ -1,7 +1,7 @@
 <template>
   <!-- Regular Input -->
   <div class="relative pt-0" :name="'input-' + label" :class="{ 'mb-4': isError.label != '' }">
-    <my-info-modal :info="info" :infoTitle="infoTitle" :label="label">
+    <my-info-modal :info="info" :info-title="infoTitle" :label="label">
       <slot></slot>
     </my-info-modal>
 
@@ -47,7 +47,10 @@ import MyInfoModal from './MyInfoModal.vue'
 export default {
   components: { MyInfoModal },
   props: {
-    modelValue: {},
+    modelValue: {
+      type: String,
+      default: ''
+    },
     isValid: { type: Boolean, default: true },
     label: { type: String, default: '' },
     placeholder: { type: String, default: '' },

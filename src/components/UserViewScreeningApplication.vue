@@ -38,7 +38,11 @@ import MySelectAuto from './MyInputs/MySelectAuto.vue'
 import { useFileDialog } from '@vueuse/core'
 import MyInputTextArea from './MyInputs/MyInputTextArea.vue'
 
-const props = defineProps({ userCorp: Object, user: Object, corp: Object })
+const props = defineProps({
+  userCorp: { type: Object, default: () => {} },
+  user: { type: Object, default: () => {} },
+  corp: { type: Object, default: () => {} }
+})
 // item= [Application, Interview, Reference, Background, Code, Consent]
 
 const { userCorp, user, corp } = toRefs(props)
@@ -462,9 +466,9 @@ function openFileReference() {
                   from
                   {{ userCorp.ScreenRecommendationStaffRequested.UserName }}
                   <div
-                    class="cursor-pointer px-1 text-slate-600"
-                    v-if="userCorp.ScreenRecommendationStaffRequested.Denied"
-                    @click="deleteDenialRecommendation"
+
+                  v-if="userCorp.ScreenRecommendationStaffRequested.Denied"
+                    class="cursor-pointer px-1 text-slate-600"                    @click="deleteDenialRecommendation"
                   >
                     <FontAwesomeIcon icon="trash" />
                   </div>
@@ -640,7 +644,7 @@ function openFileReference() {
 
             <!-- Title Row: Center -->
             <div class="flex place-items-center">
-              External Referece
+              External Reference
               <div class="ml-2 h-fit rounded-lg bg-slate-500 px-2 text-sm text-white">
                 {{ corp.Screening[currentScreeningType].Reference }}
               </div>
@@ -694,8 +698,8 @@ function openFileReference() {
     <!-- Select Name Requesting Recommendation -->
     <Dialog
       :open="showDialogRecommendation"
-      @close="showDialogRecommendation = false"
       class="relative z-50"
+      @close="showDialogRecommendation = false"
     >
       <DialogPanel class="my-dialog">
         <div class="my-dialog-overlay" />
@@ -703,43 +707,42 @@ function openFileReference() {
           <div class="my-dialog-inner w-96">
             <DialogTitle class="my-dialog-title">
               {{ dialogRecommendationTitle }}
-              <FontAwesomeIcon @click="showDialogRecommendation = false" class="" icon="times" />
+              <FontAwesomeIcon icon="times"  @click="showDialogRecommendation = false" />
             </DialogTitle>
             <div class="my-dialog-content">
               <MySelectAuto
                 v-model="staffRecommending"
                 :items="allScreeningStaff"
-                itemsKey="id"
-                itemsLabel="Name"
-                isFussy
+                items-key="id"
+                items-label="Name"
+                is-fussy
                 class="max-h-[180px]"
                 :label="dialogRecommendationLabel"
               />
               <div>
-                <MyInputTextArea label="Comments" class="mb-16" v-model="commentsRecommendation" />
+                <MyInputTextArea v-model="commentsRecommendation" label="Comments" class="mb-16" />
               </div>
             </div>
 
             <div class="my-dialog-buttons">
-              <MyButton @click="showDialogRecommendation = false" color="bg-slate-600">
+              <MyButton color="bg-slate-600" @click="showDialogRecommendation = false">
                 Close
               </MyButton>
 
               <!-- Button: Request recommendation -->
               <MyButton
                 v-if="item == 'Recommendation'"
-                @click="onStaffRecommended"
-                color=""
                 :class="[staffRecommending.Name ? 'bg-green-700' : 'bg-slate-500']"
+                @click="onStaffRecommended"
                 >Request Recommendation</MyButton
               >
 
               <!-- Button save inteviewer || internalReference -->
               <MyButton
                 v-if="item == 'Interview' || item == 'InternalReference'"
-                @click="saveInterviewer"
-                color=""
                 :class="[staffRecommending.Name ? 'bg-green-700' : 'bg-slate-500']"
+                
+                @click="saveInterviewer"
                 >Open File</MyButton
               >
             </div>
@@ -751,8 +754,8 @@ function openFileReference() {
     <!-- Dialog to delete files -->
     <Dialog
       :open="showDialogDeleteFile"
-      @close="showDialogDeleteFile = false"
       class="relative z-50"
+      @close="showDialogDeleteFile = false"
     >
       <DialogPanel class="my-dialog">
         <div class="my-dialog-overlay" />
@@ -760,7 +763,7 @@ function openFileReference() {
           <div class="my-dialog-inner">
             <DialogTitle class="my-dialog-title">
               Delete File
-              <FontAwesomeIcon @click="showDialogDeleteFile = false" class="" icon="times" />
+              <FontAwesomeIcon icon="times" @click="showDialogDeleteFile = false" />
             </DialogTitle>
             <div class="my-dialog-content text-slate-600">
               Are you sure you want to delete this file? This action cannot be undone and may affect
@@ -768,7 +771,7 @@ function openFileReference() {
             </div>
             <div class="my-dialog-buttons">
               <MyButton @click="showDialogDeleteFile = false">Cancel</MyButton>
-              <MyButton @click="deleteFile" color="bg-red-600">Delete</MyButton>
+              <MyButton color="bg-red-600" @click="deleteFile">Delete</MyButton>
             </div>
           </div>
         </div>

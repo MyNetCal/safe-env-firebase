@@ -59,15 +59,15 @@ function deleteMessage(id) {
       <!-- Header -->
       <div class="app-layout-header flex place-items-center justify-between bg-sky-700 text-white">
         <!-- Header Left -->
-        <div class="ml-1 flex grow place-items-center" v-if="loginUser">
+        <div v-if="loginUser" class="ml-1 flex grow place-items-center">
           <FontAwesomeIcon v-if="isLargeScreen" icon="shop" class="ml-3" />
           <MyListBox
-            :items="loginUserActiveCorporationCollection"
             v-model="selUserCorp"
+            :items="loginUserActiveCorporationCollection"
             title="CorporationName"
-            @update:model-value="saveNuewLoginCorp"
             class="min-w-[120px] cursor-pointer rounded hover:bg-blue-500"
             :class="[isLargeScreen ? 'ml-2' : 'ml-6']"
+            @update:model-value="saveNuewLoginCorp"
           />
         </div>
         <!-- Header Center -->
@@ -88,7 +88,7 @@ function deleteMessage(id) {
       <div
         class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-300 px-3 text-slate-800 print:hidden"
       >
-        <div>v.6.4.5</div>
+        <div>v.6.4.6</div>
         <div class="flex">{{ accessLevelName }} [{{ storeGeneral.accessLevel }}]</div>
       </div>
     </div>
