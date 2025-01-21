@@ -353,10 +353,10 @@ function importList() {
               </div>
 
               <div class="mt-2 text-sm text-slate-500">
-                1) The DOB format might be: 2010-08-27 or 08/27/2010 or 8/27/2010
+                1) The DOB format might be: YYYY-MM-DD or MM/DD/YYYY
               </div>
               <div class="mt-1 text-sm text-slate-500">
-                2) For especial characters [ñ, á, ...], use UTF-8 encoding
+                2) For special characters [ñ, á, ...], use UTF-8 encoding
               </div>
               <div class="my-dialog-buttons mt-10">
                 <MyButton color="bg-slate-600" @click="showInstructionsDialog = false"
