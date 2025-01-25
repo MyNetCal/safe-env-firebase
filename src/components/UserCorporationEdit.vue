@@ -27,7 +27,7 @@ const db = useFirestore()
 const showDialogDeactivate = ref(false)
 const showDialogReactivate = ref(false)
 
-const isCommittee = computed(() => store.accessLevel == 2.5 || store.accessLevel == 4.5)
+const isCommittee = computed(() => [2.5, 3, 4.5, 5].includes(store.accessLevel))
 
 watchEffect(() => {
   model.value.Function = store.getFunction(model.value.Role)

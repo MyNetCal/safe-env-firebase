@@ -207,7 +207,7 @@ const { isUserBoardPrelature, loginCorporation } = storeToRefs(store)
 
 const currentCorpId = ref(store.loginCorporationId || 'xxx')
 
-const isCommittee = computed(() => store.accessLevel == 2.5 || store.accessLevel == 4.5)
+const isCommittee = computed(() => [2.5, 3, 4.5, 5].includes(store.accessLevel))
 
 watchEffect(() => {
   currentCorpId.value = store.loginCorporationId
