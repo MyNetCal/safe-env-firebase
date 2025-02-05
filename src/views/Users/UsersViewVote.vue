@@ -69,7 +69,7 @@
               @click="addVote"
               :disabled="
                 userCorp.Entity == store.ENTITY_PARTY &&
-                store.loginUserCorporation.CorporationName != userCorp.CorporationName
+                store.loginUserCorporation.CorporationName.trim() != userCorp.CorporationName.trim()
               "
               >Add my Vote</MyButton
             >

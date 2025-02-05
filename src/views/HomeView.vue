@@ -45,7 +45,6 @@ const corpId = computed(() => store.loginCorporationId)
 const loginUser = computed(() => store.loginUser)
 const loginUserCorporation = computed(() => store.loginUserCorporation)
 
-
 // eslint-disable-next-line no-unused-vars
 async function updateDatabase() {
   const querySnapshot = await getDocs(collection(db, 'Users'))
@@ -462,9 +461,7 @@ async function onDeclineRecommendation(request) {
     class="content-height thinsb h-full justify-between overflow-auto p-2 text-slate-700"
     v-if="store.loginUser && store.loginUserCorporation"
   >
-    <h1
-      class="select-none text-center"
-    >
+    <h1 class="select-none text-center">
       {{ store.loginUser.Nickname }} {{ store.loginUser.LastName }}
     </h1>
     <h2>{{ store.loginUserCorporation.Status }}</h2>
@@ -567,7 +564,7 @@ async function onDeclineRecommendation(request) {
               have completed the screening and selection training required by
               <span class="font-semibold">{{ recAccepted.CorpName }}</span
               >. I have known <span class="font-semibold">{{ recAccepted.Name }}</span>
-              <span class="font-semibold">{{ recAccepted.LastName }}</span> for
+              <span class="font-semibold">&nbsp;{{ recAccepted.LastName }}</span>for
               <input
                 type="number"
                 v-model="recommendationYears"
@@ -642,7 +639,9 @@ async function onDeclineRecommendation(request) {
           class="cursor-pointer p-2 text-blue-600 underline"
         >
           {{
-            dayjs(store.loginUserCorporation?.ScreeningReq?.Consent?.[0].Date).format('MMM DD, YYYY')
+            dayjs(store.loginUserCorporation?.ScreeningReq?.Consent?.[0].Date).format(
+              'MMM DD, YYYY'
+            )
           }}
         </div>
       </div>
@@ -658,8 +657,9 @@ async function onDeclineRecommendation(request) {
         "
         >Safe Environment Handbook<FontAwesomeIcon class="ml-2" icon="file-pdf"
       /></MyButton>
-      <MyButton v-if="store.loginCorporation?.FileAppendix"
-      @click="
+      <MyButton
+        v-if="store.loginCorporation?.FileAppendix"
+        @click="
           showFile(
             `Corporations/${store.loginCorporationId}/Appendix/${store.loginCorporation?.FileAppendix}`
           )

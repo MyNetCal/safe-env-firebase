@@ -88,7 +88,7 @@ function deleteMessage(id) {
       <div
         class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-300 px-3 text-slate-800 print:hidden"
       >
-        <div>v.6.4.8</div>
+        <div>v.6.5</div>
         <div class="flex">{{ accessLevelName }} [{{ storeGeneral.accessLevel }}]</div>
       </div>
     </div>

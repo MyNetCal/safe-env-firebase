@@ -226,6 +226,7 @@ function getUrlReport(path) {
     <h1>Dashboard</h1>
 
     <!-- People requiring Background Check Renewal -->
+     
     <div class="mx-auto mt-5 w-fit">
       <!-- Title -->
       <div class="rounded-t bg-slate-700 px-5 py-3 text-white">
@@ -244,8 +245,8 @@ function getUrlReport(path) {
         </div>
       </div>
       <!-- body -->
-      <div class="text-left text-slate-700">
-        <div v-for="user in needBackgroundRequest" :key="user.id">
+      <div class="flex flex-wrap gap-x-3 max-w-4xl text-left text-slate-700">
+        <div v-for="user in needBackgroundRequest" :key="user.id" class="flex-grow w-60">
           <Disclosure
             v-slot="{ open }"
             v-if="includeRequested || !user.ScreeningBackgroundCheckRenewalRequested"
