@@ -13,11 +13,11 @@ import {
   or
 } from 'firebase/firestore'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
-import { ref, onUnmounted } from 'vue'
+import { ref, onUnmounted, computed } from 'vue'
 import { useGeneralStore } from '@/stores/general'
 import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { getEmailsAllSEC, getEmailSECPrelature } from '@/stores/datadb'
+import { getEmailsAllSEC, getEmailSECPrelature, initUser } from '@/stores/datadb'
 import { ref as storageRef, getDownloadURL } from 'firebase/storage'
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
 
@@ -31,13 +31,98 @@ const needBackgroundRequest = ref([])
 
 let unsubNeedBackgroundRequest = null
 
+let unsubPersonnel = null
+
 const includeRequested = ref(true)
 
-onUnmounted(() => {
-  if (unsubNeedBackgroundRequest) {
-    unsubNeedBackgroundRequest()
-  }
+const personnel = ref([])
+let unsubUsers = {}
+
+const personnelFilter = computed(() => {
+  return personnel.value.filter((p) => p.userHasAllScreening)
 })
+getPersonnel()
+
+async function getPersonnel() {
+  personnel.value = []
+
+  let q = null
+
+  q = query(
+    collection(db, 'UsersCorporations'),
+    where('Status', '==', store.USER_STATUS_PENDING),
+    where('Entity', '==', 'Prelature')
+  )
+
+  unsubscribeAll()
+  unsubUsers = {}
+
+  unsubPersonnel = onSnapshot(q, (res) => {
+    res.docChanges().forEach(async (change) => {
+      const { newIndex, oldIndex, doc: tDoc } = change
+      const t = tDoc.data()
+      t.id = tDoc.id
+      t.UserData = initUser({})
+      if (['added', 'modified'].includes(change.type)) {
+        const userRef = await getDoc(doc(db, 'Users', t.UserId))
+        t.UserData = userRef.data()
+      }
+      const corpRef = await getDoc(doc(db, 'Corporations', t.CorporationId))
+      t.CorpName = corpRef.data().Name
+      t.CorpShort = corpRef.data().Short
+      t.Screening = corpRef.data().Screening
+      t.userHasAllScreening = userHasAllScreening(t)
+
+      if (change.type === 'added') {
+        // Add Listner
+        unsubUsers[t.id] = onSnapshot(doc(db, 'Users', t.UserId), (res) => {
+          const index = personnel.value.findIndex((el) => el.id == t.id)
+          personnel.value[index].UserData = res.data()
+        })
+        personnel.value.splice(newIndex, 0, t)
+      }
+      if (change.type === 'modified') {
+        personnel.value.splice(oldIndex, 1)
+        personnel.value.splice(newIndex, 0, t)
+
+        // Add Listner
+      }
+      if (change.type === 'removed') {
+        personnel.value.splice(oldIndex, 1)
+        unsubUsers[t.id]()
+      }
+    })
+  })
+}
+
+function unsubscribeAll() {
+  if (unsubPersonnel) {
+    unsubPersonnel()
+    Object.values(unsubUsers).forEach((u) => {
+      u()
+    })
+  }
+}
+
+function getScreeningReqType(type, screening) {
+  const a = []
+  store.SCREENING_REQ.forEach((req) => {
+    if (screening?.[type][req]) {
+      a.push(req)
+    }
+  })
+  return a
+}
+
+function userHasAllScreening(user) {
+  const typeScreening = store.getScreening(user.Function) // SCREENING_STAFF || SCREENING_JUNIOR_COUNSELOR || SCREENING_LOW_ACCESS
+  const req = getScreeningReqType(typeScreening, user.Screening)
+  let b = true
+  req.forEach((item) => {
+    b = b && user[`ScreeningReqFlag${item}`]
+  })
+  return b
+}
 
 function getBackgroundChecksNeedRequest() {
   if (unsubNeedBackgroundRequest) {
@@ -174,6 +259,12 @@ onUnmounted(() => {
   if (unsubReportsList) {
     unsubReportsList()
   }
+  if (unsubNeedBackgroundRequest) {
+    unsubNeedBackgroundRequest()
+  }
+  if (unsubPersonnel) {
+    unsubPersonnel()
+  }
 })
 
 function getReportsList() {
@@ -226,101 +317,117 @@ function getUrlReport(path) {
     <h1>Dashboard</h1>
 
     <!-- People requiring Background Check Renewal -->
-     
-    <div class="mx-auto mt-5 w-fit">
-      <!-- Title -->
-      <div class="rounded-t bg-slate-700 px-5 py-3 text-white">
-        <div>Background Check needed</div>
 
-        <div
-          class="mt-2 cursor-pointer rounded p-1 text-sm hover:bg-slate-600"
-          @click.prevent="includeRequested = !includeRequested"
-        >
-          Including already requested:
-          <FontAwesomeIcon
-            class="ml-3"
-            size="xl"
-            :icon="includeRequested ? ['far', 'check-square'] : ['far', 'square']"
-          />
-        </div>
-      </div>
-      <!-- body -->
-      <div class="flex flex-wrap gap-x-3 max-w-4xl text-left text-slate-700">
-        <div v-for="user in needBackgroundRequest" :key="user.id" class="flex-grow w-60">
-          <Disclosure
-            v-slot="{ open }"
-            v-if="includeRequested || !user.ScreeningBackgroundCheckRenewalRequested"
+    <div class="mx-auto mt-5 flex flex-wrap gap-3 max-w-4xl">
+      <div class="flex-grow">
+        <!-- Title -->
+        <div class="rounded-t bg-slate-700 px-5 py-3 text-white">
+          <div>Background Check needed</div>
+
+          <div
+            class="mt-2 cursor-pointer rounded p-1 text-sm hover:bg-slate-600"
+            @click.prevent="includeRequested = !includeRequested"
           >
-            <div class="my-2 rounded shadow">
-              <div>
-                <div class="bg-slate-200 px-2 py-2">
-                  <!-- Name and Date -->
-                  <div class="flex place-items-center justify-between">
-                    <div>
-                      <div class="pr-5 font-semibold">{{ user?.Name }} {{ user?.LastName }}</div>
-                      <div v-if="user.ExpiresOn">
-                        Background check expires on
-                        <div class="font-semibold">
-                          {{ dayjs(user.ExpiresOn).format('MMM D, YYYY') }}
+            Including already requested:
+            <FontAwesomeIcon
+              class="ml-3"
+              size="xl"
+              :icon="includeRequested ? ['far', 'check-square'] : ['far', 'square']"
+            />
+          </div>
+        </div>
+        <!-- body -->
+        <div class="flex flex-wrap gap-x-3 text-left text-slate-700">
+          <div v-for="user in needBackgroundRequest" :key="user.id" class="w-60 flex-grow">
+            <Disclosure
+              v-slot="{ open }"
+              v-if="includeRequested || !user.ScreeningBackgroundCheckRenewalRequested"
+            >
+              <div class="my-2 rounded shadow">
+                <div>
+                  <div class="bg-slate-200 px-2 py-2">
+                    <!-- Name and Date -->
+                    <div class="flex place-items-center justify-between">
+                      <div>
+                        <div class="pr-5 font-semibold">{{ user?.Name }} {{ user?.LastName }}</div>
+                        <div v-if="user.ExpiresOn">
+                          Background check expires on
+                          <div class="font-semibold">
+                            {{ dayjs(user.ExpiresOn).format('MMM D, YYYY') }}
+                          </div>
+                        </div>
+                        <div v-else>
+                          {{ user.ScreeningBackgroundCheckRequested }}
                         </div>
                       </div>
-                      <div v-else>
-                        {{ user.ScreeningBackgroundCheckRequested }}
-                      </div>
+
+                      <DisclosureButton>
+                        <div class="p-2">
+                          <FontAwesomeIcon
+                            size="xl"
+                            icon="fa-caret-down"
+                            :class="open ? '' : '-rotate-90 transform'"
+                          />
+                        </div>
+                      </DisclosureButton>
                     </div>
 
-                    <DisclosureButton>
-                      <div class="p-2">
-                        <FontAwesomeIcon
-                          size="xl"
-                          icon="fa-caret-down"
-                          :class="open ? '' : '-rotate-90 transform'"
-                        />
-                      </div>
-                    </DisclosureButton>
-                  </div>
-
-                  <div
-                    class="mt-2 cursor-pointer rounded py-1 text-sm hover:bg-slate-300"
-                    @click.prevent="backgroundRequested(user)"
-                  >
-                    Requested:
-                    <FontAwesomeIcon
-                      class="ml-3"
-                      size="xl"
-                      :icon="
-                        user.ScreeningBackgroundCheckRenewalRequested
-                          ? ['far', 'check-square']
-                          : ['far', 'square']
-                      "
-                    />
+                    <div
+                      class="mt-2 cursor-pointer rounded py-1 text-sm hover:bg-slate-300"
+                      @click.prevent="backgroundRequested(user)"
+                    >
+                      Requested:
+                      <FontAwesomeIcon
+                        class="ml-3"
+                        size="xl"
+                        :icon="
+                          user.ScreeningBackgroundCheckRenewalRequested
+                            ? ['far', 'check-square']
+                            : ['far', 'square']
+                        "
+                      />
+                    </div>
                   </div>
                 </div>
+                <Transition
+                  enter-active-class="transition duration-100 ease-out"
+                  enter-from-class="transform scale-95 opacity-0"
+                  enter-to-class="transform scale-100 opacity-100"
+                  leave-active-class="transition duration-75 ease-out"
+                  leave-from-class="transform scale-100 opacity-100"
+                  leave-to-class="transform scale-95 opacity-0"
+                >
+                  <DisclosurePanel>
+                    <!-- gray title -->
+                    <div class="thinsb max-h-60 overflow-auto">
+                      <!-- Email -->
+                      <div class="mt-2">
+                        <div>Email: {{ user.Email }}</div>
+                        <div>Country: {{ user.Country }}</div>
+                      </div>
+                      <div v-for="userCorp in user.Corps" :key="userCorp.id">
+                        <div class="ml-3">&bull; {{ userCorp.CorpInfo?.Short }}</div>
+                      </div>
+                    </div>
+                  </DisclosurePanel>
+                </Transition>
               </div>
-              <Transition
-                enter-active-class="transition duration-100 ease-out"
-                enter-from-class="transform scale-95 opacity-0"
-                enter-to-class="transform scale-100 opacity-100"
-                leave-active-class="transition duration-75 ease-out"
-                leave-from-class="transform scale-100 opacity-100"
-                leave-to-class="transform scale-95 opacity-0"
-              >
-                <DisclosurePanel>
-                  <!-- gray title -->
-                  <div class="thinsb max-h-60 overflow-auto">
-                    <!-- Email -->
-                    <div class="mt-2">
-                      <div>Email: {{ user.Email }}</div>
-                      <div>Country: {{ user.Country }}</div>
-                    </div>
-                    <div v-for="userCorp in user.Corps" :key="userCorp.id">
-                      <div class="ml-3">&bull; {{ userCorp.CorpInfo?.Short }}</div>
-                    </div>
-                  </div>
-                </DisclosurePanel>
-              </Transition>
-            </div>
-          </Disclosure>
+            </Disclosure>
+          </div>
+        </div>
+      </div>
+
+      <!-- Users -->
+      <div class="flex-grow">
+        <div class="rounded-t bg-slate-700 px-5 py-3 text-white">
+          <div>Personnel pending approval</div>
+        </div>
+        <div class="flex flex-wrap gap-3 text-left text-slate-700">
+          <div v-for="p in personnelFilter" :key="p.id" class="w-60 flex-grow bg-slate-200 px-2 py-2 rounded">
+            <div>{{ p.UserData.Nickname }} {{ p.UserData.LastName }}</div>
+            <div>{{ p.CorporationName }}</div>
+            <div>Total votes: {{ p.ApprovedBy.length }}</div>
+          </div>
         </div>
       </div>
     </div>

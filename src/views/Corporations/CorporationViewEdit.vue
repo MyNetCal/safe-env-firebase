@@ -13,11 +13,11 @@
           <MyInputText
             label="Full Name"
             class="grow"
-            v-model="dataToEdit.Name"
+            v-model.trim="dataToEdit.Name"
             :isError="isErrorName"
           >
           </MyInputText>
-          <MyInputText label="Short Name" v-model="dataToEdit.Short" :isError="isErrorShort">
+          <MyInputText label="Short Name" v-model.trim="dataToEdit.Short" :isError="isErrorShort">
           </MyInputText>
         
         </div>

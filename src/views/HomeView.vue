@@ -564,13 +564,13 @@ async function onDeclineRecommendation(request) {
               have completed the screening and selection training required by
               <span class="font-semibold">{{ recAccepted.CorpName }}</span
               >. I have known <span class="font-semibold">{{ recAccepted.Name }}</span>
-              <span class="font-semibold">&nbsp;{{ recAccepted.LastName }}</span>for
+              <span class="font-semibold">&nbsp;{{ recAccepted.LastName }}</span> for&nbsp;
               <input
                 type="number"
                 v-model="recommendationYears"
                 class="input-signature w-12 text-center"
               />
-              <span v-if="recommendationYears > 1">years</span><span v-else>year</span> and
+              <span v-if="recommendationYears > 1"> years</span><span v-else> year</span> and
               <input
                 type="number"
                 v-model="recommendationMonths"
