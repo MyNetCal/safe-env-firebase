@@ -127,7 +127,7 @@ getActivity()
                 <span class="mb-5 font-bold">General Comments:</span> {{ activity.Comments }}
               </div>
 
-              <!-- Checklist -->
+              <!-- Checklist 
               <div class="mb-2 font-bold">Checklist:</div>
               <table class="mb-5">
                 <template v-for="(el, index) in activity.Checklist" :key="el.Task">
@@ -142,14 +142,16 @@ getActivity()
                   </tr>
                 </template>
               </table>
+              -->
 
-              <!-- Comments on the Checklist -->
+              <!-- Comments on the Checklist 
               <div class="mb-5">
                 <span class="mb-5 font-bold">Comments on the Checklist: </span
                 >{{ activity.ChecklistComments }}
               </div>
+              -->
 
-              <!-- Photos -->
+              <!-- Photos 
               <div class="mb-5">
                 <div class="font-bold">Photo(s) uploaded: {{ activity.Photos?.length || 0 }}</div>
                 <div class="flex flex-wrap gap-2">
@@ -162,6 +164,7 @@ getActivity()
                   </template>
                 </div>
               </div>
+              -->
 
               <!-- Staff -->
               <div class="mb-5">
@@ -193,7 +196,8 @@ getActivity()
                   </template>
                 </table>
                 <div class="mt-3" v-if="activity.FileSlipsMissingReason">
-                  A <a :href="activity.FileSlipsMissingReasonUrl" target="_blank">File</a> was uploaded about slips
+                  A <a :href="activity.FileSlipsMissingReasonUrl" target="_blank">File</a> was
+                  uploaded about slips
                 </div>
               </div>
 

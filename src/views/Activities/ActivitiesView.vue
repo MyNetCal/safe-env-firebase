@@ -5,7 +5,7 @@ import { onUnmounted, ref, watch, watchEffect } from 'vue'
 import ActivitiesViewEdit from './ActivitiesViewEdit.vue'
 import MyFab from '@/components/MyFab.vue'
 import { FontAwesomeIcon, FontAwesomeLayers } from '@fortawesome/vue-fontawesome'
-import { collection, doc, getDoc, getDocs, onSnapshot, query, where } from '@firebase/firestore'
+import { collection, deleteDoc, doc, getDoc, getDocs, onSnapshot, query, where } from '@firebase/firestore'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
 import dayjs from 'dayjs'
 import { getDownloadURL, ref as storageRef } from 'firebase/storage'
@@ -102,7 +102,12 @@ onUnmounted(() => {
 
 function editActivitiy(id) {
   editingActivityId.value = id
-  tabActive.value == 0 ? (showActivitiesViewEdit.value = true) : (showActivityPDF.value = true)
+  if (tabActive.value == 0 || editingActivityId.value == null
+  ) {
+    showActivitiesViewEdit.value = true
+  } else {
+    showActivityPDF.value = true
+  }
 }
 
 function downloadActivityPDF(id) {
@@ -115,6 +120,11 @@ function downloadActivityPDF(id) {
     })
 }
 
+function deleteActivity(id) {
+  showActivitiesViewEdit.value = false
+  showActivityPDF.value = false
+  deleteDoc(doc(db, 'Activities', id))
+}
 // ************************
 // CVS Export
 const showInstructionsDialog = ref(false)
@@ -252,6 +262,7 @@ async function saveFile() {
       :show-modal="showActivitiesViewEdit"
       :corp-id="currentCorpId"
       @on-close="showActivitiesViewEdit = false"
+      @on-delete="deleteActivity"
     />
 
     <ActivitiesViewPDF

@@ -19,23 +19,19 @@ import {
   setDoc,
   updateDoc,
   where,
-  addDoc
+  addDoc,
 } from '@firebase/firestore'
 import { useCollection, useFirebaseStorage, useFirestore } from 'vuefire'
 import MyInputTextArea from '@/components/MyInputs/MyInputTextArea.vue'
 import dayjs from 'dayjs'
 import { useFuse } from '@vueuse/integrations/useFuse'
-import {
-  getDownloadURL,
-  ref as storageRef,
-  uploadBytesResumable
-} from 'firebase/storage'
+import { getDownloadURL, ref as storageRef, uploadBytesResumable } from 'firebase/storage'
 import { useGeneralStore } from '@/stores/general'
 import { jsPDF } from 'jspdf'
 import axios from 'axios'
 import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 
-const emit = defineEmits(['onClose', 'onUpdate'])
+const emit = defineEmits(['onClose', 'onUpdate', 'onDelete'])
 const props = defineProps({ showModal: Boolean, id: String, corpId: String })
 const { showModal, id, corpId } = toRefs(props)
 
@@ -295,6 +291,16 @@ function onUpdateInfo() {
   })
 }
 
+function onDeleteActivity() {
+  if (actToEdit.value.id == '') {
+    return
+  }
+  // await deleteDoc(doc(db, 'Activities', actToEdit.value.id))
+  console.log('Activity Deleted: ', actToEdit.value.id)
+
+  emit('onDelete', actToEdit.value.id)
+}
+
 // ********************
 // Staff
 // ********************
@@ -382,7 +388,6 @@ const allStaffRef = computed(() =>
     where('Status', '==', 'Approved'),
     where('CorporationId', '==', corpId.value),
     where('Role', '!=', store.ROLE_JUNIOR_COUNSELOR)
-
   )
 )
 
@@ -393,7 +398,7 @@ const allStaffNotSelectedRef = computed(() =>
     collection(db, 'UsersCorporations'),
     where('Status', '==', 'Approved'),
     where('CorporationId', '==', corpId.value),
-    where('id', 'not-in', actToEdit.value.Staff),
+    where('id', 'not-in', actToEdit.value.Staff)
   )
 )
 
@@ -993,7 +998,7 @@ async function createPDF() {
                           :class="[
                             actToEdit.Title == group
                               ? 'bg-orange-300 text-slate-900'
-                              : 'bg-stone-200  text-slate-700',
+                              : 'bg-stone-200 text-slate-700',
                             group.length > 18 ? 'text-xs' : 'text-sm'
                           ]"
                           @click="actToEdit.Title = group"
@@ -1040,7 +1045,7 @@ async function createPDF() {
                           :class="[
                             actToEdit.Site == site.item.id
                               ? 'bg-orange-300 text-slate-900'
-                              : 'bg-stone-200  text-slate-700'
+                              : 'bg-stone-200 text-slate-700'
                           ]"
                           @click="actToEdit.Site = site.item.id"
                         >
@@ -1156,7 +1161,7 @@ async function createPDF() {
                           :class="[
                             actToEdit.Staff.includes(staff.UserCorpId)
                               ? 'bg-orange-300 text-slate-900'
-                              : 'bg-stone-200  text-slate-700'
+                              : 'bg-stone-200 text-slate-700'
                           ]"
                           @click="toggleStaff(staff.UserCorpId)"
                         >
@@ -1218,7 +1223,7 @@ async function createPDF() {
                         :class="[
                           actToEdit.Staff.includes(p.item.UserCorpId)
                             ? 'bg-orange-300 text-slate-900'
-                            : 'bg-stone-200  text-slate-700',
+                            : 'bg-stone-200 text-slate-700',
                           {
                             'outline outline-red-500':
                               (p.item.UserCorpId == allGroupFilter?.[0]?.item?.UserCorpId &&
@@ -1336,7 +1341,7 @@ async function createPDF() {
                           :class="[
                             actToEdit.Participants.includes(participant.id)
                               ? 'bg-orange-300 text-slate-900'
-                              : 'bg-stone-200  text-slate-700'
+                              : 'bg-stone-200 text-slate-700'
                           ]"
                           @click="toggleParticipant(participant.id)"
                         >
@@ -1404,7 +1409,7 @@ async function createPDF() {
                         :class="[
                           actToEdit.Participants.includes(p.item.id)
                             ? 'bg-orange-300 text-slate-900'
-                            : 'bg-stone-200  text-slate-700',
+                            : 'bg-stone-200 text-slate-700',
                           {
                             'outline outline-red-500':
                               (p.item.id == groupParticipantsFilter?.[0]?.item?.id &&
@@ -1458,7 +1463,6 @@ async function createPDF() {
                   </div>
                 </div>
               </div>
-
             </div>
             <div v-else class="text-slate-700">
               <div class="w-fit">
@@ -1542,7 +1546,7 @@ async function createPDF() {
         <div class="mt-2">
           <!-- Navigation Buttons -->
           <div class="text-center">
-            <MyButton v-if="actToEdit.id != ''" @click="$emit('onClose')" color="bg-red-500">
+            <MyButton v-if="actToEdit.id != ''" @click="onDeleteActivity" color="bg-red-500">
               Delete Activity
             </MyButton>
             <MyButton
