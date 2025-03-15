@@ -15,15 +15,21 @@ import {
 import { useFirebaseStorage, useFirestore } from 'vuefire'
 import { ref, onUnmounted, computed } from 'vue'
 import { useGeneralStore } from '@/stores/general'
-import { Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
+import { Dialog, DialogPanel, DialogTitle, Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { getEmailsAllSEC, getEmailSECPrelature, initUser } from '@/stores/datadb'
 import { ref as storageRef, getDownloadURL } from 'firebase/storage'
 import LocalizedFormat from 'dayjs/plugin/localizedFormat'
+import MyButton from '@/components/MyButton.vue'
+import MyInputText from '@/components/MyInputs/MyInputText.vue'
+import { useBackgroundCheck } from '@/composables/backgroundCheck'
 
 const db = useFirestore()
 const store = useGeneralStore()
 const storage = useFirebaseStorage()
+const backgroundCheck = useBackgroundCheck()
+
+const { openFileDiologAndUpload } = backgroundCheck
 
 dayjs.extend(LocalizedFormat)
 
@@ -308,6 +314,20 @@ function getUrlReport(path) {
     window.open(url, '_blank')
   })
 }
+
+const inputDateBackground = ref(false)
+const dateBackground = ref(dayjs().format('YYYY-MM-DD'))
+const useBackgroundCheckId = ref('')
+function onLoadBackgroundCheck(id) {
+  useBackgroundCheckId.value = id
+  inputDateBackground.value = true
+}
+
+function onChooseFile() {
+  console.log('Choose File')
+  inputDateBackground.value = false
+  openFileDiologAndUpload(useBackgroundCheckId.value, dateBackground.value)
+}
 </script>
 
 <template>
@@ -318,7 +338,7 @@ function getUrlReport(path) {
 
     <!-- People requiring Background Check Renewal -->
 
-    <div class="mx-auto mt-5 flex flex-wrap gap-3 max-w-4xl">
+    <div class="mx-auto mt-5 flex max-w-4xl flex-wrap gap-3">
       <div class="flex-grow">
         <!-- Title -->
         <div class="rounded-t bg-slate-700 px-5 py-3 text-white">
@@ -387,6 +407,14 @@ function getUrlReport(path) {
                         "
                       />
                     </div>
+
+                    <!-- Button Upload -->
+                    <div
+                      v-if="user.ScreeningBackgroundCheckRenewalRequested"
+                      class="mx-auto mt-3 w-fit"
+                    >
+                      <MyButton @click="onLoadBackgroundCheck(user.id)">Upload Background</MyButton>
+                    </div>
                   </div>
                 </div>
                 <Transition
@@ -423,7 +451,11 @@ function getUrlReport(path) {
           <div>Personnel pending approval</div>
         </div>
         <div class="flex flex-wrap gap-3 text-left text-slate-700">
-          <div v-for="p in personnelFilter" :key="p.id" class="w-60 flex-grow bg-slate-200 px-2 py-2 rounded">
+          <div
+            v-for="p in personnelFilter"
+            :key="p.id"
+            class="w-60 flex-grow rounded bg-slate-200 px-2 py-2"
+          >
             <div>{{ p.UserData.Nickname }} {{ p.UserData.LastName }}</div>
             <div>{{ p.CorporationName }}</div>
             <div>Total votes: {{ p.ApprovedBy.length }}</div>
@@ -459,6 +491,27 @@ function getUrlReport(path) {
       <div v-else class="mt-4 text-center text-slate-500">No reports yet</div>
     </div>
   </div>
+
+  <Dialog :open="inputDateBackground" @close="inputDateBackground = false" class="relative z-50">
+    <DialogPanel class="my-dialog">
+      <div class="my-dialog-overlay" />
+      <div class="my-dialog-outer">
+        <div class="my-dialog-inner">
+          <DialogTitle class="my-dialog-title">
+            Background Check Date
+            <FontAwesomeIcon @click="inputDateBackground = false" class="" icon="times" />
+          </DialogTitle>
+          <div class="my-dialog-content">
+            <MyInputText label="Date" type-input="date" class="w-fit mx-auto" v-model="dateBackground"/>
+          </div>
+          <div class="my-dialog-buttons">
+            <MyButton @click="inputDateBackground = false">Close</MyButton>
+            <MyButton @click="onChooseFile">Choose File</MyButton>
+          </div>
+        </div>
+      </div>
+    </DialogPanel>
+  </Dialog>
 </template>
 
 <style scoped>
