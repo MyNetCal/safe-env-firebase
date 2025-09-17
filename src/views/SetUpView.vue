@@ -30,7 +30,7 @@ function initPlace() {
     id: '',
     Name: 'Prelature of Opus Dei',
     Short: 'Prelature',
-    Branch: 'Men',
+    Branch: 'Women',
     Code: '',
     Entity: 'Prelature',
     Roles: ['Priest', 'Activity Director', 'Board'],

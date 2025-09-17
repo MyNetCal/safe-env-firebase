@@ -158,9 +158,11 @@ async function parseData(list) {
       where('Name', '==', d.Name),
       where('LastName', '==', d.LastName)
     )
+    let oldId = ''
     const qs = await getDocs(q)
     if (qs.size > 0) {
       thereAreDuplicates.value = true
+      oldId = qs.docs[0].id
     }
     listToImport.value.push({
       Error:
@@ -179,7 +181,7 @@ async function parseData(list) {
       Nickname: d.Nickname || d.Name,
       Phone: '',
       Plan: { Description: '', FileName: '' },
-      id: ''
+      id: oldId
     })
   })
   console.log('Groups: ', [...groupsAll.value])
@@ -197,7 +199,14 @@ function importList() {
     })
   })
   listToImport.value.forEach(async (p) => {
-    if (p.Error || p.Duplicate) {
+    if (p.Error) {
+      return
+    }
+    if (p.Duplicate) {
+      const pRef = doc(db, 'Participants', p.id)
+      await updateDoc(pRef, {
+        ActivityGroups: p.ActivityGroups
+      })
       return
     }
     await addDoc(collection(db, 'Participants'), {
@@ -386,7 +395,7 @@ function importList() {
                   v-for="(p, i) in listToImport"
                   :key="p.DOB"
                   class="flex"
-                  :class="{ 'bg-red-200': p.Error || p.Duplicate }"
+                  :class="{ 'bg-red-200': p.Error }"
                 >
                   <div class="w-10">{{ i + 1 }}.</div>
                   <div class="w-56">

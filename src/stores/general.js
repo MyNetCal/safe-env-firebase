@@ -53,6 +53,8 @@ export const useGeneralStore = defineStore('general', () => {
 
   function getUser() {
     const q = query(collection(db, 'Users'), where('Email', '==', currentUserEmail.value))
+    console.log('Getting user with email: ', currentUserEmail.value);
+    
     unsubUser = onSnapshot(q, (res) => {
       res.forEach((d) => {
         loginUser.value = d.data()

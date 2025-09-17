@@ -15,7 +15,14 @@ import {
 import { useFirebaseStorage, useFirestore } from 'vuefire'
 import { ref, onUnmounted, computed } from 'vue'
 import { useGeneralStore } from '@/stores/general'
-import { Dialog, DialogPanel, DialogTitle, Disclosure, DisclosureButton, DisclosurePanel } from '@headlessui/vue'
+import {
+  Dialog,
+  DialogPanel,
+  DialogTitle,
+  Disclosure,
+  DisclosureButton,
+  DisclosurePanel
+} from '@headlessui/vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { getEmailsAllSEC, getEmailSECPrelature, initUser } from '@/stores/datadb'
 import { ref as storageRef, getDownloadURL } from 'firebase/storage'
@@ -358,90 +365,96 @@ function onChooseFile() {
         </div>
         <!-- body -->
         <div class="flex flex-wrap gap-x-3 text-left text-slate-700">
-          <div v-for="user in needBackgroundRequest" :key="user.id" class="w-60 flex-grow">
-            <Disclosure
-              v-slot="{ open }"
-              v-if="includeRequested || !user.ScreeningBackgroundCheckRenewalRequested"
-            >
-              <div class="my-2 rounded shadow">
-                <div>
-                  <div class="bg-slate-200 px-2 py-2">
-                    <!-- Name and Date -->
-                    <div class="flex place-items-center justify-between">
-                      <div>
-                        <div class="pr-5 font-semibold">{{ user?.Name }} {{ user?.LastName }}</div>
-                        <div v-if="user.ExpiresOn">
-                          Background check expires on
-                          <div class="font-semibold">
-                            {{ dayjs(user.ExpiresOn).format('MMM D, YYYY') }}
+          <template v-for="user in needBackgroundRequest" :key="user.id">
+            <div v-if="includeRequested || !user.ScreeningBackgroundCheckRenewalRequested" class="w-60 flex-grow">
+              <Disclosure
+                v-slot="{ open }"
+                
+              >
+                <div class="my-2 rounded shadow">
+                  <div>
+                    <div class="bg-slate-200 px-2 py-2">
+                      <!-- Name and Date -->
+                      <div class="flex place-items-center justify-between">
+                        <div>
+                          <div class="pr-5 font-semibold">
+                            {{ user?.Name }} {{ user?.LastName }}
+                          </div>
+                          <div v-if="user.ExpiresOn">
+                            Background check expires on
+                            <div class="font-semibold">
+                              {{ dayjs(user.ExpiresOn).format('MMM D, YYYY') }}
+                            </div>
+                          </div>
+                          <div v-else>
+                            {{ user.ScreeningBackgroundCheckRequested }}
                           </div>
                         </div>
-                        <div v-else>
-                          {{ user.ScreeningBackgroundCheckRequested }}
-                        </div>
+
+                        <DisclosureButton>
+                          <div class="p-2">
+                            <FontAwesomeIcon
+                              size="xl"
+                              icon="fa-caret-down"
+                              :class="open ? '' : '-rotate-90 transform'"
+                            />
+                          </div>
+                        </DisclosureButton>
                       </div>
 
-                      <DisclosureButton>
-                        <div class="p-2">
-                          <FontAwesomeIcon
-                            size="xl"
-                            icon="fa-caret-down"
-                            :class="open ? '' : '-rotate-90 transform'"
-                          />
-                        </div>
-                      </DisclosureButton>
-                    </div>
+                      <div
+                        class="mt-2 cursor-pointer rounded py-1 text-sm hover:bg-slate-300"
+                        @click.prevent="backgroundRequested(user)"
+                      >
+                        Requested:
+                        <FontAwesomeIcon
+                          class="ml-3"
+                          size="xl"
+                          :icon="
+                            user.ScreeningBackgroundCheckRenewalRequested
+                              ? ['far', 'check-square']
+                              : ['far', 'square']
+                          "
+                        />
+                      </div>
 
-                    <div
-                      class="mt-2 cursor-pointer rounded py-1 text-sm hover:bg-slate-300"
-                      @click.prevent="backgroundRequested(user)"
-                    >
-                      Requested:
-                      <FontAwesomeIcon
-                        class="ml-3"
-                        size="xl"
-                        :icon="
-                          user.ScreeningBackgroundCheckRenewalRequested
-                            ? ['far', 'check-square']
-                            : ['far', 'square']
-                        "
-                      />
-                    </div>
-
-                    <!-- Button Upload -->
-                    <div
-                      v-if="user.ScreeningBackgroundCheckRenewalRequested"
-                      class="mx-auto mt-3 w-fit"
-                    >
-                      <MyButton @click="onLoadBackgroundCheck(user.id)">Upload Background</MyButton>
+                      <!-- Button Upload -->
+                      <div
+                        v-if="user.ScreeningBackgroundCheckRenewalRequested"
+                        class="mx-auto mt-3 w-fit"
+                      >
+                        <MyButton @click="onLoadBackgroundCheck(user.id)"
+                          >Upload Background</MyButton
+                        >
+                      </div>
                     </div>
                   </div>
+                  <Transition
+                    enter-active-class="transition duration-100 ease-out"
+                    enter-from-class="transform scale-95 opacity-0"
+                    enter-to-class="transform scale-100 opacity-100"
+                    leave-active-class="transition duration-75 ease-out"
+                    leave-from-class="transform scale-100 opacity-100"
+                    leave-to-class="transform scale-95 opacity-0"
+                  >
+                    <DisclosurePanel>
+                      <!-- gray title -->
+                      <div class="thinsb max-h-60 overflow-auto">
+                        <!-- Email -->
+                        <div class="mt-2">
+                          <div>Email: {{ user.Email }}</div>
+                          <div>Country: {{ user.Country }}</div>
+                        </div>
+                        <div v-for="userCorp in user.Corps" :key="userCorp.id">
+                          <div class="ml-3">&bull; {{ userCorp.CorpInfo?.Short }}</div>
+                        </div>
+                      </div>
+                    </DisclosurePanel>
+                  </Transition>
                 </div>
-                <Transition
-                  enter-active-class="transition duration-100 ease-out"
-                  enter-from-class="transform scale-95 opacity-0"
-                  enter-to-class="transform scale-100 opacity-100"
-                  leave-active-class="transition duration-75 ease-out"
-                  leave-from-class="transform scale-100 opacity-100"
-                  leave-to-class="transform scale-95 opacity-0"
-                >
-                  <DisclosurePanel>
-                    <!-- gray title -->
-                    <div class="thinsb max-h-60 overflow-auto">
-                      <!-- Email -->
-                      <div class="mt-2">
-                        <div>Email: {{ user.Email }}</div>
-                        <div>Country: {{ user.Country }}</div>
-                      </div>
-                      <div v-for="userCorp in user.Corps" :key="userCorp.id">
-                        <div class="ml-3">&bull; {{ userCorp.CorpInfo?.Short }}</div>
-                      </div>
-                    </div>
-                  </DisclosurePanel>
-                </Transition>
-              </div>
-            </Disclosure>
-          </div>
+              </Disclosure>
+            </div>
+          </template>
         </div>
       </div>
 
@@ -502,7 +515,12 @@ function onChooseFile() {
             <FontAwesomeIcon @click="inputDateBackground = false" class="" icon="times" />
           </DialogTitle>
           <div class="my-dialog-content">
-            <MyInputText label="Date" type-input="date" class="w-fit mx-auto" v-model="dateBackground"/>
+            <MyInputText
+              label="Date"
+              type-input="date"
+              class="mx-auto w-fit"
+              v-model="dateBackground"
+            />
           </div>
           <div class="my-dialog-buttons">
             <MyButton @click="inputDateBackground = false">Close</MyButton>
