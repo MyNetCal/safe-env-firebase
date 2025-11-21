@@ -1,12 +1,12 @@
 <template>
   <div class="mb-4 w-full pt-0">
-    <MyInfoModal :info="info" :infoTitle="infoTitle" :label="label">
+    <MyInfoModal :info="info" :info-title="infoTitle" :label="label">
       <slot></slot>
     </MyInfoModal>
     <Combobox
       :multiple="isMultiple"
-      :modelValue="modelValue"
-      @update:modelValue="(value) => emit('update:modelValue', value)"
+      :model-value="modelValue"
+      @update:model-value="(value) => emit('update:modelValue', value)"
       :disabled="disabled"
     >
       <div class="relative">
@@ -42,7 +42,7 @@
               ]"
               @change="query = $event.target.value"
               @focus="query = ''"
-              :displayValue="(item) => (itemsLabel ? item[itemsLabel] : item)"
+              :display-value="(item) => (itemsLabel ? item[itemsLabel] : item)"
             />
             <ComboboxButton
               class="absolute inset-y-0 left-0 right-0 flex items-center justify-end pr-2"

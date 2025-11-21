@@ -97,7 +97,7 @@ function saveChanges(type) {
           <!-- Recommendation -->
           <MyInputCheckBox
             v-model="editingValues[currentScreeningType].Application"
-            @update:modelValue="saveChanges('Application')"
+            @update:model-value="saveChanges('Application')"
             :disable="store.accessLevel < 3"
             class="mb-0"
           >
@@ -117,7 +117,7 @@ function saveChanges(type) {
               <!-- Interview checkbox -->
               <MyInputCheckBox
                 v-model="editingValues[currentScreeningType].Interview"
-                @update:modelValue="saveChanges('Interview')"
+                @update:model-value="saveChanges('Interview')"
                 :disable="store.accessLevel < 3"
               >
                 Interview
@@ -186,21 +186,21 @@ function saveChanges(type) {
         </div>
         <MyInputCheckBox
           v-model="editingValues[currentScreeningType].Background"
-          @update:modelValue="saveChanges('Background')"
+          @update:model-value="saveChanges('Background')"
           :disable="store.accessLevel < 3"
         >
           Criminal background check
         </MyInputCheckBox>
         <MyInputCheckBox
           v-model="editingValues[currentScreeningType].Code"
-          @update:modelValue="saveChanges('Code')"
+          @update:model-value="saveChanges('Code')"
           :disable="store.accessLevel < 3"
         >
           Signed code of conduct
         </MyInputCheckBox>
         <MyInputCheckBox
           v-model="editingValues[currentScreeningType].Consent"
-          @update:modelValue="saveChanges('Consent')"
+          @update:model-value="saveChanges('Consent')"
           :disable="store.accessLevel < 3"
         >
           Consent to Release and Share Information

@@ -4,7 +4,7 @@
     <div class="flex h-full grow flex-col">
       <h1 class="m-3 text-blue-800">Corporations</h1>
       <div v-if="branch == 'Both'" class="flex justify-center">
-        <MyInputBranch label="Branch" v-model="branchSelected" noBothOption></MyInputBranch>
+        <MyInputBranch label="Branch" v-model="branchSelected" no-both-option></MyInputBranch>
       </div>
 
       <!-- List of Sites -->
@@ -22,9 +22,9 @@
         :id="id"
         :items="activities"
         :branch="branchSelected"
-        :rowSelected="rowSelected"
-        @onClose="showEditPlaceModal = false"
-        @onUpdate="onUpdate"
+        :row-selected="rowSelected"
+        @on-close="showEditPlaceModal = false"
+        @on-update="onUpdate"
       ></CorporationViewEdit>
     </div>
     <div></div>

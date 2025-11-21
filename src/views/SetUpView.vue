@@ -272,7 +272,7 @@ function goToLogin() {
                   label="Name"
                   class="grow"
                   v-model="userToEdit.Name"
-                  :isError="isErrorName"
+                  :is-error="isErrorName"
                 >
                 </MyInputText>
                 <MyInputText label="Middle" class="w-20" v-model="userToEdit.Middle"> </MyInputText>
@@ -280,7 +280,7 @@ function goToLogin() {
                   label="Last Name"
                   class="grow"
                   v-model="userToEdit.LastName"
-                  :isError="isErrorLastName"
+                  :is-error="isErrorLastName"
                 >
                 </MyInputText>
                 <MyInputText label="Nickname" class="w-28" v-model="userToEdit.Nickname">
@@ -294,7 +294,7 @@ function goToLogin() {
                     label="Email"
                     v-model="userToEdit.Email"
                     type-input="email"
-                    :isValid="isValidEmail"
+                    :is-valid="isValidEmail"
                   >
                   </MyInputText>
                 </div>
@@ -303,7 +303,7 @@ function goToLogin() {
                     v-model="userToEdit.DOB"
                     type-input="date"
                     label="DOB"
-                    :isError="isErrorDOB"
+                    :is-error="isErrorDOB"
                   ></MyInputText>
                 </div>
               </div>
@@ -344,7 +344,7 @@ function goToLogin() {
                 label="Re-enter Password"
                 v-model="password2"
                 placeholder="Password"
-                :isError="isNotValidPasswords"
+                :is-error="isNotValidPasswords"
                 class="mb-6"
                 autocomplete="off"
               />

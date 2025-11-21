@@ -94,15 +94,15 @@ async function emailAppLink() {
 <template>
   <div>
     <MyModal
-      :showModal="showModal"
+      :show-modal="showModal"
       title=""
       max-width="max-w-xl"
-      @onClose="$emit('onClose')"
-      @onOpenModal="onOpenModal()"
+      @on-close="$emit('onClose')"
+      @on-open-modal="onOpenModal()"
     >
       <div>
         <div>
-          <UserInfoEdit v-model="userToEdit" v-model:isAllValidInfo="isAllValid" />
+          <UserInfoEdit v-model="userToEdit" v-model:is-all-valid-info="isAllValid" />
           <UserCorporationEdit v-model="userCorpToEdit" :user="userToEdit" class="mt-5" />
         </div>
 

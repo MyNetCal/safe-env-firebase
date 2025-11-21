@@ -158,7 +158,7 @@ watchEffect(() => {
         label="Name"
         class="grow"
         v-model="model.Name"
-        :isError="isErrorName"
+        :is-error="isErrorName"
         @on-focus="searchBoxIsClosed = true"
         :deactivated="model.id != ''"
       >
@@ -168,7 +168,7 @@ watchEffect(() => {
         label="Last Name"
         class="grow"
         v-model="model.LastName"
-        :isError="isErrorLastName"
+        :is-error="isErrorLastName"
         :deactivated="model.id != ''"
       >
       </MyInputText>
@@ -182,21 +182,21 @@ watchEffect(() => {
           label="Email"
           v-model="model.Email"
           type-input="email"
-          v-model:isValid="isValidEmail"
+          v-model:is-valid="isValidEmail"
           :deactivated="model.id != ''"
           @update:model-value="checkEmailStatus"
         >
         </MyInputText>
       </div>
       <div class="w-fit">
-        <MySelectAuto v-model="countrySelected" label="Country" :items="countries" itemsLabel="label" @update:model-value="countryUpdated"/>
+        <MySelectAuto v-model="countrySelected" label="Country" :items="countries" items-label="label" @update:model-value="countryUpdated"/>
       </div>
       <div>
         <MyInputText
           v-model="model.DOB"
           type-input="date"
           label="DOB"
-          :isError="isErrorDOB"
+          :is-error="isErrorDOB"
         ></MyInputText>
       </div>
     </div>

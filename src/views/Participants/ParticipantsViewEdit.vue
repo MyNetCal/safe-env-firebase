@@ -213,14 +213,14 @@ function downloadFile(dirFile) {
 <template>
   <div>
     <MyModal
-      :showModal="showModal"
+      :show-modal="showModal"
       :title="
         id == ''
           ? 'New Participant @ ' + corpInfo?.Short
           : participant?.Name + ' @ ' + corpInfo?.Short
       "
-      @onClose="$emit('onClose')"
-      maxWidth="max-w-2xl"
+      @on-close="$emit('onClose')"
+      max-width="max-w-2xl"
     >
       <div v-if="participant">
         <!-- ********** -->
@@ -233,13 +233,13 @@ function downloadFile(dirFile) {
               v-model="participant.Name"
               label="Name"
               class="grow"
-              :isError="isErrorName"
+              :is-error="isErrorName"
             />
             <MyInputText
               v-model="participant.LastName"
               label="Last name"
               class="grow"
-              :isError="isErrorLastName"
+              :is-error="isErrorLastName"
             />
             <MyInputText v-model="participant.Nickname" label="Nickname" />
           </div>
@@ -251,8 +251,8 @@ function downloadFile(dirFile) {
             <MyInputText
               v-model="participant.DOB"
               label="DOB"
-              typeInput="date"
-              :isError="isErrorDOB"
+              type-input="date"
+              :is-error="isErrorDOB"
             />
             <MyInputCheckBox v-model="participant.Active" label="Active" />
           </div>

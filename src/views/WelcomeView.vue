@@ -106,7 +106,7 @@ function createNewUser() {
             v-model="password2"
             placeholder="Password"
             autocomplete="current-password"
-            :isError="isError"
+            :is-error="isError"
             class="mb-6"
           />
         </div>

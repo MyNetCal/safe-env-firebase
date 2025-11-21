@@ -339,7 +339,7 @@ uploadFile(() => {
                 </div>
               </div>
               <div v-else class="w-8"></div>
-              <div v-if="p.VotedBy?.length == 2 && p.UserId == store.loginUserId">
+              <div v-if="p.VotedBy?.length >= 2 && p.UserId == store.loginUserId">
                 <div
                   class="absolute cursor-pointer rounded bg-green-700 px-2 py-1 text-xs font-semibold text-green-100 shadow hover:bg-green-800"
                   @click="acceptSEC(p)"
@@ -482,7 +482,7 @@ uploadFile(() => {
             ></textarea>
             <div class="mt-6 px-2">
               I, __________________________________, have read the above guidelines and agree to
-              abide by them in connection with all Activities and Programs involving Minors. I
+              abide by them in connection with all activities and programs involving minors. I
               understand that I will be asked to review and sign my agreement with these guidelines
               annually.
             </div>

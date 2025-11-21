@@ -222,7 +222,7 @@ function deleteReq(index) {
                 :items="presetOptions"
                 items-key="id"
                 items-label="Title"
-                customValues
+                custom-values
                 class="max-h-60"
               >
               </MySelectAuto>
@@ -246,11 +246,11 @@ function deleteReq(index) {
               <div>{{ req.Title }}</div>
               <div>
                 <MyInputText
-                  @onFocus="editingExpirinig(index, req.Expiration)"
-                  typeInput="number"
+                  @on-focus="editingExpirinig(index, req.Expiration)"
+                  type-input="number"
                   v-model="editingMonths"
                   v-if="index == editingIndex"
-                  @onChange="inputMonths"
+                  @on-change="inputMonths"
                 ></MyInputText>
                 <div
                   v-else
@@ -285,7 +285,7 @@ function deleteReq(index) {
                 :items="presetOptions"
                 items-key="id"
                 items-label="Title"
-                customValues
+                custom-values
                 class="max-h-60"
               >
               </MySelectAuto>
@@ -309,11 +309,11 @@ function deleteReq(index) {
               <div>
                 <div v-if="index == editingIndex">
                   <MyInputText
-                    @onFocus="editingOngoingRow(index)"
-                    typeInput="date"
+                    @on-focus="editingOngoingRow(index)"
+                    type-input="date"
                     v-model="editingRow.Starts"
                     v-if="index == editingIndex"
-                    @onChange="inputOngoingRow"
+                    @on-change="inputOngoingRow"
                   >
                   </MyInputText>
                 </div>
@@ -324,11 +324,11 @@ function deleteReq(index) {
               <div>
                 <div v-if="index == editingIndex">
                   <MyInputText
-                    @onFocus="editingOngoingRow(index)"
-                    typeInput="date"
+                    @on-focus="editingOngoingRow(index)"
+                    type-input="date"
                     v-model="editingRow.Ends"
                     v-if="index == editingIndex"
-                    @onChange="inputOngoingRow"
+                    @on-change="inputOngoingRow"
                   >
                   </MyInputText>
                 </div>
@@ -339,11 +339,11 @@ function deleteReq(index) {
               <div>
                 <div v-if="index == editingIndex">
                   <MyInputText
-                    @onFocus="editingOngoingRow(index)"
-                    typeInput="number"
+                    @on-focus="editingOngoingRow(index)"
+                    type-input="number"
                     v-model="editingRow.Complete"
                     v-if="index == editingIndex"
-                    @onChange="inputOngoingRow"
+                    @on-change="inputOngoingRow"
                   >
                   </MyInputText>
                 </div>
@@ -354,11 +354,11 @@ function deleteReq(index) {
               <div>
                 <div v-if="index == editingIndex">
                   <MyInputText
-                    @onFocus="editingOngoingRow(index)"
-                    typeInput="number"
+                    @on-focus="editingOngoingRow(index)"
+                    type-input="number"
                     v-model="editingRow.Expiration"
                     v-if="index == editingIndex"
-                    @onChange="inputOngoingRow"
+                    @on-change="inputOngoingRow"
                   >
                   </MyInputText>
                 </div>

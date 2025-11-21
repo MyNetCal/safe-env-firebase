@@ -1,7 +1,7 @@
 <template>
   <div v-if="userCorp?.UserData">
     <MyModal
-      :showModal="showModal"
+      :show-modal="showModal"
       :title="
         userCorp.Status == store.USER_STATUS_PENDING
           ? userCorp.UserData.Nickname +
@@ -11,8 +11,8 @@
             store.USER_STATUS_PENDING
           : userCorp.UserData.Nickname + ' ' + userCorp.UserData.LastName + ' - ' + 'APPROVED'
       "
-      @onClose="$emit('onClose')"
-      @onOpenModal="onOpenModal()"
+      @on-close="$emit('onClose')"
+      @on-open-modal="onOpenModal()"
     >
       <div v-if="votesNeededFromCorp && votesNeededFromPrelature" class="text-slate-700">
         <div class="mb-6 text-center">

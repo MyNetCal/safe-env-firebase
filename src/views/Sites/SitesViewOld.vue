@@ -192,11 +192,11 @@ onUnmounted(() => {
   <!-- Editing Site -->
   <SitesViewEdit
     v-if="showSitesViewEdit"
-    :showModal="showSitesViewEdit"
+    :show-modal="showSitesViewEdit"
     :site="siteToEdit"
     :corp="currentCorp"
-    @onClose="showSitesViewEdit = false"
-    @onChangeTab="
+    @on-close="showSitesViewEdit = false"
+    @on-change-tab="
       (n) => {
         tabActive = n
         showSitesViewEdit = false
@@ -207,11 +207,11 @@ onUnmounted(() => {
   <!-- Show Site Info -->
   <SitesViewShow
     v-if="showSitesViewShow"
-    @onClose="showSitesViewShow = false"
-    :siteId="siteToEdit.id"
-    :corpId="currentCorpId"
-    :showModal="showSitesViewShow"
-    @onChangeTab="
+    @on-close="showSitesViewShow = false"
+    :site-id="siteToEdit.id"
+    :corp-id="currentCorpId"
+    :show-modal="showSitesViewShow"
+    @on-change-tab="
       (n) => {
         tabActive = n
         showSitesViewEdit = false
@@ -222,9 +222,9 @@ onUnmounted(() => {
   <!-- Search Sites -->
   <SitesViewSearch
     v-if="showSitesViewSearch"
-    :showModal="showSitesViewSearch"
+    :show-modal="showSitesViewSearch"
     :corp-id="currentCorpId"
-    @onClose="showSitesViewSearch = false"
+    @on-close="showSitesViewSearch = false"
   />
 </template>
 

@@ -8,7 +8,7 @@
           ><slot name="left"></slot>
         </SwitchLabel>
         <Switch
-          @update:modelValue="(n) => emit('update:modelValue', n)"
+          @update:model-value="(n) => emit('update:modelValue', n)"
           class="relative mx-2 inline-flex h-6 w-11 items-center rounded-full bg-slate-400"
         >
           <span

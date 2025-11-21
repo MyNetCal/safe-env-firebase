@@ -74,7 +74,7 @@ function onReadyToBeApproved() {
 
 <template>
   <div>
-    <MyModal :showModal="showModal" title="Editing Site" @onClose="$emit('onClose')">
+    <MyModal :show-modal="showModal" title="Editing Site" @on-close="$emit('onClose')">
       <div class="modal-height flex flex-col justify-between p-1">
         <!-- *********** -->
         <!-- Tab Headers -->

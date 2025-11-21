@@ -1,7 +1,7 @@
 <template>
   <!-- Regular Input -->
   <div class="relative mb-4 pt-0" :name="'input-' + label">
-    <my-info-modal :info="info" :infoTitle="infoTitle" :label="label">
+    <my-info-modal :info="info" :info-title="infoTitle" :label="label">
       <slot></slot>
     </my-info-modal>
 

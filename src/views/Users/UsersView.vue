@@ -148,38 +148,38 @@
       :user="userSelected"
       :id="id"
       :id-corp="currentCorpId"
-      @onClose="showUsersViewAdd = false"
+      @on-close="showUsersViewAdd = false"
     />
     <UsersViewScreening
       v-if="showUsersViewScreening"
       :show-modal="showUsersViewScreening"
       :user-corp-id="userSelectedId"
-      @onClose="showUsersViewScreening = false"
+      @on-close="showUsersViewScreening = false"
     />
     <div v-if="showUsersViewTrainning">
       <UsersViewTrainning
         :show-modal="showUsersViewTrainning"
         :user="userSelected"
-        @onClose="showUsersViewTrainning = false"
+        @on-close="showUsersViewTrainning = false"
       />
     </div>
 
     <UserAndCorpEdit
       :show-modal="showUserCorpEdit"
       :user-corp="userSelected"
-      @onClose="showUserCorpEdit = false"
+      @on-close="showUserCorpEdit = false"
     />
 
     <div v-if="showUsersViewVote">
       <UsersViewVote
         :show-modal="showUsersViewVote"
-        :userCorpId="userCorpIdSelected"
-        @onClose="showUsersViewVote = false"
-        @onUpdate="showUsersViewVote = false"
+        :user-corp-id="userCorpIdSelected"
+        @on-close="showUsersViewVote = false"
+        @on-update="showUsersViewVote = false"
       />
     </div>
 
-    <MyFab @click="addNewUser" color="bg-green-600" posY="bottom-14" v-if="isCommittee">
+    <MyFab @click="addNewUser" color="bg-green-600" pos-y="bottom-14" v-if="isCommittee">
       <FontAwesomeIcon icon="user-plus" />
     </MyFab>
   </div>

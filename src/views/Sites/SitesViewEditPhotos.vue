@@ -342,9 +342,9 @@ function updatePhoto() {
     <SitesViewEditPhotosCard
       v-if="showSitesViewEditPhotoCard"
       v-model="cardToEditInfo"
-      @onUpdate="updatePhoto"
-      :showModal="showSitesViewEditPhotoCard"
-      @onClose="showSitesViewEditPhotoCard = false"
+      @on-update="updatePhoto"
+      :show-modal="showSitesViewEditPhotoCard"
+      @on-close="showSitesViewEditPhotoCard = false"
     />
 
     <!-- Loading -->
@@ -366,7 +366,7 @@ function updatePhoto() {
     <teleport to="body" v-if="urlPhoto">
       <div class="absolute inset-0 z-50 flex place-items-center justify-center bg-slate-800/80">
         <img :src="urlPhoto" :width="imgSizeComputed.w" />
-        <MyFab @onClick="urlPhoto = null" class="top-2 bg-slate-500/60"
+        <MyFab @on-click="urlPhoto = null" class="top-2 bg-slate-500/60"
           ><FontAwesomeIcon icon="times" size="3x"
         /></MyFab>
       </div>

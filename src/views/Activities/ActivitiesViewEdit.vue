@@ -887,9 +887,9 @@ async function createPDF() {
 <template>
   <div>
     <MyModal
-      :showModal="showModal"
+      :show-modal="showModal"
       :title="actToEdit.id == '' ? 'New Activity' : actToEdit.Title + ' @ ' + siteName"
-      @onClose="$emit('onClose')"
+      @on-close="$emit('onClose')"
     >
       <div class="modal-height flex flex-col justify-between p-1">
         <!-- *********** -->
@@ -975,7 +975,7 @@ async function createPDF() {
                     <MyInputText
                       label="Title Activity"
                       v-model="actToEdit.Title"
-                      :isValid="isValidTitle"
+                      :is-valid="isValidTitle"
                     />
                   </div>
                 </div>
@@ -1083,19 +1083,19 @@ async function createPDF() {
               <!-- Starts, Ends -->
               <div class="mt-5 flex flex-wrap gap-1">
                 <MyInputText
-                  typeInput="datetime-local"
+                  type-input="datetime-local"
                   label="Starts"
                   v-model="actToEdit.Starts"
-                  :isValid="isValidStarts"
-                  @onChange="onInputStarts"
-                  @onBlur="onUpdateInfo"
+                  :is-valid="isValidStarts"
+                  @on-change="onInputStarts"
+                  @on-blur="onUpdateInfo"
                 />
                 <MyInputText
-                  typeInput="datetime-local"
+                  type-input="datetime-local"
                   label="Ends"
                   v-model="actToEdit.Ends"
-                  :isValid="isValidEnds"
-                  @onBlur="onUpdateInfo"
+                  :is-valid="isValidEnds"
+                  @on-blur="onUpdateInfo"
                 />
               </div>
               <div
@@ -1281,10 +1281,10 @@ async function createPDF() {
                 <MySelectAuto
                   v-model="staffToAdd"
                   :items="allStaffNotSelected"
-                  itemsKey="id"
-                  itemsLabel="Name"
-                  isFussy
-                  @update:modelValue="AddStaff"
+                  items-key="id"
+                  items-label="Name"
+                  is-fussy
+                  @update:model-value="AddStaff"
                 />
               </div>
               <div>
@@ -1469,10 +1469,10 @@ async function createPDF() {
                 <MySelectAuto
                   v-model="participantToAdd"
                   :items="allParticipantsNotSelected"
-                  itemsKey="id"
-                  itemsLabel="Name"
-                  isFussy
-                  @update:modelValue="AddParticipant"
+                  items-key="id"
+                  items-label="Name"
+                  is-fussy
+                  @update:model-value="AddParticipant"
                 />
               </div>
               <table class="">
@@ -1508,8 +1508,8 @@ async function createPDF() {
                 :items="adultParticipants"
                 items-key="id"
                 items-label="Name"
-                customValues
-                isFussy
+                custom-values
+                is-fussy
                 class="max-h-60"
                 label="Name"
                 info

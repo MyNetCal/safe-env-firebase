@@ -21,7 +21,7 @@ function onSave() {
 
 <template>
   <div class="">
-    <MyModal :showModal="showModal" title="Editing" @onClose="$emit('onClose')" maxWidth="max-w-md">
+    <MyModal :show-modal="showModal" title="Editing" @on-close="$emit('onClose')" max-width="max-w-md">
       <div class="mx-auto max-w-md p-5">
         <div>
           <MyInputText label="Label" v-model="card.Label" />

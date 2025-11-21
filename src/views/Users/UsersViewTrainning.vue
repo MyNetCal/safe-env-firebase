@@ -1,13 +1,13 @@
 <template>
   <div>
     <MyModal
-      :showModal="showModal"
+      :show-modal="showModal"
       :title="
         user.UserData?.Nickname + ' ' + user.UserData?.LastName + ' @ ' + user?.CorporationName
       "
-      maxWidth="max-w-4xl"
-      @onClose="$emit('onClose')"
-      @onOpenModal="onOpenModal()"
+      max-width="max-w-4xl"
+      @on-close="$emit('onClose')"
+      @on-open-modal="onOpenModal()"
     >
       <div class="relative">
         <div class="m-2 text-center">

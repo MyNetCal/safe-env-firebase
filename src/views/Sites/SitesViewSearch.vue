@@ -38,7 +38,7 @@ function addSite() {
 </script>
 
 <template>
-  <MyModal :showModal="showModal" title="" @onClose="$emit('onClose')">
+  <MyModal :show-modal="showModal" title="" @on-close="$emit('onClose')">
     <div class="content flex flex-col justify-between">
       <h2 class="mb-5 text-center">Search</h2>
 
@@ -46,7 +46,7 @@ function addSite() {
         <MySelectAuto
           label="Sites"
           :items="items"
-          itemsLabel="Name"
+          items-label="Name"
           v-model="siteSelected"
         ></MySelectAuto>
         <MyButton v-if="siteSelected.id" @click="addSite">Add Site</MyButton>

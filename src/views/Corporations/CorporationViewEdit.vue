@@ -1,11 +1,11 @@
 <template>
   <div>
     <MyModal
-      :showModal="showModal"
+      :show-modal="showModal"
       title="Corporation"
-      maxWidth="max-w-2xl"
-      @onClose="$emit('onClose')"
-      @onOpenModal="onOpenModal()"
+      max-width="max-w-2xl"
+      @on-close="$emit('onClose')"
+      @on-open-modal="onOpenModal()"
     >
       <div class="w-full flex-col">
         <!--Name, Short -->
@@ -14,10 +14,10 @@
             label="Full Name"
             class="grow"
             v-model.trim="dataToEdit.Name"
-            :isError="isErrorName"
+            :is-error="isErrorName"
           >
           </MyInputText>
-          <MyInputText label="Short Name" v-model.trim="dataToEdit.Short" :isError="isErrorShort">
+          <MyInputText label="Short Name" v-model.trim="dataToEdit.Short" :is-error="isErrorShort">
           </MyInputText>
         
         </div>
@@ -138,7 +138,7 @@
         ></textarea>
         <div class="mt-6 px-2">
           I, __________________________________, have read the above guidelines and agree to abide
-          by them in connection with all Activities and Programs involving Minors. I understand that
+          by them in connection with all activities and programs involving minors. I understand that
           I will be asked to review and sign my agreement with these guidelines annually.
         </div>
       </div>

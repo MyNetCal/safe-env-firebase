@@ -343,7 +343,7 @@ async function saveTraining() {
                 :items="presetOptions"
                 items-key="id"
                 items-label="Title"
-                customValues
+                custom-values
                 class="max-h-60"
                 label="Training"
                 info
@@ -357,7 +357,7 @@ async function saveTraining() {
                     <MyInputText
                       v-model="newStartsTraining"
                       label="Starts on"
-                      typeInput="date"
+                      type-input="date"
                       tabindex="0"
                       info
                       info-title="Starts"
@@ -370,7 +370,7 @@ async function saveTraining() {
                     <MyInputText
                       v-model="newEndsTraining"
                       label="Ends on"
-                      typeInput="date"
+                      type-input="date"
                       info
                       info-title="Ends"
                       :is-error="isErrorEndsTraining"
@@ -383,7 +383,7 @@ async function saveTraining() {
                   <MyInputText
                     v-model="newCompletedDays"
                     label="Completed on [days]"
-                    typeInput="number"
+                    type-input="number"
                     info-title="Complete [days]"
                     info
                     class="w-32"
@@ -396,7 +396,7 @@ async function saveTraining() {
                   <MyInputText
                     v-model="newExpirationMonths"
                     label="Expires in [months]"
-                    typeInput="number"
+                    type-input="number"
                     info
                     info-title="Expires in [months]"
                     class="w-32"

@@ -1,10 +1,10 @@
 <template>
   <div>
     <MyModal
-      :showModal="showModal"
+      :show-modal="showModal"
       title=""
-      @onClose="$emit('onClose')"
-      @onOpenModal="onOpenModal()"
+      @on-close="$emit('onClose')"
+      @on-open-modal="onOpenModal()"
     >
       <div>
         <!-- Buttons -->

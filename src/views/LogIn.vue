@@ -23,7 +23,7 @@
             v-model="password"
             placeholder="Password"
             autocomplete="current-password"
-            :isError="isError"
+            :is-error="isError"
             class=""
           />
           

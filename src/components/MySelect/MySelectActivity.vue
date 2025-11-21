@@ -39,7 +39,7 @@ const optionSelected = computed({
     :label="label"
     :info="info"
     :info-title="infoTitle"
-    :isError="isError"
+    :is-error="isError"
   >
     <slot></slot>
   </MySelectAuto>

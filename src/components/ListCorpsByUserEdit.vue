@@ -1,17 +1,17 @@
 <template>
   <div>
     <MyModal
-      @onOpenModal="openModal"
-      :showModal="showModal"
+      @on-open-modal="openModal"
+      :show-modal="showModal"
       :title="
         corp.UserRef?.Name + ' ' + corp.UserRef?.LastName + ' @ ' + corpToEdit.CorporationName
       "
-      @onClose="emit('onClose')"
-      maxWidth="max-w-xl"
+      @on-close="emit('onClose')"
+      max-width="max-w-xl"
     >
       <div>
         <div class="mt-3">
-          <UserCorporationEdit v-model="corpToEdit" :user="user" @onClose="emit('onClose')" />
+          <UserCorporationEdit v-model="corpToEdit" :user="user" @on-close="emit('onClose')" />
         </div>
 
         <!-- Buttons -->

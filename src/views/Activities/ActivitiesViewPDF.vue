@@ -96,7 +96,7 @@ getActivity()
 
 <template>
   <div>
-    <MyModal :showModal="showModal" title="" @onClose="$emit('onClose')">
+    <MyModal :show-modal="showModal" title="" @on-close="$emit('onClose')">
       <div class="modal-height flex flex-col justify-between">
         <!-- Content -->
         <div class="grow">

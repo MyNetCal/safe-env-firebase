@@ -137,7 +137,7 @@ function uploadFilesServer() {
                 <div class="mx-auto mt-2 w-fit">
                   <MyInputText
                     label="Completion Date"
-                    typeInput="date"
+                    type-input="date"
                     v-model="newDate"
                     class="w-fit"
                   ></MyInputText>

@@ -1,8 +1,8 @@
 <template>
   <div>
     <MyModal
-      :showModal="modelValue"
-      @onClose="$emit('update:modelValue', false)"
+      :show-modal="modelValue"
+      @on-close="$emit('update:modelValue', false)"
       :title="training.Title"
     >
       <div class="mx-auto w-fit text-center">
@@ -34,7 +34,7 @@
           <div class="mx-auto mt-2 w-fit">
             <MyInputText
               label="Completion Date"
-              typeInput="date"
+              type-input="date"
               v-model="newDate"
               class="w-fit"
             ></MyInputText>

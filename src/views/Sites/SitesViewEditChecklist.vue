@@ -96,9 +96,9 @@ function updateTask() {
     <SitesViewEditCheckListCard
       v-if="showSitesViewEditCheckListCard"
       v-model="cardToEditInfo"
-      @onUpdate="updateTask"
-      :showModal="showSitesViewEditCheckListCard"
-      @onClose="showSitesViewEditCheckListCard = false"
+      @on-update="updateTask"
+      :show-modal="showSitesViewEditCheckListCard"
+      @on-close="showSitesViewEditCheckListCard = false"
     />
   </div>
 </template>

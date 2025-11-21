@@ -95,7 +95,7 @@ const yPx = computed(() => y.value + 'px')
       :corp="corpToEdit"
       :user="user"
       :corp-id="idToEdit"
-      @onClose="showEditCorp = false"
+      @on-close="showEditCorp = false"
     />
   </div>
 </template>

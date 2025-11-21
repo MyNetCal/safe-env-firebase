@@ -1,7 +1,7 @@
 <template>
   <div>
     <MyModal
-      :showModal="showModal"
+      :show-modal="showModal"
       :title="
         userCorp?.UserRef?.Nickname +
         ' ' +
@@ -9,8 +9,8 @@
         ' @ ' +
         userCorp?.CorporationName
       "
-      maxWidth="max-w-2xl"
-      @onClose="$emit('onClose')"
+      max-width="max-w-2xl"
+      @on-close="$emit('onClose')"
     >
       <div class="relative">
         <div class="m-2 text-center">

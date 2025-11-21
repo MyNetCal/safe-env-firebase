@@ -1,11 +1,11 @@
 <template>
   <div>
     <MyModal
-      :showModal="showModal"
+      :show-modal="showModal"
       title="Training History"
-      @onClose="$emit('onClose')"
-      @onOpenModal="onOpenModal()"
-      maxWidth="max-w-md"
+      @on-close="$emit('onClose')"
+      @on-open-modal="onOpenModal()"
+      max-width="max-w-md"
     >
       <div class="">
         <div class="my-4">
@@ -32,7 +32,7 @@
             <div>New Training Completion Date</div>
             <div class="flex justify-center">
               <div class="w-40 text-center">
-                <MyInputText v-model="newDate" typeInput="date"></MyInputText>
+                <MyInputText v-model="newDate" type-input="date"></MyInputText>
               </div>
             </div>
           </div>

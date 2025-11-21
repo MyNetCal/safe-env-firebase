@@ -127,7 +127,7 @@ function showOriginalPhoto(photo) {
 </script>
 
 <template>
-  <MyModal :showModal="showModal" title="" @onClose="$emit('onClose')">
+  <MyModal :show-modal="showModal" title="" @on-close="$emit('onClose')">
     <div class="modal-height flex flex-col justify-between">
       <!-- ******* -->
       <!-- Votes Section -->
@@ -199,7 +199,7 @@ function showOriginalPhoto(photo) {
         <MyDisclosureWrapper>
           <!-- General Info -->
           <MyDisclosure open>
-            <template v-slot:header>General Info</template>
+            <template #header>General Info</template>
             <div>
               <div>{{ site.Name }}</div>
               <div>{{ site.Address }}</div>
@@ -209,7 +209,7 @@ function showOriginalPhoto(photo) {
 
           <!-- Details -->
           <MyDisclosure>
-            <template v-slot:header>Details</template>
+            <template #header>Details</template>
             <div>
               <div class="mb-2">
                 <div class="font-semibold"><span>&bull; </span>Lodging Arrangements</div>
@@ -230,7 +230,7 @@ function showOriginalPhoto(photo) {
 
           <!-- Photos -->
           <MyDisclosure>
-            <template v-slot:header>Photos</template>
+            <template #header>Photos</template>
             <!-- List of Cards -->
             <div v-if="site?.Photos">
               <template v-for="(photo, index) in site.Photos" :key="photo.PhotoName">
@@ -261,7 +261,7 @@ function showOriginalPhoto(photo) {
 
           <!-- Checklist -->
           <MyDisclosure>
-            <template v-slot:header>Checklist</template>
+            <template #header>Checklist</template>
             <div class="mx-auto max-w-md">
               <h2 class="mb-3 text-center text-slate-600">Tasks</h2>
               <template v-for="(task, index) in site?.CheckList" :key="task.Label">
@@ -303,7 +303,7 @@ function showOriginalPhoto(photo) {
       <teleport to="body" v-if="urlPhoto">
         <div class="absolute inset-0 z-50 flex place-items-center justify-center bg-slate-800/80">
           <img :src="urlPhoto" :width="imgSizeComputed.w" />
-          <MyFab @onClick="urlPhoto = null" class="top-2 bg-slate-500/60"
+          <MyFab @on-click="urlPhoto = null" class="top-2 bg-slate-500/60"
             ><FontAwesomeIcon icon="times" size="3x"
           /></MyFab>
         </div>

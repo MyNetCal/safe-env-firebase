@@ -1,7 +1,7 @@
 <template>
   <Listbox
-    :modelValue="modelValue"
-    @update:modelValue="(value) => emit('update:modelValue', value)"
+    :model-value="modelValue"
+    @update:model-value="(value) => emit('update:modelValue', value)"
     by="id"
   >
     <div class="relative w-fit">

@@ -1,14 +1,14 @@
 <template>
   <div>
     <MyModal
-      :showModal="showModal"
+      :show-modal="showModal"
       :title="titleWindow"
-      maxWidth="max-w-xl"
-      @onClose="$emit('onClose')"
-      @onOpenModal="onOpenModal"
+      max-width="max-w-xl"
+      @on-close="$emit('onClose')"
+      @on-open-modal="onOpenModal"
     >
       <div class="content">
-        <UserInfoEdit v-model="dataToEdit" v-model:isAllValidInfo="isAllValid" />
+        <UserInfoEdit v-model="dataToEdit" v-model:is-all-valid-info="isAllValid" />
         <!-- Buttons -->
         <div class="mb-4 flex justify-center mt-2">
           <MyButton @click="$emit('onClose')" color="bg-blue-600"> Close </MyButton>

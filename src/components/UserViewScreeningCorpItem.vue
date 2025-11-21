@@ -748,9 +748,9 @@ function onStaffRecommended() {
               <MySelectAuto
                 v-model="staffRecommending"
                 :items="allScreeningStaff"
-                itemsKey="id"
-                itemsLabel="Name"
-                isFussy
+                items-key="id"
+                items-label="Name"
+                is-fussy
                 class="max-h-[180px]"
                 label="Select screening staff to ask for recommendation"
               />

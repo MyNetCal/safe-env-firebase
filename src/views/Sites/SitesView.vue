@@ -224,9 +224,9 @@ onUnmounted(() => {
   <!-- Search Sites -->
   <SitesViewSearch
     v-if="showSitesViewSearch"
-    :showModal="showSitesViewSearch"
+    :show-modal="showSitesViewSearch"
     :corp-id="currentCorpId"
-    @onClose="showSitesViewSearch = false"
+    @on-close="showSitesViewSearch = false"
   />
 </template>
 

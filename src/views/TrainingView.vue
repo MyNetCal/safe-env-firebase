@@ -356,7 +356,7 @@ function deleteTraining() {
                   :items="presetOptions"
                   items-key="id"
                   items-label="Title"
-                  customValues
+                  custom-values
                   class="max-h-60"
                   label="Training"
                   info
@@ -367,7 +367,7 @@ function deleteTraining() {
                     <MyInputText
                       v-model="newStartsTraining"
                       label="Starts on"
-                      typeInput="date"
+                      type-input="date"
                       info
                       info-title="Starts"
                       :is-error="isErrorStartTraining"
@@ -379,7 +379,7 @@ function deleteTraining() {
                     <MyInputText
                       v-model="newEndsTraining"
                       label="Ends on"
-                      typeInput="date"
+                      type-input="date"
                       info
                       info-title="Ends"
                       :is-error="isErrorEndsTraining"
@@ -392,7 +392,7 @@ function deleteTraining() {
                     <MyInputText
                       v-model="newCompletedDays"
                       label="Completed in [days]"
-                      typeInput="number"
+                      type-input="number"
                       info-title="Complete [days]"
                       info
                       class="w-32"
@@ -406,7 +406,7 @@ function deleteTraining() {
                     <MyInputText
                       v-model="newExpirationMonths"
                       label="Expires in [months]"
-                      typeInput="number"
+                      type-input="number"
                       info
                       info-title="Expires in [months]"
                       class="w-32"

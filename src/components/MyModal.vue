@@ -18,7 +18,7 @@
                 class="flex items-start justify-between rounded-t border-b border-solid border-slate-200 bg-slate-200 py-1 pl-3"
               >
                 <h5 class="text-slate-700">{{ title }}</h5>
-                <span v-on:click="$emit('onClose')" class="cursor-pointer pr-3">
+                <span @click="$emit('onClose')" class="cursor-pointer pr-3">
                   <font-awesome-icon
                     :icon="['far', 'window-close']"
                     size="lg"

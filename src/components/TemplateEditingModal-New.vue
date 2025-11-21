@@ -1,6 +1,6 @@
 <template>
   <div>
-    <MyModal :showModal="modelValue" @onClose="$emit('update:modelValue', false)" title="Training">
+    <MyModal :show-modal="modelValue" @on-close="$emit('update:modelValue', false)" title="Training">
       <div>
        
         <!-- Buttons -->

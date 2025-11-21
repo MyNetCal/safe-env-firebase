@@ -183,7 +183,7 @@ async function reactivateUser() {
 
       <!-- Select Corporation -->
       <div v-if="model.id == '' && store.isUserBoardPrelature">
-        <MySelectCorporation v-model="model.CorporationId" @newEntry="newSelCorporation" />
+        <MySelectCorporation v-model="model.CorporationId" @new-entry="newSelCorporation" />
       </div>
 
       <div class="flex flex-wrap gap-x-2">
@@ -193,7 +193,7 @@ async function reactivateUser() {
             v-model="model.Role"
             :id="null"
             label="Role (Choose the first option that applies)"
-            :isError="isErrorRole"
+            :is-error="isErrorRole"
             @update:model-value="roleSelected"
             :disabled="!isCommittee"
             info
@@ -245,7 +245,8 @@ async function reactivateUser() {
           v-if="
             store.getFunction(model.Role) == store.FUNCTION_BOARD ||
             store.getFunction(model.Role) == store.FUNCTION_DIRECTOR ||
-            model.Role == store.ROLE_LOW_ACCESS_STAFF
+            model.Role == store.ROLE_LOW_ACCESS_STAFF ||
+            model.Role == store.ROLE_STAFF
           "
           v-model="model.Screening"
           label="Screening staff"
