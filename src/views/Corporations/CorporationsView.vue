@@ -10,7 +10,21 @@
       <!-- List of Sites -->
       <div class="mt-5 flex h-full justify-center">
         <div>
-          <MyTable :fields="fieldsTable" :rows="corporations" @on-click="editCorporation"></MyTable>
+          <table class="table-auto border-collapse border border-slate-400">
+            <thead>
+              <tr>
+                <th v-for="field in fieldsTable" :key="field.key" class="border border-slate-300 px-4 py-2">{{ field.label }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="corp in corporations" :key="corp.id" @click="editCorporation({ rowInfo: corp })" class="cursor-pointer hover:bg-slate-100">
+                <td class="border border-slate-300 px-4 py-2 text-left">{{ corp.Short }}</td>
+                <td class="border border-slate-300 px-4 py-2 text-left max-w-64">{{ corp.Name }}</td>
+                <td class="border border-slate-300 px-4 py-2 text-left">{{ corp.Entity }}</td>
+              </tr>
+            </tbody>
+          </table>
+          
         </div>
       </div>
 
@@ -33,7 +47,6 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import MyTable from '@/components/MyTable.vue'
 import MyFab from '@/components/MyFab.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import MyInputBranch from '@/components/MyInputs/MyInputBranch.vue'
@@ -49,7 +62,11 @@ const store = useGeneralStore()
 // Filter corporations by branch
 const corporationsQuery = computed(() => {
   const selectedBranch = store.currentBranch === 'Both' ? branchSelected.value : store.currentBranch
-  return query(collection(db, 'Corporations'), where('Branch', '==', selectedBranch), orderBy('Name'))
+  return query(
+    collection(db, 'Corporations'),
+    where('Branch', '==', selectedBranch),
+    orderBy('Short')
+  )
 })
 
 const corporations = useCollection(corporationsQuery)
@@ -62,13 +79,14 @@ const rowSelected = ref({})
 
 const fieldsTable = [
   {
-    key: 'Name',
-    label: 'Name'
-  },
-  {
     key: 'Short',
     label: 'Short Name'
   },
+  {
+    key: 'Name',
+    label: 'Name'
+  },
+
   {
     key: 'Entity',
     label: 'Entity'
@@ -90,7 +108,6 @@ function editCorporation(corporation) {
 function onUpdate() {
   showEditPlaceModal.value = false
 }
-
 </script>
 
 <style scoped></style>

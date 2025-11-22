@@ -18,7 +18,8 @@ const {
   loginUserActiveCorporationCollection,
   loginUserId,
   loginUserCorporation,
-  accessLevelName
+  accessLevelName,
+  currentBranch
 } = storeToRefs(storeGeneral)
 
 const db = useFirestore()
@@ -88,8 +89,8 @@ function deleteMessage(id) {
       <div
         class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-300 px-3 text-slate-800 print:hidden"
       >
-        <div>v.6.7.6</div>
-        <div class="flex">{{ accessLevelName }} [{{ storeGeneral.accessLevel }}]</div>
+        <div>v.6.8</div>
+        <div class="flex">{{ accessLevelName }} [{{ storeGeneral.accessLevel }}] - {{ currentBranch }}</div>
       </div>
     </div>
 

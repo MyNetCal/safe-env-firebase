@@ -31,7 +31,7 @@ const userSelected = ref({})
 async function getAllUsersNames() {
   allusers.value = []
   const snapshot = await getDocs(
-    query(collection(db, 'Users'), where('Branch', '==', store.currentBranch))
+    query(collection(db, 'Users'), where('Branch', 'in', [store.currentBranch, 'Both']))
   )
   snapshot.forEach((d) => {
     allusers.value.push({

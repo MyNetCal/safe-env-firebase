@@ -38,7 +38,7 @@ function initUser(user) {
     Country: 'United States',
     CurrentUsersCorporationsId: '',
     DOB: '2000-01-01', // format: 'yyyy-mm-dd'
-    Branch: 'Men', // values: Men, Women, Both
+    Branch: store.currentBranch || 'Men', // values: Men, Women, Both
     EmailSent: false,
     LastLogin: '',
     ScreeningFilesRecommendation: [],
@@ -472,7 +472,7 @@ function initParticipant(participant = {}) {
     Active: true,
     ActivityGroups: [],
     CorpId: '',
-    Branch: store.loginUser.Branch, // values: Men, Women, Both
+    Branch: store.currentBranch, // values: Men, Women, Both
     ...newPart
   }
 }

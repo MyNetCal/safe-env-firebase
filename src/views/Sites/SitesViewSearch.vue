@@ -17,7 +17,7 @@ const store = useGeneralStore()
 const querySites = computed(() =>
   query(
     collection(db, 'Sites'),
-    where('Branch', 'in', [store.loginUser.Branch, 'Both']),
+    where('Branch', 'in', [store.currentBranch, 'Both']),
     where('Status', '==', 'Approved'),
     orderBy('Name')
   )
