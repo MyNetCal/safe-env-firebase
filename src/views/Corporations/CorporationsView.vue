@@ -40,18 +40,23 @@ import MyInputBranch from '@/components/MyInputs/MyInputBranch.vue'
 import CorporationViewEdit from '../Corporations/CorporationViewEdit.vue'
 
 import { useFirestore, useCollection } from 'vuefire'
-import { collection, orderBy, query } from 'firebase/firestore'
+import { collection, orderBy, query, where } from 'firebase/firestore'
 import { useGeneralStore } from '@/stores/general'
 
 const db = useFirestore()
-//const activities = useCollection(query(collection(db, 'Activities'), orderBy('Value')))
-const q = query(collection(db, 'Corporations'), orderBy('Name'))
-const corporations = useCollection(q)
-
 const store = useGeneralStore()
+
+// Filter corporations by branch
+const corporationsQuery = computed(() => {
+  const selectedBranch = store.currentBranch === 'Both' ? branchSelected.value : store.currentBranch
+  return query(collection(db, 'Corporations'), where('Branch', '==', selectedBranch), orderBy('Name'))
+})
+
+const corporations = useCollection(corporationsQuery)
+
 const activities = computed(() => store.activities)
-const branchSelected = ref('Men')
-const branch = ref('Men')
+const branchSelected = ref(store.currentBranch === 'Both' ? 'Men' : store.currentBranch)
+const branch = computed(() => store.currentBranch)
 const id = ref('0')
 const rowSelected = ref({})
 

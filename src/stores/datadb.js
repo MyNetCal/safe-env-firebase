@@ -472,6 +472,7 @@ function initParticipant(participant = {}) {
     Active: true,
     ActivityGroups: [],
     CorpId: '',
+    Branch: store.loginUser.Branch, // values: Men, Women, Both
     ...newPart
   }
 }

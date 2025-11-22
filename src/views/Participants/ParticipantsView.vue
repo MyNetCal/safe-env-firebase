@@ -44,7 +44,11 @@ function editParticipant(id) {
 // ****************************
 
 const particiapntsRef = computed(() =>
-  query(collection(db, 'Participants'), where('CorpId', '==', currentCorpId.value))
+  query(
+    collection(db, 'Participants'), 
+    where('CorpId', '==', currentCorpId.value),
+    where('Branch', '==', store.currentBranch)
+  )
 )
 
 const participants = ref([])

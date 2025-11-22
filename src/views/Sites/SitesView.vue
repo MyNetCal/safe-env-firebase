@@ -69,7 +69,11 @@ function onUpdateGeneralInfo() {
 const sites = ref([])
 
 const q = computed(() =>
-  query(collection(db, 'Sites'), where('CorpIds', 'array-contains', currentCorpId.value))
+  query(
+    collection(db, 'Sites'), 
+    where('CorpIds', 'array-contains', currentCorpId.value),
+    where('Branch', '==', store.currentBranch)
+  )
 )
 
 let unsubSites = null
