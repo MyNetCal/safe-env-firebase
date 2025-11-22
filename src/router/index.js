@@ -86,6 +86,11 @@ const router = createRouter({
       name: 'Setup',
       component: () => import('../views/SetUpView.vue'),
       props: true
+    },
+    {
+      path: '/migration',
+      name: 'Migration',
+      component: () => import('../views/MigrationView.vue')
     }
   ]
 })

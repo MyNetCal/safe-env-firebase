@@ -1,5 +1,9 @@
 import { collection, getDocs, updateDoc, doc } from 'firebase/firestore'
-import { db } from './firebase' // Adjust import path as needed
+import { getFirestore } from 'firebase/firestore'
+import { firebaseApp } from './firebase.js'
+
+// Initialize Firestore
+const db = getFirestore(firebaseApp)
 
 // Migration script to add Branch field to existing records
 export async function migrateBranchFields() {
