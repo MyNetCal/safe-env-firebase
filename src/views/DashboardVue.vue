@@ -180,15 +180,17 @@ function getBackgroundChecksNeedRequest() {
       }
     })
     needBackgroundRequest.value = {}
-    for (let index = 0; index < userCorps.length; index++) {
-      const userCorp = userCorps[index]
-      const userRef = await getDoc(doc(db, 'Users', userCorp.UserId))
-      const corpRef = await getDoc(doc(db, 'Corporations', userCorp.CorporationId))
-      const user = userRef.data()
-      const corp = corpRef.data()
+    // Collect all fetch promises
+    const fetchPromises = userCorps.map(async (userCorp) => {
+      const [userSnap, corpSnap] = await Promise.all([
+        getDoc(doc(db, 'Users', userCorp.UserId)),
+        getDoc(doc(db, 'Corporations', userCorp.CorporationId))
+      ])
+      const user = userSnap.data()
+      const corp = corpSnap.data()
       userCorp.CorpInfo = corp
-      if (!user.ScreeningBackgroundCheckRequested) continue
-      needBackgroundRequest.value[user.id] = {
+      if (!user.ScreeningBackgroundCheckRequested) return null
+      return {
         id: user.id,
         Name: user?.Name,
         LastName: user?.LastName,
@@ -197,14 +199,22 @@ function getBackgroundChecksNeedRequest() {
         Country: user?.Country,
         ExpiresOn: userCorp.BackgroundCheckExpiresOn,
         ScreeningBackgroundCheckRenewalRequested: user.ScreeningBackgroundCheckRenewalRequested,
-        ScreeningBackgroundCheckRequested: user.ScreeningBackgroundCheckRequested
+        ScreeningBackgroundCheckRequested: user.ScreeningBackgroundCheckRequested,
+        Corps: [userCorp]
       }
-      if (!needBackgroundRequest.value[user.id].Corps) {
-        needBackgroundRequest.value[user.id].Corps = []
+    })
+    // Wait for all fetches to complete
+    const results = await Promise.all(fetchPromises)
+    // Build the final object
+    results.forEach((userData) => {
+      if (userData) {
+        if (!needBackgroundRequest.value[userData.id]) {
+          needBackgroundRequest.value[userData.id] = userData
+        } else {
+          needBackgroundRequest.value[userData.id].Corps.push(userData.Corps[0])
+        }
       }
-      needBackgroundRequest.value[user.id].Corps.push(userCorp)
-      // Updated array
-    }
+    })
   })
 }
 

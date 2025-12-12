@@ -6,7 +6,7 @@ import { collection, orderBy, query, where } from 'firebase/firestore'
 import { useGeneralStore } from '@/stores/general'
 
 const props = defineProps({
-  modelValue: String,
+  modelValue: { type: String, default: '' },
   info: { type: Boolean, default: false },
   infoTitle: { type: String, default: '' }
 })
@@ -15,7 +15,7 @@ const db = useFirestore()
 const store = useGeneralStore()
 
 const branch = computed(
-  () => (store.loginUser.Branch?.charAt(0).toUpperCase() + store.loginUser.Branch?.slice(1)) || 'Men'
+  () => (store.currentBranch) || 'Men'
 )
 
 const queryCorp = computed(() =>
@@ -23,7 +23,7 @@ const queryCorp = computed(() =>
     ? query(
         collection(db, 'Corporations'),
         where('Branch', 'in', [branch.value, 'Both']),
-        orderBy('Name')
+        orderBy('Short')
       )
     : null
 )
