@@ -253,6 +253,11 @@ function deleteDenialRecommendation() {
   })
 }
 
+function requestAnotherRecommendation() {
+  deleteDenialRecommendation()
+  openDialogRecommendation()
+}
+
 // ************************
 // * File Upload Dialog
 // ************************
@@ -450,7 +455,7 @@ function openFileReference() {
           </div>
 
           <!-- Button to request recommendtion -->
-          <div class="flex justify-center">
+          <div v-if="!hasRecommendation" class="flex justify-center">
             <div
               v-if="!userCorp.ScreenRecommendationStaffRequested"
               class="small-button"
@@ -465,20 +470,19 @@ function openFileReference() {
                   {{ dayjs(userCorp.ScreenRecommendationStaffRequested.PostDate).format('MMM. D') }}
                   from
                   {{ userCorp.ScreenRecommendationStaffRequested.UserName }}
-                  <div
-
-                  v-if="userCorp.ScreenRecommendationStaffRequested.Denied"
-                    class="cursor-pointer px-1 text-slate-600"                    @click="deleteDenialRecommendation"
-                  >
-                    <FontAwesomeIcon icon="trash" />
-                  </div>
                 </div>
 
                 <div
                   v-if="userCorp.ScreenRecommendationStaffRequested.Denied"
-                  class="rounded bg-red-700 py-0.5 text-white"
+                  class="mt-1 rounded bg-red-700 py-0.5 text-white"
                 >
                   Denied
+                  <button
+                    class="ml-2 rounded bg-white px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-100"
+                    @click="requestAnotherRecommendation"
+                  >
+                    Request Another
+                  </button>
                 </div>
               </div>
             </div>

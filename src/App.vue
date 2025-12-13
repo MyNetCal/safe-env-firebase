@@ -4,12 +4,13 @@ import { useGeneralStore } from './stores/general'
 import { storeToRefs } from 'pinia'
 import SideMenu from './components/SideMenu.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
-import { useCollection, useFirestore } from 'vuefire'
+import { useCollection, useFirestore, useFirebaseAuth } from 'vuefire'
 import MyListBox from './components/MyInputs/MyListBox.vue'
 import { computed, ref, watchEffect } from 'vue'
 import { collection, deleteDoc, doc, updateDoc } from 'firebase/firestore'
 import { useMediaQuery } from '@vueuse/core'
 import MyInfoMessage from './components/MyInfoMessage.vue'
+import { updateEmail, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth'
 
 const storeGeneral = useGeneralStore()
 const {
@@ -23,8 +24,18 @@ const {
 } = storeToRefs(storeGeneral)
 
 const db = useFirestore()
+const auth = useFirebaseAuth()
 
 const isLargeScreen = useMediaQuery('(min-width: 640px)')
+
+// User menu dropdown
+const showUserMenu = ref(false)
+const showEmailModal = ref(false)
+const newEmail = ref('')
+const currentPassword = ref('')
+const emailChangeMessage = ref('')
+const emailChangeMessageClass = ref('')
+const isChangingEmail = ref(false)
 
 const selUserCorp = ref('')
 watchEffect(() => {
@@ -46,10 +57,64 @@ const messagesPending = useCollection(messagesPendingRef)
 function deleteMessage(id) {
   deleteDoc(doc(db, 'Users', loginUserId.value, 'MessagesPending', id))
 }
+
+function closeEmailModal() {
+  showEmailModal.value = false
+  newEmail.value = ''
+  currentPassword.value = ''
+  emailChangeMessage.value = ''
+  emailChangeMessageClass.value = ''
+}
+
+async function handleEmailChange() {
+  if (!newEmail.value || !currentPassword.value) {
+    emailChangeMessage.value = 'Please fill in all fields.'
+    emailChangeMessageClass.value = 'text-red-600'
+    return
+  }
+
+  isChangingEmail.value = true
+  emailChangeMessage.value = ''
+
+  try {
+    const credential = EmailAuthProvider.credential(loginUser.value.Email, currentPassword.value)
+    await reauthenticateWithCredential(auth.currentUser, credential)
+    await updateEmail(auth.currentUser, newEmail.value)
+
+    const userDocRef = doc(db, 'Users', loginUserId.value)
+    await updateDoc(userDocRef, { Email: newEmail.value })
+
+    emailChangeMessage.value = 'Email updated successfully!'
+    emailChangeMessageClass.value = 'text-green-600'
+    setTimeout(() => closeEmailModal(), 2000)
+  } catch (error) {
+    console.log('Email change error:', error.code)
+    switch (error.code) {
+      case 'auth/wrong-password':
+        emailChangeMessage.value = 'Current password is incorrect.'
+        break
+      case 'auth/email-already-in-use':
+        emailChangeMessage.value = 'This email is already in use.'
+        break
+      case 'auth/invalid-email':
+        emailChangeMessage.value = 'Please enter a valid email address.'
+        break
+      case 'auth/requires-recent-login':
+        emailChangeMessage.value = 'Please log out and log back in to change your email.'
+        break
+      default:
+        emailChangeMessage.value = 'Failed to update email. Please try again.'
+        break
+    }
+    emailChangeMessageClass.value = 'text-red-600'
+  } finally {
+    isChangingEmail.value = false
+  }
+}
 </script>
 
 <template>
-  <div class="select-none bg-slate-50 text-center">
+  <div class="select-none bg-slate-50 text-center" @click="showUserMenu = false">
     <!-- App Layout -->
     <div class="app-layout-grid">
       <div v-show="countRequests > 0" class="absolute w-full">
@@ -75,8 +140,28 @@ function deleteMessage(id) {
         <div></div>
         <!-- Header Right -->
         <div class="mr-1 flex place-items-center justify-end">
-          <div class="mr-2">{{ loginUser.Nickname }}</div>
-          <FontAwesomeIcon icon="user" class="mr-4" />
+          <div
+            class="relative mr-2 flex cursor-pointer place-items-center rounded px-2 py-1 hover:bg-blue-500"
+            @click.stop="showUserMenu = !showUserMenu"
+          >
+            <div class="mr-2">{{ loginUser.Nickname }}</div>
+            <FontAwesomeIcon icon="user" class="mr-1" />
+            <FontAwesomeIcon :icon="showUserMenu ? 'chevron-up' : 'chevron-down'" size="xs" />
+
+            <!-- User Menu Dropdown -->
+            <div
+              v-if="showUserMenu"
+              class="absolute right-0 top-9 z-50 w-48 rounded-md border border-gray-200 bg-white py-1 text-slate-700 shadow-lg"
+            >
+              <button
+                @click="showEmailModal = true; showUserMenu = false"
+                class="flex w-full items-center px-4 py-2 text-left text-sm hover:bg-gray-100"
+              >
+                <FontAwesomeIcon icon="envelope" class="mr-3" />
+                Change Email
+              </button>
+            </div>
+          </div>
         </div>
       </div>
       <!-- Side Menu -->
@@ -89,7 +174,7 @@ function deleteMessage(id) {
       <div
         class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-300 px-3 text-slate-800 print:hidden"
       >
-        <div>v.6.8.1</div>
+        <div>v.6.8.2</div>
         <div class="flex">{{ accessLevelName }} [{{ storeGeneral.accessLevel }}] - {{ currentBranch }}</div>
       </div>
     </div>
@@ -148,6 +233,59 @@ function deleteMessage(id) {
       :timer="storeGeneral.infoMessage.timer"
       >{{ storeGeneral.infoMessage.message }}</MyInfoMessage
     >
+
+    <!-- Email Change Modal -->
+    <div
+      v-if="showEmailModal"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+      @click.self="closeEmailModal"
+    >
+      <div class="w-96 rounded-lg bg-white p-6 shadow-lg">
+        <h3 class="mb-4 text-lg font-semibold text-slate-800">Change Email Address</h3>
+        <p class="mb-4 text-sm text-gray-600">Enter your current password and new email address.</p>
+
+        <div class="space-y-3 text-left">
+          <div>
+            <label class="block text-sm font-medium text-gray-700">Current Password</label>
+            <input
+              v-model="currentPassword"
+              type="password"
+              class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none"
+              placeholder="Enter current password"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700">New Email Address</label>
+            <input
+              v-model="newEmail"
+              type="email"
+              class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none"
+              placeholder="Enter new email"
+            />
+          </div>
+          <p v-if="emailChangeMessage" :class="emailChangeMessageClass" class="text-sm">
+            {{ emailChangeMessage }}
+          </p>
+        </div>
+
+        <div class="mt-6 flex justify-end gap-3">
+          <button
+            @click="closeEmailModal"
+            class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            @click="handleEmailChange"
+            :disabled="isChangingEmail"
+            class="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-50"
+          >
+            {{ isChangingEmail ? 'Updating...' : 'Update Email' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modals -->
     <div id="messages" class="absolute bottom-20 z-50 w-full"></div>
   </div>

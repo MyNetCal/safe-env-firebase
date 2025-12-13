@@ -19,8 +19,7 @@
             <tbody>
               <tr v-for="corp in corporations" :key="corp.id" @click="editCorporation({ rowInfo: corp })" class="cursor-pointer hover:bg-slate-100">
                 <td class="border border-slate-300 px-4 py-2 text-left">{{ corp.Short }}</td>
-                <td class="border border-slate-300 px-4 py-2 text-left max-w-64">{{ corp.Name }}</td>
-                <td class="border border-slate-300 px-4 py-2 text-left">{{ corp.Entity }}</td>
+                <td class="border border-slate-300 px-4 py-2 text-left max-w-[420px]">{{ corp.Name }}</td>
               </tr>
             </tbody>
           </table>
@@ -87,10 +86,6 @@ const fieldsTable = [
     label: 'Name'
   },
 
-  {
-    key: 'Entity',
-    label: 'Entity'
-  }
 ]
 
 const showEditPlaceModal = ref(false)
