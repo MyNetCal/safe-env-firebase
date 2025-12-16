@@ -168,7 +168,8 @@ getUsersByCorp(
   [currentCorpId],
   [
     ['CorporationId', '==', currentCorpId],
-    ['Committee', '==', isTrueRef]
+    ['Committee', '==', isTrueRef],
+    ['Active', '==', isTrueRef]
   ]
 )
 
