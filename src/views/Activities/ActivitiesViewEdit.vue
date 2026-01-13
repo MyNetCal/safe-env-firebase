@@ -7,6 +7,7 @@ import { useMediaQuery, watchThrottled } from '@vueuse/core'
 import MySwitchBothLabels from '@/components/MyInputs/MySwitchBothLabels.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import { initActivity } from '@/stores/datadb'
+import ParticipantsViewEdit from '@/views/Participants/ParticipantsViewEdit.vue'
 import {
   arrayRemove,
   arrayUnion,
@@ -19,7 +20,7 @@ import {
   setDoc,
   updateDoc,
   where,
-  addDoc,
+  addDoc
 } from '@firebase/firestore'
 import { useCollection, useFirebaseStorage, useFirestore } from 'vuefire'
 import MyInputTextArea from '@/components/MyInputs/MyInputTextArea.vue'
@@ -32,7 +33,11 @@ import axios from 'axios'
 import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 
 const emit = defineEmits(['onClose', 'onUpdate', 'onDelete'])
-const props = defineProps({ showModal: Boolean, id: String, corpId: String })
+const props = defineProps({
+  showModal: Boolean,
+  id: { type: String, default: '' },
+  corpId: { type: String, required: true }
+})
 const { showModal, id, corpId } = toRefs(props)
 
 const db = useFirestore()
@@ -43,6 +48,7 @@ const actToEdit = ref({ id: '' })
 
 const tabActive = ref(0)
 const tabTitles = ['General info', 'Staff', 'Participants']
+const showParticipantsEdit = ref(false)
 
 const tabHasErrorChecklist = computed(() => {
   if (actToEdit.value.id == '') {
@@ -1313,7 +1319,15 @@ async function createPDF() {
 
           <!-- Tab: 4. Participants -->
           <div v-show="tabActive == 2">
-            <div class="text-right">
+            <div class="flex items-center justify-end gap-2">
+              <button
+                @click="showParticipantsEdit = true"
+                class="flex items-center gap-1 rounded bg-green-600 px-3 py-1 text-sm font-medium text-white shadow-md hover:bg-green-700"
+                title="Create New Participant"
+              >
+                <FontAwesomeIcon icon="plus" />
+                <span>New Participant</span>
+              </button>
               <FontAwesomeIcon
                 :icon="
                   store.loginUser.Settings?.ActiviyParticipantsTabByList ? 'table-list' : 'list'
@@ -1717,6 +1731,15 @@ async function createPDF() {
         </div>
       </div>
     </div>
+
+    <!-- Create New Participant Modal -->
+    <ParticipantsViewEdit
+      v-if="showParticipantsEdit"
+      :id="''"
+      :show-modal="showParticipantsEdit"
+      :corp-id="corpId"
+      @on-close="showParticipantsEdit = false"
+    />
   </div>
 </template>
 

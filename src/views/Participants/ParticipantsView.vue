@@ -3,6 +3,7 @@ import MyFab from '@/components/MyFab.vue'
 import { FontAwesomeIcon, FontAwesomeLayers } from '@fortawesome/vue-fontawesome'
 import { computed, onUnmounted, ref, watch, watchEffect } from 'vue'
 import ParticipantsViewEdit from './ParticipantsViewEdit.vue'
+import ParticipantActivitiesModal from './ParticipantActivitiesModal.vue'
 import { useGeneralStore } from '@/stores/general'
 import MySelectCorporation from '@/components/MySelect/MySelectCorporation.vue'
 import {
@@ -29,6 +30,9 @@ const db = useFirestore()
 const idEditing = ref(null)
 const showParticipantsEdit = ref(false)
 const currentCorpId = ref(store.loginCorporationId)
+const sortByLastName = ref(false)
+const showActivitiesModal = ref(false)
+const selectedParticipantId = ref(null)
 
 watchEffect(() => {
   currentCorpId.value = store.loginCorporationId
@@ -39,13 +43,41 @@ function editParticipant(id) {
   showParticipantsEdit.value = true
 }
 
+function viewActivities(id) {
+  selectedParticipantId.value = id
+  showActivitiesModal.value = true
+}
+
+const sortedParticipants = computed(() => {
+  const sorted = [...participants.value].sort((a, b) => {
+    if (sortByLastName.value) {
+      const nameA = `${a.LastName || ''}${a.Name || ''}`.toLowerCase()
+      const nameB = `${b.LastName || ''}${b.Name || ''}`.toLowerCase()
+      return nameA.localeCompare(nameB)
+    } else {
+      const nameA = `${a.Name || ''}${a.LastName || ''}`.toLowerCase()
+      const nameB = `${b.Name || ''}${b.LastName || ''}`.toLowerCase()
+      return nameA.localeCompare(nameB)
+    }
+  })
+  return sorted
+})
+
+function getDisplayName(p) {
+  if (sortByLastName.value) {
+    return `${p.LastName}, ${p.Name}`
+  } else {
+    return `${p.Name} ${p.LastName}`
+  }
+}
+
 // ****************************
 // Getting list of Participants
 // ****************************
 
 const particiapntsRef = computed(() =>
   query(
-    collection(db, 'Participants'), 
+    collection(db, 'Participants'),
     where('CorpId', '==', currentCorpId.value),
     where('Branch', '==', store.currentBranch)
   )
@@ -209,13 +241,15 @@ function importList() {
     if (p.Duplicate) {
       const pRef = doc(db, 'Participants', p.id)
       await updateDoc(pRef, {
-        ActivityGroups: p.ActivityGroups
+        ActivityGroups: p.ActivityGroups,
+        Branch: store.currentBranch
       })
       return
     }
     await addDoc(collection(db, 'Participants'), {
       Active: p.Active,
       ActivityGroups: p.ActivityGroups,
+      Branch: store.currentBranch,
       CorpId: p.CorpId,
       DOB: p.DOB,
       Consent: p.Consent,
@@ -237,7 +271,9 @@ function importList() {
   <div class="flex h-full flex-col">
     <!-- Header -->
     <div>
-      <h1 class="mb-6 mt-2 text-blue-700">Participants</h1>
+      <div class="mx-auto mb-4 w-fit">
+        <h1 class="mt-2 text-blue-700">Participants</h1>
+      </div>
 
       <!-- Corporation Selector -->
       <div v-if="store.isUserBoardPrelature" class="mx-auto w-fit">
@@ -247,26 +283,68 @@ function importList() {
 
     <!-- List -->
     <div class="mb-6 overflow-auto">
+      <!-- Actual table -->
       <table class="mx-auto">
         <thead>
           <tr>
             <th></th>
-            <th>Name</th>
+            <th>
+              <div class="flex items-center justify-between gap-2">
+              
+                <div class="flex gap-1">
+                  <button
+                    :class="[
+                      'rounded px-2 py-0.5 text-xs font-medium transition-colors',
+                      sortByLastName
+                        ? 'bg-gray-200 hover:bg-gray-300'
+                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                    ]"
+                    @click="sortByLastName = false"
+                    title="Sort by First Name"
+                  >
+                    By First Name
+                  </button>
+                  <button
+                    :class="[
+                      'rounded px-2 py-0.5 text-xs font-medium transition-colors',
+                      sortByLastName
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-gray-200 hover:bg-gray-300'
+                    ]"
+                    @click="sortByLastName = true"
+                    title="Sort by Last Name"
+                  >
+                    By Last Name
+                  </button>
+                </div>
+              </div>
+            </th>
             <th>Age</th>
+            <th>Activities</th>
           </tr>
         </thead>
         <tbody class="text-left">
           <tr
-            v-for="(p, index) in participants"
+            v-for="(p, index) in sortedParticipants"
             :key="p.id"
             class="cursor-pointer rounded pl-2 hover:bg-stone-200"
             @click="editParticipant(p.id)"
           >
             <td>{{ index + 1 }}.</td>
-            <td>{{ p.Name }} {{ p.LastName }}</td>
+            <td>{{ getDisplayName(p) }}</td>
             <td>
               {{ dayjs().diff(dayjs(p.DOB), 'y') }} -
               {{ dayjs().diff(dayjs(p.DOB), 'M') - dayjs().diff(dayjs(p.DOB), 'y') * 12 }} months
+            </td>
+            <td @click.stop>
+              <button
+                @click="viewActivities(p.id)"
+                class="rounded text-blue-600 px-3 py-1 text-sm hover:bg-blue-700"
+                title="View Activities"
+              >
+                <FontAwesomeIcon icon="calendar" class="mr-1" />
+                
+              </button>
             </td>
           </tr>
         </tbody>
@@ -292,6 +370,15 @@ function importList() {
       :show-modal="showParticipantsEdit"
       :corp-id="currentCorpId"
       @on-close="showParticipantsEdit = false"
+    />
+
+    <!-- Participant Activities Modal -->
+    <ParticipantActivitiesModal
+      v-if="showActivitiesModal"
+      :show-modal="showActivitiesModal"
+      :participant-id="selectedParticipantId"
+      :corp-id="currentCorpId"
+      @on-close="showActivitiesModal = false"
     />
 
     <!-- Instructions for the CVS file -->

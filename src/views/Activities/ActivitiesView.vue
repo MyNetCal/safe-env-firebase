@@ -236,7 +236,7 @@ async function saveFile() {
       <div class="tabs max-w-2xl grow">
         <template v-for="(tabLabel, index) in tabLabels" :key="tabLabel">
           <div class="tab" :class="{ 'tab-active': tabActive == index }" @click="tabActive = index">
-            <FontAwesomeIcon :icon="tabLabel.icon" size="2x" :spin="tabLabel.icon == 'spinner'" />
+            <FontAwesomeIcon :icon="tabLabel.icon" size="2x" />
             <div>
               {{ tabLabel.label }}
             </div>
