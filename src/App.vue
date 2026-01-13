@@ -174,7 +174,7 @@ async function handleEmailChange() {
       <div
         class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-300 px-3 text-slate-800 print:hidden"
       >
-        <div>v.6.8.3</div>
+        <div>v.6.8.4</div>
         <div class="flex">{{ accessLevelName }} [{{ storeGeneral.accessLevel }}] - {{ currentBranch }}</div>
       </div>
     </div>
