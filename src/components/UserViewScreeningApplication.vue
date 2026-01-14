@@ -472,13 +472,11 @@ function openFileReference() {
                   {{ userCorp.ScreenRecommendationStaffRequested.UserName }}
                 </div>
 
-                <div
-                  v-if="userCorp.ScreenRecommendationStaffRequested.Denied"
-                  class="mt-1 rounded bg-red-700 py-0.5 text-white"
-                >
-                  Denied
+                <div v-if="userCorp.ScreenRecommendationStaffRequested.denied">
+                  <div class="text-red-800 mt-1 mb-2">It was Denied</div>
+
                   <button
-                    class="ml-2 rounded bg-white px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-100"
+                    class="small-button"
                     @click="requestAnotherRecommendation"
                   >
                     Request Another
@@ -711,7 +709,7 @@ function openFileReference() {
           <div class="my-dialog-inner w-96">
             <DialogTitle class="my-dialog-title">
               {{ dialogRecommendationTitle }}
-              <FontAwesomeIcon icon="times"  @click="showDialogRecommendation = false" />
+              <FontAwesomeIcon icon="times" @click="showDialogRecommendation = false" />
             </DialogTitle>
             <div class="my-dialog-content">
               <MySelectAuto
@@ -745,7 +743,6 @@ function openFileReference() {
               <MyButton
                 v-if="item == 'Interview' || item == 'InternalReference'"
                 :class="[staffRecommending.Name ? 'bg-green-700' : 'bg-slate-500']"
-                
                 @click="saveInterviewer"
                 >Open File</MyButton
               >

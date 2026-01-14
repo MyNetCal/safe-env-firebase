@@ -48,7 +48,7 @@ export default {
   components: { MyInfoModal },
   props: {
     modelValue: {
-      type: String,
+      type: [String, Number],
       default: ''
     },
     isValid: { type: Boolean, default: true },
