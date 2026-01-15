@@ -18,18 +18,18 @@ const auth = useFirebaseAuth()
 
 
 // ****************************
-// Step 1: Prelature corporation
+// Step 1: Prelature corporation (Women's Branch)
 // *****************************
 // #region
 const isPrelature = ref(false)
-const prelatureId = 'Prelature Men'
+const prelatureId = 'Prelature_Women'
 const corpToEdit = ref({})
 
-function initPlace() {
+function initCorp() {
   corpToEdit.value = {
     id: '',
-    Name: 'Prelature of Opus Dei',
-    Short: 'Prelature',
+    Name: 'Prelature of Opus Dei Women Branch',
+    Short: 'Prelature Women',
     Branch: 'Women',
     Code: '',
     Entity: 'Prelature',
@@ -71,7 +71,7 @@ function initPlace() {
 }
 
 function createPrelature() {
-  initPlace()
+  initCorp()
   setDoc(doc(db, 'Corporations', prelatureId), corpToEdit.value).then(() => {
     isPrelature.value = true
   })
@@ -231,9 +231,10 @@ function goToLogin() {
   >
     <div class="">
       <h1>Welcome to the SafeEnv app!</h1>
+      <h2 class="mt-2 text-lg text-purple-600">Women's Branch Setup</h2>
     </div>
     <div class="h-full w-full overflow-y-auto">
-      <div class="mt-10 text-2xl text-orange-600">Let's setup the database...</div>
+      <div class="mt-10 text-2xl text-orange-600">Let's setup the women's branch...</div>
 
       <!-- Steps -->
       <div>
@@ -241,9 +242,9 @@ function goToLogin() {
         <div>
           <!-- Add -->
           <div v-if="!isPrelature" class="step-box">
-            <div class="text-left">1. Let's create the Prelature corporation</div>
+            <div class="text-left">1. Let's create the Prelature Women's corporation</div>
             <div class="mt-2">
-              <MyButton @click="createPrelature">Create Prelature Corporation</MyButton>
+              <MyButton @click="createPrelature">Create Prelature Women Corporation</MyButton>
             </div>
           </div>
 
@@ -252,7 +253,7 @@ function goToLogin() {
             <div class="check">
               <FontAwesomeIcon icon="check" size="lg" class="text-gray-50" />
             </div>
-            1. The Prleture corporation has been created succesfully
+            1. The Prelature Women's corporation has been created successfully
           </div>
         </div>
 
@@ -261,7 +262,7 @@ function goToLogin() {
           <!-- Add -->
           <div v-if="!isUser" class="step-box">
             <div class="text-left">
-              2. Please enter your information. You will be the SEC of the Prelature automatically
+              2. Please enter the SEC's information. She will be the SEC of the Prelature Women's branch
             </div>
 
             <!-- Data -->
@@ -320,7 +321,7 @@ function goToLogin() {
             <div class="check">
               <FontAwesomeIcon icon="check" size="lg" class="text-gray-50" />
             </div>
-            2. You have been added to the Prelature as SEC
+            2. The SEC has been added to the Prelature Women's branch
           </div>
         </div>
 
@@ -362,7 +363,7 @@ function goToLogin() {
             <div class="check">
               <FontAwesomeIcon icon="check" size="lg" class="text-gray-50" />
             </div>
-            3. Your account has been created with the credentials you enetered
+            3. The SEC's account has been created with the credentials entered
           </div>
         </div>
       </div>
@@ -370,7 +371,7 @@ function goToLogin() {
       <!-- Login -->
       <div v-if="isCredentials">
         <div class="mx-auto mt-10 w-fit rounded bg-green-300 p-3 shadow-lg">
-          <div>Awesome! You are ready to go...</div>
+          <div>Awesome! The women's branch is ready to go...</div>
           <div class="mt-5">
             <MyButton @click="goToLogin" color="bg-green-800">Login</MyButton>
           </div>

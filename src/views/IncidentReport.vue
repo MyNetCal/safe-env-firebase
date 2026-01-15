@@ -52,7 +52,7 @@ const statusCreatingPdf = ref(false)
 async function createSentReport() {
   statusCreatingPdf.value = true
   const pdfRef = doc(collection(db, 'pdfs'))
-  const emailSECPrelature = await getEmailSECPrelature();
+  const emailSECPrelature = await getEmailSECPrelature(store.currentBranch);
   const emailId = await addDoc(collection(db, `Users/${store.loginUserId}/MessagesPending`), {
     accepted:[],
     error: '',

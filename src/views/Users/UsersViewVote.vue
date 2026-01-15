@@ -245,11 +245,13 @@ function calcVotes() {
     const corpData = await getDoc(doc(db, 'Corporations', el.idCorp))
 
     dataVotesCorps.value[index] = corpData.data()
-    if (corpData.data().Short == 'Prelature') {
+    // Check if this is the Prelature corporation in the current branch
+    const isPrelatureCurrentBranch = corpData.data().Entity === 'Prelature' && corpData.data().Branch === store.currentBranch
+    if (isPrelatureCurrentBranch) {
       voteFromSFCPrelature.value = voteFromSFCPrelature.value || el.isSEC
       totVotesPrelature.value++
     }
-    if (corpData.data().Short != 'Prelature' || userCorp.value.CorporationName == 'Prelature') {
+    if (!isPrelatureCurrentBranch || userCorp.value.Entity === 'Prelature') {
       totVotesOther.value++
       voteFromSFCCorporation.value = voteFromSFCCorporation.value || el.isSEC
     }
@@ -293,7 +295,7 @@ const hasAllVotesNeeded = computed(
 )
 
 function getVotesNeeded() {
-  getDocs(query(collection(db, 'Corporations'), where('Short', '==', 'Prelature'))).then((docs) => {
+  getDocs(query(collection(db, 'Corporations'), where('Entity', '==', 'Prelature'), where('Branch', '==', store.currentBranch))).then((docs) => {
     docs.forEach((doc) => {
       votesNeededFromPrelature.value = doc.data().VotesNeeded
     })

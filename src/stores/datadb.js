@@ -503,16 +503,25 @@ function initActivity(act = {}) {
   }
 }
 
-async function getEmailSECPrelature() {
-  // Get id of Prelature Corporataion (Short=='Prelature')
-  let idCorpPrelature = '' // in TEst is Dx1Z...
-  let q = query(collection(db, 'Corporations'), where('Short', '==', 'Prelature'))
+async function getEmailSECPrelature(branch = 'Men') {
+  // Get id of Prelature Corporation for the specified branch (Entity=='Prelature' AND Branch==branch)
+  let idCorpPrelature = ''
+  let q = query(
+    collection(db, 'Corporations'),
+    where('Entity', '==', 'Prelature'),
+    where('Branch', '==', branch)
+  )
   let dd = await getDocs(q)
   dd.forEach((d) => {
-    idCorpPrelature = d.id // it should be: Dx1Z...
+    idCorpPrelature = d.id
   })
 
-  // Get UserId of SEC of Prelature: GFu...  UserId == fxK
+  if (!idCorpPrelature) {
+    console.warn(`No Prelature corporation found for branch: ${branch}`)
+    return null
+  }
+
+  // Get UserId of SEC of Prelature for this branch
   let idUserSECPrelature = ''
   q = query(
     collection(db, 'UsersCorporations'),
@@ -521,8 +530,13 @@ async function getEmailSECPrelature() {
   )
   dd = await getDocs(q)
   dd.forEach((d) => {
-    idUserSECPrelature = d.data().UserId // it should be: Dx1Z...
+    idUserSECPrelature = d.data().UserId
   })
+
+  if (!idUserSECPrelature) {
+    console.warn(`No SEC found for Prelature in branch: ${branch}`)
+    return null
+  }
 
   // Get Email of SEC of the Prelature
   const d = await getDoc(doc(db, 'Users', idUserSECPrelature))

@@ -281,11 +281,14 @@ async function getPersonnel() {
   if (!corpRef.data()) {
     return
   }
-  if (corpRef.data().Short == 'Prelature') {
+  // Check if this is a Prelature corporation in the current branch
+  const isPrelatureCurrentBranch = corpRef.data().Entity === 'Prelature' && corpRef.data().Branch === store.currentBranch
+  if (isPrelatureCurrentBranch) {
     q = query(
       collection(db, 'UsersCorporations'),
       where('Status', '==', currentTab.value),
-      where('Entity', '==', 'Prelature')
+      where('Entity', '==', 'Prelature'),
+      where('Branch', '==', store.currentBranch)
     )
   }
 
@@ -303,7 +306,7 @@ async function getPersonnel() {
         const userRef = await getDoc(doc(db, 'Users', t.UserId))
         t.UserData = userRef.data()
       }
-      if (corpRef.data().Short == 'Prelature') {
+      if (isPrelatureCurrentBranch) {
         const corpRef = await getDoc(doc(db, 'Corporations', t.CorporationId))
         t.CorpName = corpRef.data().Name
         t.CorpShort = corpRef.data().Short

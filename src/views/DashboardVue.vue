@@ -229,7 +229,7 @@ async function backgroundRequested(user) {
     return
   }
   const allSECEmails = await getEmailsAllSEC()
-  const emailSECPrelature = await getEmailSECPrelature()
+  const emailSECPrelature = await getEmailSECPrelature(store.currentBranch)
   const files = user.ScreeningReqFilesBackground && user.ScreeningReqFilesBackground.length > 0
   const templateSEC = files
     ? 'Background-Check-Renewal-AllSEC-Notification'

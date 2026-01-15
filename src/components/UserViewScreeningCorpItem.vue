@@ -397,7 +397,7 @@ if (item.value == 'Application') {
         where('Status', '==', 'Approved'),
         where('Screening', '==', true),
         where('UserId', '==', recommendation.StaffUserId),
-        or(where('CorporationId', '==', corp.value.id), where('CorporationName', '==', 'Prelature'))
+        or(where('CorporationId', '==', corp.value.id), and(where('Entity', '==', 'Prelature'), where('Branch', '==', store.currentBranch)))
       )
     )
     getDocs(q).then((querySnapshot) => {
@@ -425,7 +425,7 @@ const allStaffRef = computed(() =>
     and(
       where('Status', '==', 'Approved'),
       where('Screening', '==', true),
-      or(where('CorporationId', '==', corp.value.id), where('CorporationName', '==', 'Prelature'))
+      or(where('CorporationId', '==', corp.value.id), and(where('Entity', '==', 'Prelature'), where('Branch', '==', store.currentBranch)))
     )
   )
 )
@@ -682,7 +682,7 @@ function onStaffRecommended() {
               <span v-if="f.by != store.loginCorporationId">[{{ f.byName }}]</span>
             </div>
             <div
-              v-if="f.by == store.loginCorporationId || store.loginCorporation.Short == 'Prelature'"
+              v-if="f.by == store.loginCorporationId || store.loginCorporation.Entity == 'Prelature'"
               class="mr-1 cursor-pointer rounded px-2 py-1 hover:bg-slate-300"
               @click="deleteFile($event, f, n)"
             >
