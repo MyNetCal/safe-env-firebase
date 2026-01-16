@@ -8,8 +8,8 @@
       </div>
 
       <!-- List of Sites -->
-      <div class="mt-5 flex h-full justify-center">
-        <div>
+      <div class="my-5 flex h-full justify-center overflow-auto">
+        <div class="overflow-auto">
           <table class="table-auto border-collapse border border-slate-400">
             <thead>
               <tr>
