@@ -186,11 +186,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watchEffect, onMounted, watch, onUnmounted } from 'vue'
+import { ref, computed, watchEffect, watch, onMounted, onUnmounted } from 'vue'
 import MyFab from '@/components/MyFab.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { useDocument, useFirestore } from 'vuefire'
-import { collection, doc, getDoc, onSnapshot, query, where } from 'firebase/firestore'
+import { collection, doc, getDoc, getDocs, onSnapshot, query, where } from 'firebase/firestore'
 import UsersViewAdd from '../Users/UsersViewAdd.vue'
 import { useGeneralStore } from '@/stores/general'
 import UsersViewScreening from '../Users/UsersViewScreening.vue'
@@ -198,7 +198,7 @@ import UsersViewTrainning from '../Users/UsersViewTrainning.vue'
 import MySelectCorporation from '@/components/MySelect/MySelectCorporation.vue'
 import { storeToRefs } from 'pinia'
 import UserAndCorpEdit from '@/components/UserAndCorpEdit.vue'
-import { initUserCorp, initUser } from '@/stores/datadb'
+import { initUserCorp } from '@/stores/datadb'
 import UsersViewVote from '../Users/UsersViewVote.vue'
 
 const db = useFirestore()
@@ -220,17 +220,19 @@ const currentTab = ref(store.USER_STATUS_PENDING)
 
 const personnel = ref([])
 const personnelOrder = ref([])
+const usersCache = ref({}) // Cache for all user data
 
 let unsubPersonnel = null
-let unsubUsers = {}
+let unsubUsers = {} // Only for displayed users
 
 function unsubscribeAll() {
   if (unsubPersonnel) {
     unsubPersonnel()
-    Object.values(unsubUsers).forEach((u) => {
-      u()
-    })
   }
+  Object.values(unsubUsers).forEach((u) => {
+    u()
+  })
+  unsubUsers = {}
 }
 
 onMounted(() => {
@@ -266,14 +268,11 @@ function orderPersonnel() {
 }
 
 async function getPersonnel() {
+  console.log('Getting Personnel...')
+
   personnel.value = []
   personnelOrder.value = []
-
-  let q = query(
-    collection(db, 'UsersCorporations'),
-    where('Status', '==', currentTab.value),
-    where('CorporationId', '==', currentCorpId.value)
-  )
+  usersCache.value = {}
 
   const corpRef = await getDoc(doc(db, 'Corporations', currentCorpId.value))
   if (!corpRef.data()) {
@@ -281,41 +280,103 @@ async function getPersonnel() {
   }
 
   unsubscribeAll()
-  unsubUsers = {}
 
-  unsubPersonnel = onSnapshot(q, (res) => {
-    res.docChanges().forEach(async (change) => {
-      const { newIndex, oldIndex, doc: tDoc } = change
-      const t = tDoc.data()
-      t.id = tDoc.id
-      t.UserData = initUser({})
-      if (['added', 'modified'].includes(change.type)) {
-        t.userHasAllScreening = userHasAllScreening(t)
-        const userRef = await getDoc(doc(db, 'Users', t.UserId))
-        t.UserData = userRef.data()
-      }
+  // Query UsersCorporations with current filters
+  let q = query(
+    collection(db, 'UsersCorporations'),
+    where('Status', '==', currentTab.value),
+    where('CorporationId', '==', currentCorpId.value)
+  )
 
-      if (change.type === 'added') {
-        // Add Listner
-        unsubUsers[t.id] = onSnapshot(doc(db, 'Users', t.UserId), (res) => {
-          const index = personnel.value.findIndex((el) => el.id == t.id)
-          personnel.value[index].UserData = res.data()
-          orderPersonnel()
+  if (corpRef.data().Entity === 'Prelature') {
+    // If Prelature, include Both branch users
+    q = query(
+      collection(db, 'UsersCorporations'),
+      where('Status', '==', currentTab.value),
+      where('Entity', '==', 'Prelature'),
+    )
+  }
+
+  unsubPersonnel = onSnapshot(q, async (res) => {
+    // Get all user IDs from the snapshot
+    const userIds = res.docs.map((doc) => doc.data().UserId)
+
+    // Batch fetch all user data at once (Firebase IN query max is 30)
+    if (userIds.length > 0) {
+      // Split into chunks of 30 (Firebase limit)
+      const chunkSize = 30
+      for (let i = 0; i < userIds.length; i += chunkSize) {
+        const chunk = userIds.slice(i, i + chunkSize)
+        const usersQuery = query(
+          collection(db, 'Users'),
+          where('__name__', 'in', chunk),
+          where('Branch', '==', store.currentBranch)
+        )
+        const usersSnapshot = await getDocs(usersQuery)
+        usersSnapshot.docs.forEach((doc) => {
+          usersCache.value[doc.id] = doc.data()
         })
-        personnel.value.splice(newIndex, 0, t)
       }
+    }
+
+    // Process changes
+    res.docChanges().forEach(async (change) => {
+      const { newIndex, doc: tDoc } = change
+      const userCorpData = {...tDoc.data(), id: tDoc.id }
+      
+      const userId = userCorpData.UserId
+      
+      if (change.type === 'added') {
+
+        if (!usersCache.value[userId]) {
+          // User does not match current branch filter, skip adding
+          return
+        }
+        
+        const userCorp = {
+          id: tDoc.id,
+          ...userCorpData,
+          UserData: usersCache.value[userId] || {},
+          userHasAllScreening: userHasAllScreening(userCorpData)
+        }
+
+        personnel.value.splice(newIndex, 0, userCorp)
+
+        // Set up listener ONLY for this displayed user
+        unsubUsers[tDoc.id] = onSnapshot(doc(db, 'Users', userId), (userSnap) => {
+          const index = personnel.value.findIndex((el) => el.id === tDoc.id)
+          if (index >= 0) {
+            personnel.value[index].UserData = userSnap.data()
+            usersCache.value[userId] = userSnap.data()
+          }
+        })
+      }
+
       if (change.type === 'modified') {
-        personnel.value.splice(oldIndex, 1)
-        personnel.value.splice(newIndex, 0, t)
-        orderPersonnel()
-        // Add Listner
+        const index = personnel.value.findIndex((el) => el.id === tDoc.id)
+        if (index >= 0) {
+          personnel.value[index] = {
+            id: tDoc.id,
+            ...userCorpData,
+            UserData: usersCache.value[userId] || {},
+            userHasAllScreening: userHasAllScreening(userCorpData)
+          }
+        }
       }
+
       if (change.type === 'removed') {
-        personnel.value.splice(oldIndex, 1)
-        unsubUsers[t.id]()
-        orderPersonnel()
+        const index = personnel.value.findIndex((el) => el.id === tDoc.id)
+        if (index >= 0) {
+          personnel.value.splice(index, 1)
+          // Clean up listener for removed user
+          unsubUsers[tDoc.id]?.()
+          delete unsubUsers[tDoc.id]
+        }
       }
     })
+
+    // Order personnel only once after all changes are processed
+    orderPersonnel()
   })
 }
 
@@ -364,6 +425,10 @@ function addNewUser() {
 }
 
 function editUserInfo(userInfo) {
+  console.log('id: ', );
+  
+  console.log('Getting user info: ', userInfo);
+  
   if (isUserBoardPrelature.value) {
     id.value = userInfo.UserData.id
     userSelected.value = userInfo.UserData

@@ -178,7 +178,7 @@ const allStaffRef = computed(() =>
     and(
       where('Status', '==', 'Approved'),
       where('Screening', '==', true),
-      or(where('CorporationId', '==', corp.value.id), and(where('Entity', '==', 'Prelature'), where('Branch', '==', store.currentBranch)))
+      or(where('CorporationId', '==', corp.value.id), and(where('Entity', '==', 'Prelature')))
     )
   )
 )
@@ -191,6 +191,11 @@ async function getScreeningStaff() {
     getDoc(doc(db, 'Users', d.data().UserId)).then((user) => {
       const userId = user.data().id
       const exists = allScreeningStaff.value.some((staff) => staff.id === userId)
+      if (user.data().Branch != store.currentBranch && user.data().Branch != 'Both') {
+        console.log('skipping: ', user.data());
+        
+        return
+      }
 
       if (!exists) {
         allScreeningStaff.value.push({
