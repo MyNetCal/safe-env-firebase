@@ -245,13 +245,11 @@ function calcVotes() {
     const corpData = await getDoc(doc(db, 'Corporations', el.idCorp))
 
     dataVotesCorps.value[index] = corpData.data()
-    // Check if this is the Prelature corporation in the current branch
-    const isPrelatureCurrentBranch = corpData.data().Entity === 'Prelature' && corpData.data().Branch === store.currentBranch
-    if (isPrelatureCurrentBranch) {
+    if (corpData.data().id == 'Prelature Men' || corpData.data().id =='Prelature Women') {
       voteFromSFCPrelature.value = voteFromSFCPrelature.value || el.isSEC
       totVotesPrelature.value++
     }
-    if (!isPrelatureCurrentBranch || userCorp.value.Entity === 'Prelature') {
+    else {
       totVotesOther.value++
       voteFromSFCCorporation.value = voteFromSFCCorporation.value || el.isSEC
     }

@@ -21,14 +21,14 @@ const auth = useFirebaseAuth()
 // *****************************
 // #region
 const isPrelature = ref(false)
-const prelatureId = 'Prelature_Women'
+const prelatureId = 'Prelature Women'
 const corpToEdit = ref({})
 
 function initCorp() {
   corpToEdit.value = {
     id: '',
     Name: 'Prelature of Opus Dei Women Branch',
-    Short: 'Prelature Women',
+    Short: 'Prelature',
     Branch: 'Women',
     Code: '',
     Entity: 'Prelature',
