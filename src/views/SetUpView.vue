@@ -4,7 +4,6 @@ import MyInputPassword from '@/components/MyInputs/MyInputPassword.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import router from '@/router'
 import { initUser } from '@/stores/datadb'
-import { useGeneralStore } from '@/stores/general'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import dayjs from 'dayjs'
 import { createUserWithEmailAndPassword } from 'firebase/auth'
@@ -13,7 +12,7 @@ import { computed, ref } from 'vue'
 import { useFirebaseAuth, useFirestore } from 'vuefire'
 
 const db = useFirestore()
-const store = useGeneralStore()
+
 const auth = useFirebaseAuth()
 
 
@@ -130,6 +129,7 @@ async function addUser() {
   user.CorpsActiveAtLeastOne = false
   user.CorpsActiveIds = []
   user.CorpsIds = []
+  user.Branch = 'Women'
   user.id = userId
   await setDoc(doc(db, 'Users', userId), user)
 
@@ -138,13 +138,14 @@ async function addUser() {
   const userCorp = {
     Active: true,
     Board: true,
+    Committee: true,
     CorporationId: prelatureId,
     CorporationName: 'Prelature',
     Entity: 'Prelature',
     Function: 'Board',
     Role: 'Board',
     Screening: true,
-    Status: store.USER_STATUS_PENDING,
+    Status: 'Approved',
     ScreeningReq: {
       Code: [],
       Consent: []
@@ -153,8 +154,8 @@ async function addUser() {
     UserRef: userRef,
     SEC: true,
     id: '',
-    ApprovedBy: [],
-    ApprovedOn: '',
+    ApprovedBy: ['SetupAdmin'],
+    ApprovedOn: dayjs().toISOString(),
     ActivityGroups: [],
     ScreeningReqFlagBackground: false,
     ScreeningReqFlagConsent: false,

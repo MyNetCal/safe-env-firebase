@@ -269,9 +269,7 @@ async function getPersonnel() {
   personnel.value = []
   personnelOrder.value = []
 
-  let q = null
-
-  q = query(
+  let q = query(
     collection(db, 'UsersCorporations'),
     where('Status', '==', currentTab.value),
     where('CorporationId', '==', currentCorpId.value)
@@ -280,16 +278,6 @@ async function getPersonnel() {
   const corpRef = await getDoc(doc(db, 'Corporations', currentCorpId.value))
   if (!corpRef.data()) {
     return
-  }
-  // Check if this is a Prelature corporation in the current branch
-  const isPrelatureCurrentBranch = corpRef.data().Entity === 'Prelature' && corpRef.data().Branch === store.currentBranch
-  if (isPrelatureCurrentBranch) {
-    q = query(
-      collection(db, 'UsersCorporations'),
-      where('Status', '==', currentTab.value),
-      where('Entity', '==', 'Prelature'),
-      where('Branch', '==', store.currentBranch)
-    )
   }
 
   unsubscribeAll()
@@ -305,11 +293,6 @@ async function getPersonnel() {
         t.userHasAllScreening = userHasAllScreening(t)
         const userRef = await getDoc(doc(db, 'Users', t.UserId))
         t.UserData = userRef.data()
-      }
-      if (isPrelatureCurrentBranch) {
-        const corpRef = await getDoc(doc(db, 'Corporations', t.CorporationId))
-        t.CorpName = corpRef.data().Name
-        t.CorpShort = corpRef.data().Short
       }
 
       if (change.type === 'added') {
