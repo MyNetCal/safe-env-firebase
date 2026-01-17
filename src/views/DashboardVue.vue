@@ -13,7 +13,7 @@ import {
   or
 } from 'firebase/firestore'
 import { useFirebaseStorage, useFirestore } from 'vuefire'
-import { ref, onUnmounted, computed } from 'vue'
+import { ref, onUnmounted, computed, watch } from 'vue'
 import { useGeneralStore } from '@/stores/general'
 import {
   Dialog,
@@ -30,6 +30,7 @@ import LocalizedFormat from 'dayjs/plugin/localizedFormat'
 import MyButton from '@/components/MyButton.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import { useBackgroundCheck } from '@/composables/backgroundCheck'
+import { useFuse } from '@vueuse/integrations/useFuse'
 
 const db = useFirestore()
 const store = useGeneralStore()
@@ -53,6 +54,34 @@ let unsubUsers = {}
 
 const personnelFilter = computed(() => {
   return personnel.value.filter((p) => p.userHasAllScreening)
+})
+
+const totalPeopleNeedingBackground = computed(() => {
+  return needBackgroundRequest.value.length
+})
+
+let inputFilterNames = ref('')
+let filterNeedBackground = ref([])
+
+function filterNames() {
+  const { results: filterNames } = useFuse(inputFilterNames, needBackgroundRequest.value, {
+    fuseOptions: {
+      keys: ['Name', 'Nickname', 'LastName'],
+      threshold: 0.3,
+      ignoreLocation: true
+    },
+    matchAllWhenSearchEmpty: true
+  })
+  filterNeedBackground.value = filterNames.value.map((r) => r.item)
+}
+
+watch(inputFilterNames, () => {
+  filterNames()
+  // personnelOrder.value = newVal.map((r) => r.item)
+})
+
+const totalPersonnelPending = computed(() => {
+  return personnelFilter.value.length
 })
 getPersonnel()
 
@@ -79,7 +108,13 @@ async function getPersonnel() {
       if (['added', 'modified'].includes(change.type)) {
         const userRef = await getDoc(doc(db, 'Users', t.UserId))
         t.UserData = userRef.data()
+
+        // Skip if user is not in current branch
+        if (t.UserData?.Branch !== store.currentBranch) {
+          return
+        }
       }
+
       const corpRef = await getDoc(doc(db, 'Corporations', t.CorporationId))
       t.CorpName = corpRef.data().Name
       t.CorpShort = corpRef.data().Short
@@ -94,12 +129,14 @@ async function getPersonnel() {
         })
         personnel.value.splice(newIndex, 0, t)
       }
+
       if (change.type === 'modified') {
         personnel.value.splice(oldIndex, 1)
         personnel.value.splice(newIndex, 0, t)
 
         // Add Listner
       }
+
       if (change.type === 'removed') {
         personnel.value.splice(oldIndex, 1)
         unsubUsers[t.id]()
@@ -179,7 +216,7 @@ function getBackgroundChecksNeedRequest() {
         userCorps.splice(oldIndex, 1)
       }
     })
-    needBackgroundRequest.value = {}
+    needBackgroundRequest.value = []
     // Collect all fetch promises
     const fetchPromises = userCorps.map(async (userCorp) => {
       const [userSnap, corpSnap] = await Promise.all([
@@ -189,6 +226,14 @@ function getBackgroundChecksNeedRequest() {
       const user = userSnap.data()
       const corp = corpSnap.data()
       userCorp.CorpInfo = corp
+
+      // Skip if user is not in current branch
+      if (user?.Branch !== store.currentBranch) {
+        console.log('Skipping: ', user)
+
+        return null
+      }
+
       if (!user.ScreeningBackgroundCheckRequested) return null
       return {
         id: user.id,
@@ -205,16 +250,18 @@ function getBackgroundChecksNeedRequest() {
     })
     // Wait for all fetches to complete
     const results = await Promise.all(fetchPromises)
-    // Build the final object
+    // Build the final array
     results.forEach((userData) => {
       if (userData) {
-        if (!needBackgroundRequest.value[userData.id]) {
-          needBackgroundRequest.value[userData.id] = userData
+        const existingIndex = needBackgroundRequest.value.findIndex((u) => u.id === userData.id)
+        if (existingIndex >= 0) {
+          needBackgroundRequest.value[existingIndex].Corps.push(userData.Corps[0])
         } else {
-          needBackgroundRequest.value[userData.id].Corps.push(userData.Corps[0])
+          needBackgroundRequest.value.push(userData)
         }
       }
     })
+    filterNeedBackground.value = needBackgroundRequest.value
   })
 }
 
@@ -359,7 +406,7 @@ function onChooseFile() {
       <div class="flex-grow">
         <!-- Title -->
         <div class="rounded-t bg-slate-700 px-5 py-3 text-white">
-          <div>Background Check needed</div>
+          <div>Background Check needed ({{ totalPeopleNeedingBackground }})</div>
 
           <div
             class="mt-2 cursor-pointer rounded p-1 text-sm hover:bg-slate-600"
@@ -373,14 +420,19 @@ function onChooseFile() {
             />
           </div>
         </div>
+
+        <div class="mx-auto mt-3 w-60">
+          <MyInputText v-model="inputFilterNames" clear placeholder="Search name" />
+        </div>
+
         <!-- body -->
         <div class="flex flex-wrap gap-x-3 text-left text-slate-700">
-          <template v-for="user in needBackgroundRequest" :key="user.id">
-            <div v-if="includeRequested || !user.ScreeningBackgroundCheckRenewalRequested" class="w-60 flex-grow">
-              <Disclosure
-                v-slot="{ open }"
-                
-              >
+          <template v-for="user in filterNeedBackground" :key="user.id">
+            <div
+              v-if="includeRequested || !user.ScreeningBackgroundCheckRenewalRequested"
+              class="w-60 flex-grow"
+            >
+              <Disclosure v-slot="{ open }">
                 <div class="my-2 rounded shadow">
                   <div>
                     <div class="bg-slate-200 px-2 py-2">
@@ -471,7 +523,7 @@ function onChooseFile() {
       <!-- Users -->
       <div class="flex-grow">
         <div class="rounded-t bg-slate-700 px-5 py-3 text-white">
-          <div>Personnel pending approval</div>
+          <div>Personnel pending approval ({{ totalPersonnelPending }})</div>
         </div>
         <div class="flex flex-wrap gap-3 text-left text-slate-700">
           <div

@@ -9,15 +9,19 @@
       </div>
     </div>
 
-    <div class="mx-auto w-60 mt-3">
-      <MyInputText v-model="inputFilterNames" clear placeholder="Search name"/> 
-     
+    <div class="mx-auto mt-3 w-60">
+      <MyInputText v-model="inputFilterNames" clear placeholder="Search name" />
     </div>
 
     <!-- List of Users by cards -->
     <div class="thinsb mx-auto mb-5 mt-3 grow overflow-auto">
+      <!-- Loading Placeholder -->
+      <div v-if="isLoading" class="flex flex-col gap-3 p-4">
+        <div v-for="i in 3" :key="i" class="mb-2 h-24 w-80 rounded bg-gradient-to-r from-gray-200 via-gray-300 to-gray-200 skeleton-loader"></div>
+      </div>
+
       <!-- Users loop -->
-      <TransitionGroup name="list">
+      <TransitionGroup v-else name="list">
         <template v-if="allFilteredNames.length > 0">
           <template v-for="p in allFilteredNames" :key="p.id">
             <!-- Outter Box -->
@@ -43,7 +47,7 @@
                     <span v-if="!p.LastLogin" class="mr-1 font-bold text-orange-600">&bull;</span>
                     <span
                       >{{ p.UserData.Nickname }} {{ p.UserData.Middle }}
-                      {{ p.UserData.LastName }}</span
+                      {{ p.UserData.LastName }} @ {{ p.CorporationName }}</span
                     >
                   </h3>
                   <div v-if="p.CorpShort" class="pl-1">@ {{ p.CorpShort }}</div>
@@ -207,7 +211,6 @@ import { initUserCorp } from '@/stores/datadb'
 import UsersViewVote from '../Users/UsersViewVote.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import { useFuse } from '@vueuse/integrations/useFuse'
-import { all } from 'axios'
 
 const db = useFirestore()
 const store = useGeneralStore()
@@ -229,6 +232,7 @@ const currentTab = ref(store.USER_STATUS_PENDING)
 const personnel = ref([])
 const personnelOrder = ref([])
 const usersCache = ref({}) // Cache for all user data
+const isLoading = ref(false)
 
 let unsubPersonnel = null
 let unsubUsers = {} // Only for displayed users
@@ -239,8 +243,9 @@ let allFilteredNames = ref([])
 function filterNames() {
   const { results: filterNames } = useFuse(inputFilterNames, personnelOrder.value, {
     fuseOptions: {
-      keys: ['UserName', 'UserLastName'],
-      threshold: 0.3
+      keys: ['UserName', 'UserNickname', 'UserLastName'],
+      threshold: 0.3,
+      ignoreLocation: true
     },
     matchAllWhenSearchEmpty: true
   })
@@ -297,6 +302,7 @@ function orderPersonnel() {
 async function getPersonnel() {
   console.log('Getting Personnel...')
 
+  isLoading.value = true
   personnel.value = []
   personnelOrder.value = []
   usersCache.value = {}
@@ -359,11 +365,14 @@ async function getPersonnel() {
           return
         }
 
+      
+
         const userCorp = {
           id: tDoc.id,
           ...userCorpData,
           UserName: usersCache.value[userId]?.Name,
           UserLastName: usersCache.value[userId]?.LastName,
+          UserNickname: usersCache.value[userId]?.Nickname,
           UserData: usersCache.value[userId] || {},
           userHasAllScreening: userHasAllScreening(userCorpData)
         }
@@ -402,10 +411,11 @@ async function getPersonnel() {
         }
       }
     })
-  
+
     // Order personnel only once after all changes are processed
     orderPersonnel()
     allFilteredNames.value = personnelOrder.value
+    isLoading.value = false
   })
 }
 
@@ -494,5 +504,19 @@ function openUsersViewVote(id) {
 .v-enter-active,
 .v-leave-active {
   transition: opacity 0.2s ease;
+}
+
+.skeleton-loader {
+  animation: shimmer 2s infinite;
+  background-size: 200% 100%;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 </style>
