@@ -9,12 +9,17 @@
       </div>
     </div>
 
+    <div class="mx-auto w-60 mt-3">
+      <MyInputText v-model="inputFilterNames" clear placeholder="Search name"/> 
+     
+    </div>
+
     <!-- List of Users by cards -->
     <div class="thinsb mx-auto mb-5 mt-3 grow overflow-auto">
       <!-- Users loop -->
       <TransitionGroup name="list">
-        <template v-if="personnelOrder.length > 0">
-          <template v-for="p in personnelOrder" :key="p.id">
+        <template v-if="allFilteredNames.length > 0">
+          <template v-for="p in allFilteredNames" :key="p.id">
             <!-- Outter Box -->
             <div
               class="mb-2 rounded text-emerald-900 shadow"
@@ -186,7 +191,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watchEffect, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watchEffect, watch, onMounted, onUnmounted, shallowRef } from 'vue'
 import MyFab from '@/components/MyFab.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { useDocument, useFirestore } from 'vuefire'
@@ -200,6 +205,9 @@ import { storeToRefs } from 'pinia'
 import UserAndCorpEdit from '@/components/UserAndCorpEdit.vue'
 import { initUserCorp } from '@/stores/datadb'
 import UsersViewVote from '../Users/UsersViewVote.vue'
+import MyInputText from '@/components/MyInputs/MyInputText.vue'
+import { useFuse } from '@vueuse/integrations/useFuse'
+import { all } from 'axios'
 
 const db = useFirestore()
 const store = useGeneralStore()
@@ -224,6 +232,25 @@ const usersCache = ref({}) // Cache for all user data
 
 let unsubPersonnel = null
 let unsubUsers = {} // Only for displayed users
+
+let inputFilterNames = shallowRef('')
+let allFilteredNames = ref([])
+
+function filterNames() {
+  const { results: filterNames } = useFuse(inputFilterNames, personnelOrder.value, {
+    fuseOptions: {
+      keys: ['UserName', 'UserLastName'],
+      threshold: 0.3
+    },
+    matchAllWhenSearchEmpty: true
+  })
+  allFilteredNames.value = filterNames.value.map((r) => r.item)
+}
+
+watch(inputFilterNames, () => {
+  filterNames()
+  // personnelOrder.value = newVal.map((r) => r.item)
+})
 
 function unsubscribeAll() {
   if (unsubPersonnel) {
@@ -293,7 +320,7 @@ async function getPersonnel() {
     q = query(
       collection(db, 'UsersCorporations'),
       where('Status', '==', currentTab.value),
-      where('Entity', '==', 'Prelature'),
+      where('Entity', '==', 'Prelature')
     )
   }
 
@@ -322,20 +349,21 @@ async function getPersonnel() {
     // Process changes
     res.docChanges().forEach(async (change) => {
       const { newIndex, doc: tDoc } = change
-      const userCorpData = {...tDoc.data(), id: tDoc.id }
-      
-      const userId = userCorpData.UserId
-      
-      if (change.type === 'added') {
+      const userCorpData = { ...tDoc.data(), id: tDoc.id }
 
+      const userId = userCorpData.UserId
+
+      if (change.type === 'added') {
         if (!usersCache.value[userId]) {
           // User does not match current branch filter, skip adding
           return
         }
-        
+
         const userCorp = {
           id: tDoc.id,
           ...userCorpData,
+          UserName: usersCache.value[userId]?.Name,
+          UserLastName: usersCache.value[userId]?.LastName,
           UserData: usersCache.value[userId] || {},
           userHasAllScreening: userHasAllScreening(userCorpData)
         }
@@ -374,9 +402,10 @@ async function getPersonnel() {
         }
       }
     })
-
+  
     // Order personnel only once after all changes are processed
     orderPersonnel()
+    allFilteredNames.value = personnelOrder.value
   })
 }
 
@@ -425,10 +454,10 @@ function addNewUser() {
 }
 
 function editUserInfo(userInfo) {
-  console.log('id: ', );
-  
-  console.log('Getting user info: ', userInfo);
-  
+  console.log('id: ')
+
+  console.log('Getting user info: ', userInfo)
+
   if (isUserBoardPrelature.value) {
     id.value = userInfo.UserData.id
     userSelected.value = userInfo.UserData
