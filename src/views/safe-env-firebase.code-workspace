@@ -1,0 +1,23 @@
+{
+	"folders": [
+		{
+			"path": "../.."
+		},
+		{
+			"path": "../../../firebase-functions"
+		}
+	],
+	"settings": {
+		"npm-intellisense.scanDevDependencies": true,
+		"workbench.colorCustomizations": {
+			"[Default High Contrast]": {
+				"editorIndentGuide.background1": "#2a2a2a"
+			}
+		},
+		"editor.tokenColorCustomizations": {
+			"[Default High Contrast]": {
+				"comments": "#d1f821"
+			}
+		}
+	}
+}

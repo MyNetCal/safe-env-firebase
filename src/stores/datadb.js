@@ -503,13 +503,13 @@ function initActivity(act = {}) {
   }
 }
 
-async function getEmailSECPrelature(branch = 'Men') {
+async function getEmailSECPrelature() {
   // Get id of Prelature Corporation for the specified branch (Entity=='Prelature' AND Branch==branch)
   let idCorpPrelature = ''
   let q = query(
     collection(db, 'Corporations'),
     where('Entity', '==', 'Prelature'),
-    where('Branch', '==', branch)
+    where('Branch', '==', store.currentBranch)
   )
   let dd = await getDocs(q)
   dd.forEach((d) => {
@@ -517,7 +517,7 @@ async function getEmailSECPrelature(branch = 'Men') {
   })
 
   if (!idCorpPrelature) {
-    console.warn(`No Prelature corporation found for branch: ${branch}`)
+    console.warn(`No Prelature corporation found for branch: ${store.currentBranch}`)
     return null
   }
 
@@ -534,7 +534,7 @@ async function getEmailSECPrelature(branch = 'Men') {
   })
 
   if (!idUserSECPrelature) {
-    console.warn(`No SEC found for Prelature in branch: ${branch}`)
+    console.warn(`No SEC found for Prelature in branch: ${store.currentBranch}`)
     return null
   }
 
@@ -560,8 +560,11 @@ async function getEmailsAllSEC() {
   for (let index = 0; index < a.length; index++) {
     const e = a[index];
     const d = await getDoc(doc(db, 'Users', e.userId))
+    const userBranch = d.data().Branch
     const email = d.data().Email
-    emails[e.corpId] = email
+    if (userBranch === store.currentBranch) {
+      emails[e.corpId] = email
+    }
   }
   return emails
 }
