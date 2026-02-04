@@ -211,7 +211,10 @@ import dayjs from 'dayjs'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
 const emit = defineEmits(['onClose', 'onUpdate'])
-const props = defineProps({ showModal: Boolean, userCorpId: String })
+const props = defineProps({
+  showModal: { type: Boolean, default: false },
+  userCorpId: { type: String, default: null }
+})
 const { showModal, userCorpId } = toRefs(props)
 
 const db = useFirestore()
@@ -245,9 +248,14 @@ function calcVotes() {
     const corpData = await getDoc(doc(db, 'Corporations', el.idCorp))
 
     dataVotesCorps.value[index] = corpData.data()
-    if (corpData.data().id == 'Prelature Men' || corpData.data().id =='Prelature Women') {
+    if (corpData.data().Entity == 'Prelature') {
       voteFromSFCPrelature.value = voteFromSFCPrelature.value || el.isSEC
       totVotesPrelature.value++
+      if (userCorp.value.CorporationId=='Prelature Men' || userCorp.value.CorporationId == 'Prelature Women') {
+        // Special case where Prelature has 2 corporations
+        totVotesOther.value++
+        voteFromSFCCorporation.value = voteFromSFCCorporation.value || el.isSEC
+      }
     }
     else {
       totVotesOther.value++
@@ -287,7 +295,7 @@ onUnmounted(() => {
 
 const hasAllVotesNeeded = computed(
   () =>
-    totVotesOther.value >= votesNeededFromCorp.value &&
+    totVotesOther.value >= votesNeededFromCorp.value && voteFromSFCCorporation.value &&
     ((totVotesPrelature.value >= votesNeededFromPrelature.value && voteFromSFCPrelature.value) ||
       userCorp.value.Entity == store.ENTITY_PARTY)
 )

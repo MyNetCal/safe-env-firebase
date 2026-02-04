@@ -11,6 +11,7 @@ import { collection, deleteDoc, doc, updateDoc } from 'firebase/firestore'
 import { useMediaQuery } from '@vueuse/core'
 import MyInfoMessage from './components/MyInfoMessage.vue'
 import { updateEmail, reauthenticateWithCredential, EmailAuthProvider } from 'firebase/auth'
+import { version } from '../package.json'
 
 const storeGeneral = useGeneralStore()
 const {
@@ -123,7 +124,10 @@ async function handleEmailChange() {
         </div>
       </div>
       <!-- Header -->
-      <div class="app-layout-header flex place-items-center justify-between bg-sky-700 text-white">
+      <div
+        class="app-layout-header flex place-items-center justify-between bg-sky-700 text-white"
+        :class="[currentBranch === 'Men' ? 'bg-sky-700' : 'bg-pink-700']"
+      >
         <!-- Header Left -->
         <div v-if="loginUser" class="ml-1 flex grow place-items-center">
           <FontAwesomeIcon v-if="isLargeScreen" icon="shop" class="ml-3" />
@@ -154,7 +158,10 @@ async function handleEmailChange() {
               class="absolute right-0 top-9 z-50 w-48 rounded-md border border-gray-200 bg-white py-1 text-slate-700 shadow-lg"
             >
               <button
-                @click="showEmailModal = true; showUserMenu = false"
+                @click="
+                  showEmailModal = true,
+                  showUserMenu = false
+                "
                 class="flex w-full items-center px-4 py-2 text-left text-sm hover:bg-gray-100"
               >
                 <FontAwesomeIcon icon="envelope" class="mr-3" />
@@ -173,9 +180,12 @@ async function handleEmailChange() {
       <!-- Footer -->
       <div
         class="app-layout-footer z-10 flex place-items-center justify-between bg-slate-300 px-3 text-slate-800 print:hidden"
+        :class="[currentBranch === 'Men' ? 'bg-slate-300' : 'bg-pink-200']"
       >
-        <div>v.7.0.7</div>
-        <div class="flex">{{ accessLevelName }} [{{ storeGeneral.accessLevel }}] - {{ currentBranch }}</div>
+        <div>v.{{ version }}</div>
+        <div class="flex">
+          {{ accessLevelName }} [{{ storeGeneral.accessLevel }}] - {{ currentBranch }}
+        </div>
       </div>
     </div>
 

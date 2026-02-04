@@ -149,7 +149,7 @@ user.value.ScreeningFilesRecommendation?.forEach((recommendation) => {
       where('Status', '==', 'Approved'),
       where('Screening', '==', true),
       where('UserId', '==', recommendation.StaffUserId),
-      or(where('CorporationId', '==', corp.value.id), and(where('Entity', '==', 'Prelature'), where('Branch', '==', store.currentBranch)))
+      or(where('CorporationId', '==', corp.value.id), where('Entity', '==', 'Prelature'))
     )
   )
   getDocs(q).then((querySnapshot) => {

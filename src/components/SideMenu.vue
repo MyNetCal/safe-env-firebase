@@ -4,7 +4,7 @@
     @pointerenter="onEnterMenu"
     @pointerleave="onLeaveMenu"
     class="h-full overflow-x-hidden bg-slate-200/90 text-left transition-all backdrop:blur print:hidden thinsb-menu"
-    :class="[showSidemenu ? 'w-72' : 'w-full']"
+    :class="[showSidemenu ? 'w-72' : 'w-full', store.currentBranch === 'Men' ? 'bg-slate-200/90' : 'bg-pink-100/90']"
   >
     <div v-if="!showSidemenu && !isLargeScreen" class="fixed left-2 top-1" @click="onClickShowOpen">
       <font-awesome-icon icon="bars" size="lg" class="text-blue-50" />
