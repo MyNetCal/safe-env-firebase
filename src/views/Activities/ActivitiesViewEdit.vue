@@ -16,6 +16,7 @@ import {
   getDoc,
   getDocs,
   onSnapshot,
+  orderBy,
   query,
   setDoc,
   updateDoc,
@@ -580,7 +581,7 @@ const allParticipantsNotSelectedRef = computed(() =>
 )
 
 const allParticipantsRef = computed(() =>
-  query(collection(db, 'Participants'), where('CorpId', '==', corpId.value))
+  query(collection(db, 'Participants'), where('CorpId', '==', corpId.value), orderBy('LastName'))
 )
 
 function getAllParticipantsNotSelected() {
@@ -611,7 +612,8 @@ const participantsGroupRef = computed(() =>
   query(
     collection(db, 'Participants'),
     where('CorpId', '==', corpId.value),
-    where('ActivityGroups', 'array-contains', actToEdit.value.Title)
+    where('ActivityGroups', 'array-contains', actToEdit.value.Title),
+    orderBy('LastName')
   )
 )
 
