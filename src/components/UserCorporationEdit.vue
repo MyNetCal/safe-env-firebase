@@ -144,11 +144,12 @@ async function reactivateUser() {
   const needsBackgroundCheck = inactiveSince.isBefore(dayLimit)
   updateDoc(doc(db, 'UsersCorporations', model.value.id), {
     Active: true,
-    Status: store.USER_STATUS_ATTENTION,
-    StatusRquiringAttentionReasons: arrayUnion('No Active'),
+    Status: store.USER_STATUS_PENDING,
+    StatusRquiringAttentionReasons: arrayRemove('No Active'),
     InactiveSince: '',
     ApprovedOn: '',
-    ApprovedBy: []
+    ApprovedBy: [],
+    CommitteeEmailSent: false
   })
   await updateDoc(doc(db, 'Users', model.value.UserId), {
     CorpsActiveIds: arrayUnion(model.value.CorporationId),

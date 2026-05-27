@@ -202,6 +202,9 @@ async function createUserCorp(userCorp, userId) {
           const p = initParticipant({ Name: uData.Name, LastName: uData.LastName, Nickname: uData.Nickname, DOB: uData.DOB, CorpId: userCorp.CorporationId, id: '' })
           addDoc(collection(db, 'Participants'), p)
         }
+        if (userCorp.Function === store.FUNCTION_JUNIOR_COUNSELOR && !uData.PraesidiumTrainingRequested) {
+          sendJuniorCounselorTrainingRequest(userId, uData, userCorp.CorporationName, store.currentBranch)
+        }
         res(d)
       },
       (e) => err(e)
@@ -503,13 +506,14 @@ function initActivity(act = {}) {
   }
 }
 
-async function getEmailSECPrelature() {
+async function getEmailSECPrelature(branch = null) {
   // Get id of Prelature Corporation for the specified branch (Entity=='Prelature' AND Branch==branch)
+  const branchToUse = branch || store.currentBranch
   let idCorpPrelature = ''
   let q = query(
     collection(db, 'Corporations'),
     where('Entity', '==', 'Prelature'),
-    where('Branch', '==', store.currentBranch)
+    where('Branch', '==', branchToUse)
   )
   let dd = await getDocs(q)
   dd.forEach((d) => {
@@ -544,6 +548,25 @@ async function getEmailSECPrelature() {
 
   return emailSECPrelature
 
+}
+
+async function sendJuniorCounselorTrainingRequest(userId, userData, corpName, branch) {
+  const emailSEC = await getEmailSECPrelature(branch)
+  if (!emailSEC) return
+  store.createDocTriggerEmail(
+    'Training Registration Requested - Junior Counselor',
+    `<p>Please add the following Junior Counselor to Praesidium for <strong>training purposes only</strong>.</p>
+     <p>No background check is required for Junior Counselors.</p>
+     <p><strong>Name:</strong> ${userData.Name} ${userData.LastName}</p>
+     <p><strong>Email:</strong> ${userData.Email}</p>
+     <p><strong>Corporation:</strong> ${corpName}</p>
+     <p><strong>Role:</strong> Junior Counselor</p>
+     <p><strong>Country:</strong> ${userData.Country}</p>`,
+    [emailSEC]
+  )
+  updateDoc(doc(db, 'Users', userId), {
+    PraesidiumTrainingRequested: true
+  })
 }
 
 async function getEmailsAllSEC() {
@@ -610,5 +633,6 @@ export {
   initActivity,
   getEmailSECPrelature,
   getEmailSECBoards,
-  getEmailsAllSEC
+  getEmailsAllSEC,
+  sendJuniorCounselorTrainingRequest
 }

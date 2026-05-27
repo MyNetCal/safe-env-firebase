@@ -219,7 +219,7 @@ function initPlace() {
         Interview: true,
         Reference: 0,
         InternalReference: 0,
-        Background: true,
+        Background: false,
         Code: true,
         Consent: true
       },
@@ -253,7 +253,7 @@ function onOpenModal() {
           Application: true,
           Interview: true,
           Reference: 0,
-          Background: true,
+          Background: false,
           Code: true,
           Consent: true
         },

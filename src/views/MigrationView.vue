@@ -2,6 +2,78 @@
   <div class="p-6">
     <h1 class="text-2xl font-bold mb-4">Data Migration Utility</h1>
 
+    <!-- Cleanup: Remove stale 'No Active' from reactivated users -->
+    <div class="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4">
+      <h2 class="font-semibold text-yellow-800">Remove stale "No Active" from reactivated users</h2>
+      <p class="text-yellow-700 mt-2">
+        Removes the "No Active" value from StatusRquiringAttentionReasons for all active
+        UsersCorporations records. Safe to run multiple times.
+      </p>
+    </div>
+
+    <div v-if="!isRunningCleanup && !isCompleteCleanup" class="bg-blue-50 border border-blue-200 rounded p-4 mb-6">
+      <button
+        @click="runCleanup"
+        class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+        :disabled="isRunningCleanup"
+      >
+        Run Cleanup
+      </button>
+    </div>
+
+    <div v-if="isRunningCleanup" class="bg-orange-50 border border-orange-200 rounded p-4 mb-6">
+      <div class="flex items-center">
+        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600 mr-3"></div>
+        <span class="text-orange-800">{{ progressCleanup }}</span>
+      </div>
+    </div>
+
+    <div v-if="isCompleteCleanup" class="bg-green-50 border border-green-200 rounded p-4 mb-6">
+      <span class="text-green-800 font-semibold">{{ progressCleanup }}</span>
+    </div>
+
+    <div v-if="errorCleanup" class="bg-red-50 border border-red-200 rounded p-4 mb-6">
+      <span class="text-red-800">{{ errorCleanup }}</span>
+    </div>
+
+    <hr class="mb-6" />
+
+    <!-- Migration: Send training request for existing Junior Counselors -->
+    <div class="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4">
+      <h2 class="font-semibold text-yellow-800">Send Praesidium training request for existing Junior Counselors</h2>
+      <p class="text-yellow-700 mt-2">
+        Sends a training-only registration email to the Prelature SEC for every active Junior Counselor
+        who has not yet had this request sent. Safe to run multiple times.
+      </p>
+    </div>
+
+    <div v-if="!isRunningJC && !isCompleteJC" class="bg-blue-50 border border-blue-200 rounded p-4 mb-6">
+      <button
+        @click="runJCMigration"
+        class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+        :disabled="isRunningJC"
+      >
+        Send Training Requests
+      </button>
+    </div>
+
+    <div v-if="isRunningJC" class="bg-orange-50 border border-orange-200 rounded p-4 mb-6">
+      <div class="flex items-center">
+        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600 mr-3"></div>
+        <span class="text-orange-800">{{ progressJC }}</span>
+      </div>
+    </div>
+
+    <div v-if="isCompleteJC" class="bg-green-50 border border-green-200 rounded p-4 mb-6">
+      <span class="text-green-800 font-semibold">{{ progressJC }}</span>
+    </div>
+
+    <div v-if="errorJC" class="bg-red-50 border border-red-200 rounded p-4 mb-6">
+      <span class="text-red-800">{{ errorJC }}</span>
+    </div>
+
+    <hr class="mb-6" />
+
     <div class="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4">
       <h2 class="font-semibold text-yellow-800">⚠️ One-Time Migration Required</h2>
       <p class="text-yellow-700 mt-2">
@@ -51,12 +123,109 @@
 <script setup>
 import { ref } from 'vue'
 import { migrateBranchFields } from '@/migration-branch.js'
+import { useFirestore } from 'vuefire'
+import { collection, getDocs, query, where, updateDoc, doc, arrayRemove, getDoc } from 'firebase/firestore'
+import { sendJuniorCounselorTrainingRequest } from '@/stores/datadb'
+
+const db = useFirestore()
 
 const isRunning = ref(false)
 const isComplete = ref(false)
 const progress = ref('')
 const results = ref('')
 const error = ref('')
+
+// ---- Migration: Send training request for existing Junior Counselors ----
+const isRunningJC = ref(false)
+const isCompleteJC = ref(false)
+const progressJC = ref('')
+const errorJC = ref('')
+
+const runJCMigration = async () => {
+  try {
+    isRunningJC.value = true
+    isCompleteJC.value = false
+    errorJC.value = ''
+    progressJC.value = 'Querying active Junior Counselors...'
+
+    const q = query(
+      collection(db, 'UsersCorporations'),
+      where('Function', '==', 'Junior Counselor'),
+      where('Active', '==', true)
+    )
+    const snapshot = await getDocs(q)
+
+    let sent = 0
+    let skipped = 0
+    let checked = 0
+    for (const d of snapshot.docs) {
+      checked++
+      progressJC.value = `Checking record ${checked} of ${snapshot.size}...`
+      const uc = d.data()
+      const userDoc = await getDoc(doc(db, 'Users', uc.UserId))
+      if (!userDoc.exists()) { skipped++; continue }
+      const userData = userDoc.data()
+      if (userData.PraesidiumTrainingRequested) { skipped++; continue }
+
+      const corpDoc = await getDoc(doc(db, 'Corporations', uc.CorporationId))
+      const branch = corpDoc.exists() ? corpDoc.data().Branch : null
+
+      await sendJuniorCounselorTrainingRequest(uc.UserId, userData, uc.CorporationName, branch)
+      sent++
+    }
+
+    isRunningJC.value = false
+    isCompleteJC.value = true
+    progressJC.value = `Done. Sent ${sent} emails, skipped ${skipped} already processed.`
+  } catch (err) {
+    isRunningJC.value = false
+    errorJC.value = err.message || 'An error occurred'
+  }
+}
+// --------------------------------------------------------------------
+
+// ---- Cleanup: Remove stale 'No Active' from reactivated users ----
+const isRunningCleanup = ref(false)
+const isCompleteCleanup = ref(false)
+const progressCleanup = ref('')
+const errorCleanup = ref('')
+
+const runCleanup = async () => {
+  try {
+    isRunningCleanup.value = true
+    isCompleteCleanup.value = false
+    errorCleanup.value = ''
+    progressCleanup.value = 'Querying active UsersCorporations...'
+
+    const q = query(collection(db, 'UsersCorporations'), where('Active', '==', true))
+    const snapshot = await getDocs(q)
+
+    let fixed = 0
+    let checked = 0
+    for (const d of snapshot.docs) {
+      checked++
+      const reasons = d.data().StatusRquiringAttentionReasons || []
+      if (reasons.includes('No Active')) {
+        progressCleanup.value = `Fixing record ${checked} of ${snapshot.size}...`
+        await updateDoc(doc(db, 'UsersCorporations', d.id), {
+          StatusRquiringAttentionReasons: arrayRemove('No Active')
+        })
+        fixed++
+      }
+    }
+
+    isRunningCleanup.value = false
+    isCompleteCleanup.value = true
+    progressCleanup.value = ''
+    errorCleanup.value = ''
+    // reuse results ref scoped to this section via a local display
+    progressCleanup.value = `Done. Fixed ${fixed} of ${snapshot.size} records checked.`
+  } catch (err) {
+    isRunningCleanup.value = false
+    errorCleanup.value = err.message || 'An error occurred'
+  }
+}
+// ------------------------------------------------------------------
 
 const runMigration = async () => {
   try {

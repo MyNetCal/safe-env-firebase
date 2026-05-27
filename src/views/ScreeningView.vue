@@ -185,12 +185,19 @@ function saveChanges(type) {
           </div>
         </div>
         <MyInputCheckBox
+          v-if="currentScreeningType !== store.SCREENING_JUNIOR_COUNSELOR"
           v-model="editingValues[currentScreeningType].Background"
           @update:model-value="saveChanges('Background')"
           :disable="store.accessLevel < 3"
         >
           Criminal background check
         </MyInputCheckBox>
+        <div
+          v-else
+          class="rounded bg-amber-100 px-2 py-1 text-sm text-amber-700"
+        >
+          Background check is not required for Junior Counselors
+        </div>
         <MyInputCheckBox
           v-model="editingValues[currentScreeningType].Code"
           @update:model-value="saveChanges('Code')"

@@ -432,6 +432,7 @@ const userSelectedId = ref('')
 function getScreeningReqType(type) {
   const a = []
   store.SCREENING_REQ.forEach((req) => {
+    if (req === 'Background' && type === store.SCREENING_JUNIOR_COUNSELOR) return
     if (corp.value?.Screening?.[type][req]) {
       a.push(req)
     }

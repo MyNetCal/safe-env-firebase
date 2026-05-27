@@ -26,7 +26,7 @@
               :corp="currentCorp" />
             <template v-for="req in ['Background', 'Code', 'Consent']" :key="req">
               <UserViewScreeningCorpItem
-                v-if="user && currentCorp?.Screening[currentScreeningType][req]"
+                v-if="user && currentCorp?.Screening[currentScreeningType][req] && !(req === 'Background' && userCorp?.Function === 'Junior Counselor')"
                 :user-corp="userCorp"
                 :user="user"
                 :item="req"
