@@ -38,12 +38,48 @@
 
     <hr class="mb-6" />
 
+    <!-- Migration: Reset JC training request flags -->
+    <div class="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4">
+      <h2 class="font-semibold text-yellow-800">Step 1 — Reset JC training request flags</h2>
+      <p class="text-yellow-700 mt-2">
+        Clears the PraesidiumTrainingRequested flag on all active Junior Counselors so the send step
+        below can re-run for everyone. Run this before "Send Training Requests" if you need to retry.
+      </p>
+    </div>
+
+    <div v-if="!isRunningResetJC && !isCompleteResetJC" class="bg-blue-50 border border-blue-200 rounded p-4 mb-6">
+      <button
+        @click="runResetJC"
+        class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+        :disabled="isRunningResetJC"
+      >
+        Reset Flags
+      </button>
+    </div>
+
+    <div v-if="isRunningResetJC" class="bg-orange-50 border border-orange-200 rounded p-4 mb-6">
+      <div class="flex items-center">
+        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600 mr-3"></div>
+        <span class="text-orange-800">{{ progressResetJC }}</span>
+      </div>
+    </div>
+
+    <div v-if="isCompleteResetJC" class="bg-green-50 border border-green-200 rounded p-4 mb-6">
+      <span class="text-green-800 font-semibold">{{ progressResetJC }}</span>
+    </div>
+
+    <div v-if="errorResetJC" class="bg-red-50 border border-red-200 rounded p-4 mb-6">
+      <span class="text-red-800">{{ errorResetJC }}</span>
+    </div>
+
+    <hr class="mb-6" />
+
     <!-- Migration: Send training request for existing Junior Counselors -->
     <div class="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4">
-      <h2 class="font-semibold text-yellow-800">Send Praesidium training request for existing Junior Counselors</h2>
+      <h2 class="font-semibold text-yellow-800">Step 2 — Send Praesidium training request for existing Junior Counselors</h2>
       <p class="text-yellow-700 mt-2">
         Sends a training-only registration email to the Prelature SEC for every active Junior Counselor
-        who has not yet had this request sent. Safe to run multiple times.
+        who has not yet had this request sent. Emails are spaced 1 second apart to avoid rate limiting.
       </p>
     </div>
 
@@ -135,6 +171,46 @@ const progress = ref('')
 const results = ref('')
 const error = ref('')
 
+// ---- Migration: Reset JC training request flags ----
+const isRunningResetJC = ref(false)
+const isCompleteResetJC = ref(false)
+const progressResetJC = ref('')
+const errorResetJC = ref('')
+
+const runResetJC = async () => {
+  try {
+    isRunningResetJC.value = true
+    isCompleteResetJC.value = false
+    errorResetJC.value = ''
+    progressResetJC.value = 'Querying active Junior Counselors...'
+
+    const q = query(
+      collection(db, 'UsersCorporations'),
+      where('Function', '==', 'Junior Counselor'),
+      where('Active', '==', true)
+    )
+    const snapshot = await getDocs(q)
+
+    let reset = 0
+    let checked = 0
+    for (const d of snapshot.docs) {
+      checked++
+      progressResetJC.value = `Resetting record ${checked} of ${snapshot.size}...`
+      const uc = d.data()
+      await updateDoc(doc(db, 'Users', uc.UserId), { PraesidiumTrainingRequested: false })
+      reset++
+    }
+
+    isRunningResetJC.value = false
+    isCompleteResetJC.value = true
+    progressResetJC.value = `Done. Reset ${reset} records. Now run "Send Training Requests".`
+  } catch (err) {
+    isRunningResetJC.value = false
+    errorResetJC.value = err.message || 'An error occurred'
+  }
+}
+// --------------------------------------------------------------------
+
 // ---- Migration: Send training request for existing Junior Counselors ----
 const isRunningJC = ref(false)
 const isCompleteJC = ref(false)
@@ -172,6 +248,7 @@ const runJCMigration = async () => {
 
       await sendJuniorCounselorTrainingRequest(uc.UserId, userData, uc.CorporationName, branch)
       sent++
+      await new Promise((resolve) => setTimeout(resolve, 1000))
     }
 
     isRunningJC.value = false
