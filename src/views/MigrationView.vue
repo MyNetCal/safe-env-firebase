@@ -2,6 +2,23 @@
   <div class="p-6">
     <h1 class="text-2xl font-bold mb-4">Data Migration Utility</h1>
 
+    <!-- Export: All personnel across all corporations -->
+    <div class="bg-blue-50 border border-blue-200 rounded p-4 mb-6">
+      <h2 class="font-semibold text-blue-800">Export All Personnel</h2>
+      <p class="text-blue-700 mt-2">
+        Downloads a CSV with every person across all corporations and all statuses.
+      </p>
+      <button
+        @click="downloadAllPersonnel"
+        :disabled="isDownloadingAll"
+        class="mt-3 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+      >
+        {{ isDownloadingAll ? 'Preparing...' : 'Download CSV' }}
+      </button>
+    </div>
+
+    <hr class="mb-6" />
+
     <!-- Cleanup: Remove stale 'No Active' from reactivated users -->
     <div class="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4">
       <h2 class="font-semibold text-yellow-800">Remove stale "No Active" from reactivated users</h2>
@@ -162,6 +179,7 @@ import { migrateBranchFields } from '@/migration-branch.js'
 import { useFirestore } from 'vuefire'
 import { collection, getDocs, query, where, updateDoc, doc, arrayRemove, getDoc } from 'firebase/firestore'
 import { sendJuniorCounselorTrainingRequest } from '@/stores/datadb'
+import Papa from 'papaparse'
 
 const db = useFirestore()
 
@@ -301,6 +319,42 @@ const runCleanup = async () => {
     isRunningCleanup.value = false
     errorCleanup.value = err.message || 'An error occurred'
   }
+}
+// ------------------------------------------------------------------
+
+// ---- Export all personnel across all corporations ----
+const isDownloadingAll = ref(false)
+
+const downloadAllPersonnel = async () => {
+  isDownloadingAll.value = true
+  const snapshot = await getDocs(collection(db, 'UsersCorporations'))
+  const rows = []
+  for (const d of snapshot.docs) {
+    const uc = d.data()
+    const userDoc = await getDoc(doc(db, 'Users', uc.UserId))
+    if (!userDoc.exists()) continue
+    const user = userDoc.data()
+    rows.push({
+      'First Name': user.Name || '',
+      Nickname: user.Nickname || '',
+      'Last Name': user.LastName || '',
+      Corporation: uc.CorporationName || '',
+      Role: uc.Role || '',
+      Entity: uc.Entity || '',
+      Status: uc.Status || '',
+      'Attention Reasons': (uc.StatusRquiringAttentionReasons || []).join(', ')
+    })
+  }
+  rows.sort((a, b) => a['Last Name'].localeCompare(b['Last Name']))
+  const csv = Papa.unparse(rows)
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `all-personnel-${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+  isDownloadingAll.value = false
 }
 // ------------------------------------------------------------------
 
