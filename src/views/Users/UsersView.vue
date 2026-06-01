@@ -9,8 +9,18 @@
       </div>
     </div>
 
-    <div class="mx-auto mt-3 w-60">
-      <MyInputText v-model="inputFilterNames" clear placeholder="Search name" />
+    <div class="mx-auto mt-3 flex w-72 items-center gap-2">
+      <div class="grow">
+        <MyInputText v-model="inputFilterNames" clear placeholder="Search name" />
+      </div>
+      <button
+        @click="downloadCSV"
+        :disabled="isDownloading"
+        class="rounded p-2 text-slate-500 hover:bg-slate-200 hover:text-slate-800 disabled:opacity-50"
+        title="Download all personnel as spreadsheet"
+      >
+        <FontAwesomeIcon :icon="isDownloading ? 'spinner' : 'file-arrow-down'" :spin="isDownloading" />
+      </button>
     </div>
 
     <!-- List of Users by cards -->
@@ -211,6 +221,7 @@ import { initUserCorp } from '@/stores/datadb'
 import UsersViewVote from '../Users/UsersViewVote.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import { useFuse } from '@vueuse/integrations/useFuse'
+import Papa from 'papaparse'
 
 const db = useFirestore()
 const store = useGeneralStore()
@@ -488,6 +499,52 @@ function editUsersScreening(userInfo) {
 function editUsersTrainning(userInfo) {
   userSelected.value = userInfo
   showUsersViewTrainning.value = true
+}
+
+const isDownloading = ref(false)
+async function downloadCSV() {
+  isDownloading.value = true
+  const corpRef = await getDoc(doc(db, 'Corporations', currentCorpId.value))
+  if (!corpRef.data()) { isDownloading.value = false; return }
+
+  let q = query(
+    collection(db, 'UsersCorporations'),
+    where('CorporationId', '==', currentCorpId.value)
+  )
+  if (corpRef.data().Entity === 'Prelature') {
+    q = query(collection(db, 'UsersCorporations'), where('Entity', '==', 'Prelature'))
+  }
+
+  const snapshot = await getDocs(q)
+  const rows = []
+  for (const d of snapshot.docs) {
+    const uc = d.data()
+    const userDoc = await getDoc(doc(db, 'Users', uc.UserId))
+    if (!userDoc.exists()) continue
+    const user = userDoc.data()
+    if (user.Branch !== store.currentBranch) continue
+    rows.push({
+      'First Name': user.Name || '',
+      Nickname: user.Nickname || '',
+      'Last Name': user.LastName || '',
+      Corporation: uc.CorporationName || '',
+      Role: uc.Role || '',
+      Entity: uc.Entity || '',
+      Status: uc.Status || '',
+      'Attention Reasons': (uc.StatusRquiringAttentionReasons || []).join(', ')
+    })
+  }
+  rows.sort((a, b) => a['Last Name'].localeCompare(b['Last Name']))
+
+  const csv = Papa.unparse(rows)
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `personnel-${new Date().toISOString().slice(0, 10)}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+  isDownloading.value = false
 }
 
 const showUsersViewVote = ref(false)

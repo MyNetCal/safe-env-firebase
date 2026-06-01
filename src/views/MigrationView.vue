@@ -248,7 +248,7 @@ const runJCMigration = async () => {
 
       await sendJuniorCounselorTrainingRequest(uc.UserId, userData, uc.CorporationName, branch)
       sent++
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await new Promise((resolve) => setTimeout(resolve, 5000))
     }
 
     isRunningJC.value = false
