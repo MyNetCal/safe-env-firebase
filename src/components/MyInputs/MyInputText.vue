@@ -146,7 +146,7 @@ export default {
         return
       }
       // eslint-disable-next-line no-useless-escape
-      const b = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)
+      const b = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,})+$/.test(email)
       this.$emit('update:isValid', b)
     },
     onInput(e) {
