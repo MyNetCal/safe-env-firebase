@@ -155,12 +155,24 @@ async function reactivateUser() {
     CorpsActiveIds: arrayUnion(model.value.CorporationId),
     CorpsActiveAtLeastOne: true
   })
+  model.value.Active = true
+  model.value.Status = store.USER_STATUS_PENDING
+  model.value.StatusRquiringAttentionReasons = (model.value.StatusRquiringAttentionReasons || []).filter(r => r !== 'No Active')
+  model.value.InactiveSince = ''
+  model.value.ApprovedOn = ''
+  model.value.ApprovedBy = []
+  model.value.CommitteeEmailSent = false
   if (needsBackgroundCheck) {
     updateDoc(doc(db, 'UsersCorporations', model.value.id), {
       StatusRquiringAttentionReasons: arrayUnion('Background Check Expired'),
       ScreeningReqFlagBackground: false,
       BackgroundCheckExpiresOn: dayLimit.format('YYYY-MM-DD')
     })
+    if (!model.value.StatusRquiringAttentionReasons.includes('Background Check Expired')) {
+      model.value.StatusRquiringAttentionReasons.push('Background Check Expired')
+    }
+    model.value.ScreeningReqFlagBackground = false
+    model.value.BackgroundCheckExpiresOn = dayLimit.format('YYYY-MM-DD')
   }
   showDialogReactivate.value = false
   emit('onClose')
