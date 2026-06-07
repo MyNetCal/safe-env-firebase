@@ -1,4 +1,5 @@
 <template>
+  <div class="h-full overflow-y-auto">
   <div class="p-6">
     <h1 class="text-2xl font-bold mb-4">Data Migration Utility</h1>
 
@@ -15,6 +16,7 @@
       >
         {{ isDownloadingAll ? 'Preparing...' : 'Download CSV' }}
       </button>
+      <div v-if="errorDownloadAll" class="mt-2 text-red-700 text-sm">{{ errorDownloadAll }}</div>
     </div>
 
     <hr class="mb-6" />
@@ -171,6 +173,7 @@
       <p class="text-red-700 mt-2">{{ error }}</p>
     </div>
   </div>
+  </div>
 </template>
 
 <script setup>
@@ -324,36 +327,52 @@ const runCleanup = async () => {
 
 // ---- Export all personnel across all corporations ----
 const isDownloadingAll = ref(false)
+const errorDownloadAll = ref('')
 
 const downloadAllPersonnel = async () => {
   isDownloadingAll.value = true
-  const snapshot = await getDocs(collection(db, 'UsersCorporations'))
-  const rows = []
-  for (const d of snapshot.docs) {
-    const uc = d.data()
-    const userDoc = await getDoc(doc(db, 'Users', uc.UserId))
-    if (!userDoc.exists()) continue
-    const user = userDoc.data()
-    rows.push({
-      'First Name': user.Name || '',
-      Nickname: user.Nickname || '',
-      'Last Name': user.LastName || '',
-      Corporation: uc.CorporationName || '',
-      Role: uc.Role || '',
-      Entity: uc.Entity || '',
-      Status: uc.Status || '',
-      'Attention Reasons': (uc.StatusRquiringAttentionReasons || []).join(', ')
-    })
+  errorDownloadAll.value = ''
+  try {
+    const snapshot = await getDocs(collection(db, 'UsersCorporations'))
+    const userCorps = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+
+    // Batch fetch all users in chunks of 30
+    const userIds = [...new Set(userCorps.map((uc) => uc.UserId))]
+    const usersMap = {}
+    for (let i = 0; i < userIds.length; i += 30) {
+      const chunk = userIds.slice(i, i + 30)
+      const usersSnap = await getDocs(query(collection(db, 'Users'), where('__name__', 'in', chunk)))
+      usersSnap.docs.forEach((d) => { usersMap[d.id] = d.data() })
+    }
+
+    const rows = []
+    for (const uc of userCorps) {
+      const user = usersMap[uc.UserId]
+      if (!user) continue
+      rows.push({
+        'First Name': user.Name || '',
+        Nickname: user.Nickname || '',
+        'Last Name': user.LastName || '',
+        Corporation: uc.CorporationName || '',
+        Role: uc.Role || '',
+        Entity: uc.Entity || '',
+        Status: uc.Status || '',
+        'Attention Reasons': (uc.StatusRquiringAttentionReasons || []).join(', ')
+      })
+    }
+    rows.sort((a, b) => a['Last Name'].localeCompare(b['Last Name']))
+
+    const csv = Papa.unparse(rows)
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `all-personnel-${new Date().toISOString().slice(0, 10)}.csv`
+    link.click()
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    errorDownloadAll.value = err.message || 'An error occurred'
   }
-  rows.sort((a, b) => a['Last Name'].localeCompare(b['Last Name']))
-  const csv = Papa.unparse(rows)
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `all-personnel-${new Date().toISOString().slice(0, 10)}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
   isDownloadingAll.value = false
 }
 // ------------------------------------------------------------------
