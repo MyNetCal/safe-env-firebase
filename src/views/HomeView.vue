@@ -682,7 +682,7 @@ async function onDeclineRecommendation(request) {
           ref="codeText"
           class="code-input thinsb w-full bg-white p-2"
           v-model="store.loginCorporation.Code"
-          disabled
+          readonly
         ></textarea>
         <div class="mt-6 px-2" :class="{ invisible: !bottom }">
           I,
