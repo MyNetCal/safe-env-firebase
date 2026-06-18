@@ -117,8 +117,9 @@ onChange(async (files) => {
     stage.value = 'confirm'
   } catch (e) {
     console.log('Certificate read error', e)
-    errorMsg.value =
-      'Sorry, the certificate could not be read. Please try again or use the pencil on a training card.'
+    errorMsg.value = e?.message
+      ? `Couldn't read the certificate: ${e.message}`
+      : 'Sorry, the certificate could not be read. Please try again or use the pencil on a training card.'
     stage.value = 'select'
   }
 })
