@@ -19,6 +19,25 @@
       <div v-if="errorDownloadAll" class="mt-2 text-red-700 text-sm">{{ errorDownloadAll }}</div>
     </div>
 
+    <!-- Export: Personnel for the logged-in corporation -->
+    <div class="bg-blue-50 border border-blue-200 rounded p-4 mb-6">
+      <h2 class="font-semibold text-blue-800">
+        Export {{ loginCorporation?.Name || 'Corporation' }} Personnel
+      </h2>
+      <p class="text-blue-700 mt-2">
+        Downloads a CSV with every person in
+        {{ loginCorporation?.Name || 'your corporation' }} and all statuses.
+      </p>
+      <button
+        @click="downloadCorpPersonnel"
+        :disabled="isDownloadingCorp || !loginCorporationId || loginCorporationId === 'xxx'"
+        class="mt-3 bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+      >
+        {{ isDownloadingCorp ? 'Preparing...' : 'Download CSV' }}
+      </button>
+      <div v-if="errorDownloadCorp" class="mt-2 text-red-700 text-sm">{{ errorDownloadCorp }}</div>
+    </div>
+
     <hr class="mb-6" />
 
     <!-- Cleanup: Remove stale 'No Active' from reactivated users -->
@@ -182,9 +201,15 @@ import { migrateBranchFields } from '@/migration-branch.js'
 import { useFirestore } from 'vuefire'
 import { collection, getDocs, query, where, updateDoc, doc, arrayRemove, getDoc } from 'firebase/firestore'
 import { sendJuniorCounselorTrainingRequest } from '@/stores/datadb'
+import { useGeneralStore } from '@/stores/general'
+import { storeToRefs } from 'pinia'
 import Papa from 'papaparse'
+import dayjs from 'dayjs'
 
 const db = useFirestore()
+
+const store = useGeneralStore()
+const { loginCorporation, loginCorporationId } = storeToRefs(store)
 
 const isRunning = ref(false)
 const isComplete = ref(false)
@@ -325,6 +350,68 @@ const runCleanup = async () => {
 }
 // ------------------------------------------------------------------
 
+// ---- Export personnel to CSV ----
+
+// Batch fetch Users by id in chunks of 30 (Firestore 'in' query limit).
+const fetchUsersByIds = async (userIds) => {
+  const usersMap = {}
+  for (let i = 0; i < userIds.length; i += 30) {
+    const chunk = userIds.slice(i, i + 30)
+    const usersSnap = await getDocs(query(collection(db, 'Users'), where('__name__', 'in', chunk)))
+    usersSnap.docs.forEach((d) => { usersMap[d.id] = d.data() })
+  }
+  return usersMap
+}
+
+// Build one CSV row from a user-corporation joined with its user.
+const buildPersonnelRow = (uc, user, includeCorporation) => {
+  // Training: the backend keeps MissingTrainingIds[] on the user-corp; empty = complete.
+  const trainingDone = (uc.MissingTrainingIds || []).length === 0
+
+  // Background check: Junior Counselors are exempt (NA); otherwise expired beats the flag.
+  let backgroundCheck
+  if (uc.Function === 'Junior Counselor') {
+    backgroundCheck = 'NA'
+  } else {
+    const bgExpiresOn = uc.BackgroundCheckExpiresOn || user.BackgroundCheckExpiresOn
+    if (bgExpiresOn && dayjs(bgExpiresOn).isBefore(dayjs())) {
+      backgroundCheck = 'Expired'
+    } else {
+      backgroundCheck = uc.ScreeningReqFlagBackground ? 'Y' : 'N'
+    }
+  }
+
+  const row = {
+    First: user.Name || '',
+    Last: user.LastName || '',
+    Email: user.Email || '',
+    Status: uc.Status || '',
+    'Attention Reason': (uc.StatusRquiringAttentionReasons || []).join(', '),
+    Training: trainingDone ? 'Y' : 'N',
+    'Code of Conduct': uc.ScreeningReqFlagCode ? 'Y' : 'N',
+    'Consent Release': uc.ScreeningReqFlagConsent ? 'Y' : 'N',
+    'Background Check': backgroundCheck
+  }
+  return includeCorporation ? { Corporation: uc.CorporationName || '', ...row } : row
+}
+
+// Turn rows into a CSV file and trigger a browser download.
+const downloadCsv = (rows, filename) => {
+  const csv = Papa.unparse(rows)
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+const today = () => new Date().toISOString().slice(0, 10)
+
+// Slugify a corporation name for use in a filename.
+const slugify = (s) => (s || 'corporation').replace(/[^a-z0-9]+/gi, '-').replace(/^-|-$/g, '')
+
 // ---- Export all personnel across all corporations ----
 const isDownloadingAll = ref(false)
 const errorDownloadAll = ref('')
@@ -336,44 +423,56 @@ const downloadAllPersonnel = async () => {
     const snapshot = await getDocs(collection(db, 'UsersCorporations'))
     const userCorps = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
 
-    // Batch fetch all users in chunks of 30
     const userIds = [...new Set(userCorps.map((uc) => uc.UserId))]
-    const usersMap = {}
-    for (let i = 0; i < userIds.length; i += 30) {
-      const chunk = userIds.slice(i, i + 30)
-      const usersSnap = await getDocs(query(collection(db, 'Users'), where('__name__', 'in', chunk)))
-      usersSnap.docs.forEach((d) => { usersMap[d.id] = d.data() })
-    }
+    const usersMap = await fetchUsersByIds(userIds)
 
     const rows = []
     for (const uc of userCorps) {
       const user = usersMap[uc.UserId]
       if (!user) continue
-      rows.push({
-        'First Name': user.Name || '',
-        Nickname: user.Nickname || '',
-        'Last Name': user.LastName || '',
-        Corporation: uc.CorporationName || '',
-        Role: uc.Role || '',
-        Entity: uc.Entity || '',
-        Status: uc.Status || '',
-        'Attention Reasons': (uc.StatusRquiringAttentionReasons || []).join(', ')
-      })
+      rows.push(buildPersonnelRow(uc, user, true))
     }
-    rows.sort((a, b) => a['Last Name'].localeCompare(b['Last Name']))
+    rows.sort(
+      (a, b) => a.Corporation.localeCompare(b.Corporation) || a.Last.localeCompare(b.Last)
+    )
 
-    const csv = Papa.unparse(rows)
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `all-personnel-${new Date().toISOString().slice(0, 10)}.csv`
-    link.click()
-    URL.revokeObjectURL(url)
+    downloadCsv(rows, `all-personnel-${today()}.csv`)
   } catch (err) {
     errorDownloadAll.value = err.message || 'An error occurred'
   }
   isDownloadingAll.value = false
+}
+
+// ---- Export personnel for the logged-in corporation ----
+const isDownloadingCorp = ref(false)
+const errorDownloadCorp = ref('')
+
+const downloadCorpPersonnel = async () => {
+  isDownloadingCorp.value = true
+  errorDownloadCorp.value = ''
+  try {
+    const corpId = loginCorporationId.value
+    const snapshot = await getDocs(
+      query(collection(db, 'UsersCorporations'), where('CorporationId', '==', corpId))
+    )
+    const userCorps = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+
+    const userIds = [...new Set(userCorps.map((uc) => uc.UserId))]
+    const usersMap = await fetchUsersByIds(userIds)
+
+    const rows = []
+    for (const uc of userCorps) {
+      const user = usersMap[uc.UserId]
+      if (!user) continue
+      rows.push(buildPersonnelRow(uc, user, false))
+    }
+    rows.sort((a, b) => a.Last.localeCompare(b.Last))
+
+    downloadCsv(rows, `${slugify(loginCorporation.value?.Name)}-personnel-${today()}.csv`)
+  } catch (err) {
+    errorDownloadCorp.value = err.message || 'An error occurred'
+  }
+  isDownloadingCorp.value = false
 }
 // ------------------------------------------------------------------
 
