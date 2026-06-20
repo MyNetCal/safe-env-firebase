@@ -191,6 +191,72 @@
       </div>
       <p class="text-red-700 mt-2">{{ error }}</p>
     </div>
+
+    <hr class="mb-6" />
+
+    <!-- Cleanup: Normalize Users email to lowercase -->
+    <div class="bg-yellow-50 border border-yellow-200 rounded p-4 mb-4">
+      <h2 class="font-semibold text-yellow-800">Normalize personnel emails to lowercase</h2>
+      <p class="text-yellow-700 mt-2">
+        Trims and lowercases the Email field on every Users record so it matches the
+        (lowercased) Firebase Auth login email. A capitalized stored email makes the
+        case-sensitive login lookup fail, giving the user a blank page and access level -2.
+        Scan first to preview the affected records, then apply. Safe to run multiple times.
+      </p>
+    </div>
+
+    <div v-if="!isRunningEmails" class="bg-blue-50 border border-blue-200 rounded p-4 mb-6">
+      <button
+        @click="scanEmails"
+        class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+        :disabled="isRunningEmails"
+      >
+        Scan Emails
+      </button>
+
+      <div v-if="emailScanned" class="mt-4">
+        <p v-if="emailChanges.length === 0" class="text-green-700">
+          All emails are already normalized. Nothing to do.
+        </p>
+        <div v-else>
+          <p class="mb-2 font-medium text-slate-700">
+            {{ emailChanges.length }} record(s) will be updated:
+          </p>
+          <div class="max-h-64 overflow-y-auto rounded border border-slate-200 bg-white text-sm">
+            <div
+              v-for="c in emailChanges"
+              :key="c.id"
+              class="border-b border-slate-100 px-3 py-1"
+            >
+              <span class="text-red-600">{{ c.from }}</span>
+              <span class="text-slate-400"> → </span>
+              <span class="text-green-700">{{ c.to }}</span>
+            </div>
+          </div>
+          <button
+            @click="applyEmails"
+            class="mt-3 rounded bg-red-600 px-6 py-2 text-white hover:bg-red-700 disabled:opacity-50"
+          >
+            Apply {{ emailChanges.length }} Update(s)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="isRunningEmails" class="bg-orange-50 border border-orange-200 rounded p-4 mb-6">
+      <div class="flex items-center">
+        <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-orange-600 mr-3"></div>
+        <span class="text-orange-800">{{ progressEmails }}</span>
+      </div>
+    </div>
+
+    <div v-if="isCompleteEmails" class="bg-green-50 border border-green-200 rounded p-4 mb-6">
+      <span class="text-green-800 font-semibold">{{ progressEmails }}</span>
+    </div>
+
+    <div v-if="errorEmails" class="bg-red-50 border border-red-200 rounded p-4 mb-6">
+      <span class="text-red-800">{{ errorEmails }}</span>
+    </div>
   </div>
   </div>
 </template>
@@ -473,6 +539,70 @@ const downloadCorpPersonnel = async () => {
     errorDownloadCorp.value = err.message || 'An error occurred'
   }
   isDownloadingCorp.value = false
+}
+// ------------------------------------------------------------------
+
+// ---- Cleanup: Normalize Users email to lowercase ----
+const isRunningEmails = ref(false)
+const isCompleteEmails = ref(false)
+const progressEmails = ref('')
+const errorEmails = ref('')
+const emailScanned = ref(false)
+const emailChanges = ref([])
+
+const scanEmails = async () => {
+  try {
+    isRunningEmails.value = true
+    isCompleteEmails.value = false
+    errorEmails.value = ''
+    emailScanned.value = false
+    emailChanges.value = []
+    progressEmails.value = 'Scanning Users...'
+
+    const snapshot = await getDocs(collection(db, 'Users'))
+    const changes = []
+    snapshot.docs.forEach((d) => {
+      const email = d.data().Email
+      if (typeof email !== 'string' || email === '') return
+      const normalized = email.trim().toLowerCase()
+      if (normalized !== email) {
+        changes.push({ id: d.id, from: email, to: normalized })
+      }
+    })
+
+    emailChanges.value = changes
+    emailScanned.value = true
+    isRunningEmails.value = false
+    progressEmails.value = ''
+  } catch (err) {
+    isRunningEmails.value = false
+    errorEmails.value = err.message || 'An error occurred'
+  }
+}
+
+const applyEmails = async () => {
+  try {
+    isRunningEmails.value = true
+    isCompleteEmails.value = false
+    errorEmails.value = ''
+
+    const changes = emailChanges.value
+    let updated = 0
+    for (const c of changes) {
+      progressEmails.value = `Updating record ${updated + 1} of ${changes.length}...`
+      await updateDoc(doc(db, 'Users', c.id), { Email: c.to })
+      updated++
+    }
+
+    emailChanges.value = []
+    emailScanned.value = false
+    isRunningEmails.value = false
+    isCompleteEmails.value = true
+    progressEmails.value = `Done. Normalized ${updated} email(s).`
+  } catch (err) {
+    isRunningEmails.value = false
+    errorEmails.value = err.message || 'An error occurred'
+  }
 }
 // ------------------------------------------------------------------
 

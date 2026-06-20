@@ -57,6 +57,7 @@ function onClickUserFromOtherCorporation() {
 async function checkEmailStatus() {
   // eslint-disable-next-line no-useless-escape
   if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(model.value.Email)) {
+    model.value.Email = model.value.Email.trim().toLowerCase()
     const userQuery = query(collection(db, 'Users'), where('Email', '==', model.value.Email))
     const userRef = await getDocs(userQuery)
     if (userRef.size > 0) {

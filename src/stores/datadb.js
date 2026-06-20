@@ -57,6 +57,9 @@ function createUser(user) {
     if (user.Nickname == '') {
       user.Nickname = user.Name
     }
+    if (user.Email) {
+      user.Email = user.Email.trim().toLowerCase()
+    }
     user.CorpsActiveAtLeastOne = false
     user.CorpsActiveIds = []
     user.CorpsIds = []
@@ -76,6 +79,9 @@ function updateUser(user) {
   return new Promise((res) => {
     if (user.Nickname == '') {
       user.Nickname = user.Name
+    }
+    if (user.Email) {
+      user.Email = user.Email.trim().toLowerCase()
     }
     updateDoc(doc(db, 'Users', user.id), user).then(() => {
       res(user.id)

@@ -28,7 +28,7 @@ export const useGeneralStore = defineStore('general', () => {
   let unsubUser
   onAuthStateChanged(auth, (user) => {
     if (user) {
-      currentUserEmail.value = user.email
+      currentUserEmail.value = (user.email || '').trim().toLowerCase()
       getUser()
     } else {
       currentUserEmail.value = ''

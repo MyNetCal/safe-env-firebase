@@ -131,6 +131,9 @@ async function addUser() {
   user.CorpsIds = []
   user.Branch = 'Women'
   user.id = userId
+  if (user.Email) {
+    user.Email = user.Email.trim().toLowerCase()
+  }
   await setDoc(doc(db, 'Users', userId), user)
 
   //   UserCorp
@@ -198,6 +201,7 @@ const isNotValidPasswords = computed(() => {
 })
 
 function createCredentials() {
+    userToEdit.value.Email = (userToEdit.value.Email || '').trim().toLowerCase()
     createUserWithEmailAndPassword(auth, userToEdit.value.Email, password.value)
     .then(() => {
       // Signed in

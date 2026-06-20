@@ -76,6 +76,7 @@ async function handleEmailChange() {
 
   isChangingEmail.value = true
   emailChangeMessage.value = ''
+  newEmail.value = newEmail.value.trim().toLowerCase()
 
   try {
     const credential = EmailAuthProvider.credential(loginUser.value.Email, currentPassword.value)
