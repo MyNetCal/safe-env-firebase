@@ -7,6 +7,7 @@ import { collection, doc, onSnapshot, orderBy, query, setDoc } from 'firebase/fi
 import { computed, onUnmounted, ref, toRefs, watch } from 'vue'
 import { useCollection, useFirebaseStorage, useFirestore } from 'vuefire'
 import UsersViewTrainingListEdit from './UsersViewTrainingListEdit.vue'
+import UsersViewTrainingCertificateUpload from './UsersViewTrainingCertificateUpload.vue'
 import { getDownloadURL } from 'firebase/storage'
 import { ref as storageRef } from 'firebase/storage'
 import MyFab from '@/components/MyFab.vue'
@@ -25,6 +26,7 @@ const storage = useFirebaseStorage()
 const training = ref([])
 
 const showDialogUploadTraining = ref(false)
+const showCertificateUpload = ref(false)
 
 let unsubTraining = null
 
@@ -215,6 +217,11 @@ async function saveTraining() {
 <template>
   <div class="text-slate-700">
     <div class="mx-auto max-w-lg text-left">
+      <div v-if="training.length" class="mb-3 text-center">
+        <MyButton class="bg-sky-700" @click="showCertificateUpload = true">
+          <FontAwesomeIcon icon="file" class="mr-1" /> Upload Certificate
+        </MyButton>
+      </div>
       <TransitionGroup name="list">
         <template v-for="t in training" :key="t.id">
           <!-- Each training card -->
@@ -310,6 +317,12 @@ async function saveTraining() {
     <UsersViewTrainingListEdit
       v-model="showDialogUploadTraining"
       :training="trainingToEdit"
+      :user="user"
+    />
+
+    <UsersViewTrainingCertificateUpload
+      v-model="showCertificateUpload"
+      :candidates="training"
       :user="user"
     />
 
