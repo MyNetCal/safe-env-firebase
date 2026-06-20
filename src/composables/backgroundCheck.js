@@ -97,19 +97,28 @@ export function useBackgroundCheck() {
             const backgroundCheckExpired = dayjs().isAfter(backgroundCheckExpiresOn)
 
             if (backgroundCheckExpired) {
-                updateDoc(doc(db, 'UsersCorporations', uc.id), {
+                const data = {
                     StatusRquiringAttentionReasons: arrayUnion(reason),
-                    Status: store.USER_STATUS_ATTENTION,
                     BackgroundCheckExpiresOn: backgroundCheckExpiresOn.format('YYYY-MM-DD'),
                     ScreeningReqFlagBackground: false
-                })
+                }
+                // Only downgrade a user who was already approved. A user still
+                // going through approval must stay 'Pending Approval' so the
+                // committee can keep voting (otherwise the vote buttons hide).
+                if (uc.Status === store.USER_STATUS_APPROVED) {
+                    data.Status = store.USER_STATUS_ATTENTION
+                }
+                updateDoc(doc(db, 'UsersCorporations', uc.id), data)
             } else {
                 let data = {
                     StatusRquiringAttentionReasons: arrayRemove(reason),
                     BackgroundCheckExpiresOn: backgroundCheckExpiresOn.format('YYYY-MM-DD'),
                     ScreeningReqFlagBackground: true
                 }
+                // Only auto-approve a user who was already approved before.
+                // Never approve a pending user here — that must go through votes.
                 if (
+                    uc.ApprovedOn &&
                     uc.StatusRquiringAttentionReasons?.length == 1 &&
                     uc.StatusRquiringAttentionReasons[0] == reason
                 ) {

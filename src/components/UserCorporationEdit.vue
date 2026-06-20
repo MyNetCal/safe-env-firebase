@@ -141,7 +141,13 @@ async function deactivateUser() {
 async function reactivateUser() {
   const inactiveSince = dayjs(model.value.InactiveSince)
   const dayLimit = dayjs().subtract(6, 'M')
-  const needsBackgroundCheck = inactiveSince.isBefore(dayLimit)
+  // Force a fresh background check if the user was inactive 6+ months, OR if
+  // their existing background check has already expired during a shorter leave.
+  const inactiveTooLong = inactiveSince.isBefore(dayLimit)
+  const bcAlreadyExpired =
+    model.value.BackgroundCheckExpiresOn &&
+    dayjs().isAfter(dayjs(model.value.BackgroundCheckExpiresOn))
+  const needsBackgroundCheck = inactiveTooLong || bcAlreadyExpired
   updateDoc(doc(db, 'UsersCorporations', model.value.id), {
     Active: true,
     Status: store.USER_STATUS_PENDING,
@@ -163,16 +169,21 @@ async function reactivateUser() {
   model.value.ApprovedBy = []
   model.value.CommitteeEmailSent = false
   if (needsBackgroundCheck) {
+    // Keep the real expired date when we have one; otherwise back-date to the
+    // 6-month cutoff so it reads as expired.
+    const expiresOn = bcAlreadyExpired
+      ? model.value.BackgroundCheckExpiresOn
+      : dayLimit.format('YYYY-MM-DD')
     updateDoc(doc(db, 'UsersCorporations', model.value.id), {
       StatusRquiringAttentionReasons: arrayUnion('Background Check Expired'),
       ScreeningReqFlagBackground: false,
-      BackgroundCheckExpiresOn: dayLimit.format('YYYY-MM-DD')
+      BackgroundCheckExpiresOn: expiresOn
     })
     if (!model.value.StatusRquiringAttentionReasons.includes('Background Check Expired')) {
       model.value.StatusRquiringAttentionReasons.push('Background Check Expired')
     }
     model.value.ScreeningReqFlagBackground = false
-    model.value.BackgroundCheckExpiresOn = dayLimit.format('YYYY-MM-DD')
+    model.value.BackgroundCheckExpiresOn = expiresOn
   }
   showDialogReactivate.value = false
   emit('onClose')
