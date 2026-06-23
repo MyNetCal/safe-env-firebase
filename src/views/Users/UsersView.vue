@@ -221,7 +221,7 @@ import { initUserCorp } from '@/stores/datadb'
 import UsersViewVote from '../Users/UsersViewVote.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import { useFuse } from '@vueuse/integrations/useFuse'
-import Papa from 'papaparse'
+import { buildPersonnelRow, downloadCsv, slugify, todayStr } from '@/utils/personnelExport'
 
 const db = useFirestore()
 const store = useGeneralStore()
@@ -507,11 +507,14 @@ async function downloadCSV() {
   const corpRef = await getDoc(doc(db, 'Corporations', currentCorpId.value))
   if (!corpRef.data()) { isDownloading.value = false; return }
 
+  // A Prelature export spans every Prelature-entity corporation, so include the
+  // Corporation column to disambiguate rows from different corporations.
+  const spansCorporations = corpRef.data().Entity === 'Prelature'
   let q = query(
     collection(db, 'UsersCorporations'),
     where('CorporationId', '==', currentCorpId.value)
   )
-  if (corpRef.data().Entity === 'Prelature') {
+  if (spansCorporations) {
     q = query(collection(db, 'UsersCorporations'), where('Entity', '==', 'Prelature'))
   }
 
@@ -523,27 +526,15 @@ async function downloadCSV() {
     if (!userDoc.exists()) continue
     const user = userDoc.data()
     if (user.Branch !== store.currentBranch) continue
-    rows.push({
-      'First Name': user.Name || '',
-      Nickname: user.Nickname || '',
-      'Last Name': user.LastName || '',
-      Corporation: uc.CorporationName || '',
-      Role: uc.Role || '',
-      Entity: uc.Entity || '',
-      Status: uc.Status || '',
-      'Attention Reasons': (uc.StatusRquiringAttentionReasons || []).join(', ')
-    })
+    rows.push(buildPersonnelRow(uc, user, spansCorporations))
   }
-  rows.sort((a, b) => a['Last Name'].localeCompare(b['Last Name']))
+  rows.sort((a, b) =>
+    spansCorporations
+      ? a.Corporation.localeCompare(b.Corporation) || a.Last.localeCompare(b.Last)
+      : a.Last.localeCompare(b.Last)
+  )
 
-  const csv = Papa.unparse(rows)
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `personnel-${new Date().toISOString().slice(0, 10)}.csv`
-  link.click()
-  URL.revokeObjectURL(url)
+  downloadCsv(rows, `${slugify(corpRef.data().Name)}-personnel-${todayStr()}.csv`)
   isDownloading.value = false
 }
 
