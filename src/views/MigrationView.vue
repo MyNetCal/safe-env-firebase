@@ -269,7 +269,7 @@ import { collection, getDocs, query, where, updateDoc, doc, arrayRemove, getDoc 
 import { sendJuniorCounselorTrainingRequest } from '@/stores/datadb'
 import { useGeneralStore } from '@/stores/general'
 import { storeToRefs } from 'pinia'
-import { buildPersonnelRow, downloadCsv, todayStr, slugify } from '@/utils/personnelExport'
+import { buildPersonnelRow, downloadCsv, todayStr, slugify, fetchPendingTraining } from '@/utils/personnelExport'
 
 const db = useFirestore()
 
@@ -442,11 +442,14 @@ const downloadAllPersonnel = async () => {
     const userIds = [...new Set(userCorps.map((uc) => uc.UserId))]
     const usersMap = await fetchUsersByIds(userIds)
 
+    const pendingIds = userCorps.filter((uc) => uc.Status === 'Pending Approval').map((uc) => uc.id)
+    const trainingMap = await fetchPendingTraining(db, pendingIds)
+
     const rows = []
     for (const uc of userCorps) {
       const user = usersMap[uc.UserId]
       if (!user) continue
-      rows.push(buildPersonnelRow(uc, user, true))
+      rows.push(buildPersonnelRow(uc, user, true, trainingMap[uc.id]))
     }
     rows.sort(
       (a, b) => a.Corporation.localeCompare(b.Corporation) || a.Last.localeCompare(b.Last)
@@ -476,11 +479,14 @@ const downloadCorpPersonnel = async () => {
     const userIds = [...new Set(userCorps.map((uc) => uc.UserId))]
     const usersMap = await fetchUsersByIds(userIds)
 
+    const pendingIds = userCorps.filter((uc) => uc.Status === 'Pending Approval').map((uc) => uc.id)
+    const trainingMap = await fetchPendingTraining(db, pendingIds)
+
     const rows = []
     for (const uc of userCorps) {
       const user = usersMap[uc.UserId]
       if (!user) continue
-      rows.push(buildPersonnelRow(uc, user, false))
+      rows.push(buildPersonnelRow(uc, user, false, trainingMap[uc.id]))
     }
     rows.sort((a, b) => a.Last.localeCompare(b.Last))
 

@@ -221,7 +221,7 @@ import { initUserCorp } from '@/stores/datadb'
 import UsersViewVote from '../Users/UsersViewVote.vue'
 import MyInputText from '@/components/MyInputs/MyInputText.vue'
 import { useFuse } from '@vueuse/integrations/useFuse'
-import { buildPersonnelRow, downloadCsv, slugify, todayStr } from '@/utils/personnelExport'
+import { buildPersonnelRow, downloadCsv, slugify, todayStr, fetchPendingTraining } from '@/utils/personnelExport'
 
 const db = useFirestore()
 const store = useGeneralStore()
@@ -519,6 +519,11 @@ async function downloadCSV() {
   }
 
   const snapshot = await getDocs(q)
+  const pendingIds = snapshot.docs
+    .filter((d) => d.data().Status === 'Pending Approval')
+    .map((d) => d.id)
+  const trainingMap = await fetchPendingTraining(db, pendingIds)
+
   const rows = []
   for (const d of snapshot.docs) {
     const uc = d.data()
@@ -526,7 +531,7 @@ async function downloadCSV() {
     if (!userDoc.exists()) continue
     const user = userDoc.data()
     if (user.Branch !== store.currentBranch) continue
-    rows.push(buildPersonnelRow(uc, user, spansCorporations))
+    rows.push(buildPersonnelRow(uc, user, spansCorporations, trainingMap[d.id]))
   }
   rows.sort((a, b) =>
     spansCorporations
