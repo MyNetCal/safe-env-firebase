@@ -3,7 +3,17 @@ import { useGeneralStore } from '@/stores/general'
 import { computed, watchEffect, ref, toRefs, watch } from 'vue'
 import MySelectCorporation from './MySelect/MySelectCorporation.vue'
 import MySelectAuto from './MyInputs/MySelectAuto.vue'
-import { arrayRemove, arrayUnion, doc, getDoc, updateDoc } from 'firebase/firestore'
+import {
+  arrayRemove,
+  arrayUnion,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  updateDoc,
+  where
+} from 'firebase/firestore'
 import { useFirestore } from 'vuefire'
 import MyInputCheckBox from './MyInputs/MyInputCheckBox.vue'
 import { getEmailSECPrelature } from '@/stores/datadb'
@@ -104,10 +114,50 @@ const entities = computed(() => {
       : [store.ENTITY_PRELATURE, store.ENTITY_PARTY]
 })
 
+// A role requires training when the corporation has training assigned to it.
+// The backend materializes UsersCorporations/{id}/UserCorpTraining from the
+// corporation's Initial Training records whose Functions match the person's
+// functions, so a non-empty subcollection is the same answer the Training page
+// shows. Roles such as Low Access get nothing and so need no Praesidium account.
+async function roleRequiresTraining(userCorpId) {
+  if (!userCorpId) return false
+  const training = await getDocs(
+    collection(db, 'UsersCorporations', userCorpId, 'UserCorpTraining')
+  )
+  return !training.empty
+}
+
+// The only reason the SEC of the Prelature is told about a deactivation is so he
+// can deactivate the person's Praesidium training account. That is only called
+// for when the role going inactive required training and no other active role
+// they hold still does. Someone who stays active elsewhere in a training role
+// keeps using the same account, and someone whose role never required training
+// never had one.
+async function needsPraesidiumDeactivation() {
+  if (!(await roleRequiresTraining(model.value.id))) return false
+
+  // Runs before this record is written, so the record being deactivated is still
+  // Active and has to be excluded.
+  const activeUserCorps = await getDocs(
+    query(
+      collection(db, 'UsersCorporations'),
+      where('UserId', '==', model.value.UserId),
+      where('Active', '==', true)
+    )
+  )
+  for (const d of activeUserCorps.docs) {
+    if (d.id === model.value.id) continue
+    if (await roleRequiresTraining(d.id)) return false
+  }
+  return true
+}
+
 async function deactivateEmailNotification() {
   const to = await getEmailSECPrelature()
   const subject = `${user.value.Name} ${user.value.LastName} is no longer Active`
-  const html = `<p>Name: ${user.value.Name} ${user.value.LastName}</p>
+  const html = `<p>Please deactivate this person's Praesidium training account. They are
+              no longer active in any role that requires training.</p>
+              <p>Name: ${user.value.Name} ${user.value.LastName}</p>
               <p>Email: ${user.value.Email}</p>
               <p>Corporation: ${corp.value.Name}</p>
               <p>Role: ${model.value.Role}</p>
@@ -118,7 +168,9 @@ async function deactivateEmailNotification() {
 }
 
 async function deactivateUser() {
-  deactivateEmailNotification()
+  if (await needsPraesidiumDeactivation()) {
+    await deactivateEmailNotification()
+  }
   updateDoc(doc(db, 'UsersCorporations', model.value.id), {
     Active: false,
     Status: 'Inactive',
