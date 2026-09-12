@@ -437,7 +437,7 @@ const downloadAllPersonnel = async () => {
   errorDownloadAll.value = ''
   try {
     const snapshot = await getDocs(collection(db, 'UsersCorporations'))
-    const userCorps = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const userCorps = snapshot.docs.map((d) => ({ ...d.data(), id: d.id }))
 
     const userIds = [...new Set(userCorps.map((uc) => uc.UserId))]
     const usersMap = await fetchUsersByIds(userIds)
@@ -474,7 +474,7 @@ const downloadCorpPersonnel = async () => {
     const snapshot = await getDocs(
       query(collection(db, 'UsersCorporations'), where('CorporationId', '==', corpId))
     )
-    const userCorps = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }))
+    const userCorps = snapshot.docs.map((d) => ({ ...d.data(), id: d.id }))
 
     const userIds = [...new Set(userCorps.map((uc) => uc.UserId))]
     const usersMap = await fetchUsersByIds(userIds)

@@ -33,9 +33,11 @@ const fetchUserCorpTrainingFor = async (db, userCorpId) => {
 export const fetchPendingTraining = async (db, userCorpIds) => {
   const map = {}
   await Promise.all(
-    userCorpIds.map(async (id) => {
-      map[id] = await fetchUserCorpTrainingFor(db, id)
-    })
+    userCorpIds
+      .filter((id) => typeof id === 'string' && id !== '')
+      .map(async (id) => {
+        map[id] = await fetchUserCorpTrainingFor(db, id)
+      })
   )
   return map
 }
