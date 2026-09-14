@@ -1722,7 +1722,7 @@ async function createPDF() {
             <div v-if="!creatingPDF" class="flex gap-2">
               I,
               <MyInputText v-model="actToEdit.Signature" @change="updateSignature"></MyInputText>,
-              confirm that all the inormation is accurate
+              confirm that all the information is accurate
             </div>
             <div v-else>I, {{ actToEdit.Signature }}, confirm that all information is accurate</div>
           </div>
