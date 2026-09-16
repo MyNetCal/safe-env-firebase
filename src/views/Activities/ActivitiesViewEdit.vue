@@ -21,7 +21,8 @@ import {
   setDoc,
   updateDoc,
   where,
-  addDoc
+  addDoc,
+  Timestamp
 } from '@firebase/firestore'
 import { useCollection, useFirebaseStorage, useFirestore } from 'vuefire'
 import MyInputTextArea from '@/components/MyInputs/MyInputTextArea.vue'
@@ -30,7 +31,6 @@ import { useFuse } from '@vueuse/integrations/useFuse'
 import { getDownloadURL, ref as storageRef, uploadBytesResumable } from 'firebase/storage'
 import { useGeneralStore } from '@/stores/general'
 import { jsPDF } from 'jspdf'
-import axios from 'axios'
 import MySelectAuto from '@/components/MyInputs/MySelectAuto.vue'
 
 const emit = defineEmits(['onClose', 'onUpdate', 'onDelete'])
@@ -846,38 +846,41 @@ async function createPDF() {
           console.log('DONE')
           store.isUploadingFiles = false
 
-          // preparing email
+          // Sending the email through the mail-triggers queue, attaching the uploaded pdf
           statusCreatingPdf.value = 'Sending Email'
-          const formData = new FormData()
-          formData.append('file', b, 'Activity.pdf')
-          formData.append('email', corp.value.EmailFiles)
-          formData.append('subject', actToEdit.value.Title + ' @ ' + siteName.value)
-          formData.append('id', actToEdit.value.id)
-
-          // Sending info to the email script
           emailSent.value = false
-          axios
-            .post('https://mynetcalendar.org/safeenv-email-activity.php', formData, {
-              headers: {
-                'Content-Type': 'multipart/form-data'
-              }
+          const subject = actToEdit.value.Title + ' @ ' + siteName.value
+          getDownloadURL(fileRef)
+            .then((url) =>
+              addDoc(collection(db, 'mail-triggers'), {
+                to: [corp.value.EmailFiles],
+                message: {
+                  subject,
+                  html: `<p>Activity report attached: ${subject}</p>`,
+                  attachments: [{ filename: 'Activity.pdf', path: url }]
+                },
+                ExpiresAt: Timestamp.fromDate(dayjs().add(1, 'day').toDate())
+              })
+            )
+            .then((emailDoc) => {
+              const unsub = onSnapshot(emailDoc, (d) => {
+                const delivery = d.data()?.delivery
+                if (delivery?.state == 'SUCCESS') {
+                  unsub()
+                  emailSent.value = true
+                  statusCreatingPdf.value = 'Email has been Sent'
+                  updateDoc(doc(db, 'Activities', actToEdit.value.id), {
+                    Status: 'Completed'
+                  })
+                } else if (delivery?.state == 'ERROR') {
+                  unsub()
+                  statusCreatingPdf.value = 'Error Sending Email: ' + delivery.error
+                }
+              })
             })
-            .then((res) => {
-              // email script done
-              console.log('Email result: ', res.data)
-              if (res.data.success) {
-                // success email sent
-                console.log('Email Sent')
-                emailSent.value = true
-                statusCreatingPdf.value = 'Email has been Sent'
-                updateDoc(doc(db, 'Activities', actToEdit.value.id), {
-                  Status: 'Completed'
-                })
-              } else {
-                // error sending email
-                console.log('Error! ', res.data.message)
-                statusCreatingPdf.value = 'Error Sending Email: ' + res.data.message
-              }
+            .catch((error) => {
+              console.log('ERROR', error)
+              statusCreatingPdf.value = 'Error Sending Email: ' + error
             })
         }
       )
