@@ -19,10 +19,13 @@ import {
 } from '@firebase/firestore'
 import { useFirestore } from 'vuefire'
 import dayjs from 'dayjs'
+import customParseFormat from 'dayjs/plugin/customParseFormat'
 import { useFileDialog } from '@vueuse/core'
 import Papa from 'papaparse'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/vue'
 import MyButton from '@/components/MyButton.vue'
+
+dayjs.extend(customParseFormat)
 
 const store = useGeneralStore()
 const db = useFirestore()
@@ -145,6 +148,8 @@ onChange((file) => {
   if (file) {
     Papa.parse(file.item(0), {
       header: true,
+      skipEmptyLines: 'greedy',
+      transformHeader: normalizeHeader,
       complete: (results) => {
         parseData(results.data)
         showListDialog.value = true
@@ -153,6 +158,36 @@ onChange((file) => {
   }
   reset()
 })
+
+const DOB_FORMATS = ['YYYY-MM-DD', 'MM/DD/YYYY', 'M/D/YYYY', 'M/D/YY']
+
+// Accept common variations of the column names ("Date of Birth", "Last Name", "DOB ", ...)
+const HEADER_ALIASES = {
+  name: 'Name',
+  firstname: 'Name',
+  lastname: 'LastName',
+  surname: 'LastName',
+  nickname: 'Nickname',
+  dob: 'DOB',
+  dateofbirth: 'DOB',
+  birthdate: 'DOB',
+  birthday: 'DOB'
+}
+
+function normalizeHeader(header) {
+  const clean = header.trim() // trim() also removes a leading BOM
+  const key = clean.toLowerCase().replace(/[^a-z0-9]/g, '')
+  if (HEADER_ALIASES[key]) {
+    return HEADER_ALIASES[key]
+  }
+  const group = key.match(/^group(\d+)$/)
+  return group ? 'Group' + group[1] : clean
+}
+
+function parseDOB(value) {
+  // Strict parsing: an empty or unreadable date is invalid instead of defaulting to today
+  return dayjs((value || '').trim(), DOB_FORMATS, true)
+}
 
 function validateName(name) {
   return name && name.length > 1
@@ -188,11 +223,15 @@ async function parseData(list) {
     if (!d.Name || !d.LastName) {
       return
     }
+    const name = d.Name.trim()
+    const lastName = d.LastName.trim()
+    const dob = parseDOB(d.DOB)
 
     const q = query(
       participantsRef,
-      where('Name', '==', d.Name),
-      where('LastName', '==', d.LastName)
+      where('CorpId', '==', currentCorpId.value),
+      where('Name', '==', name),
+      where('LastName', '==', lastName)
     )
     let oldId = ''
     const qs = await getDocs(q)
@@ -201,20 +240,17 @@ async function parseData(list) {
       oldId = qs.docs[0].id
     }
     listToImport.value.push({
-      Error:
-        !validateName(d.Name) ||
-        !validateName(d.LastName) ||
-        !dayjs(d.DOB, ['YYYY-MM-DD', 'MM/DD/YYYY', 'M/D/YYYY']).isValid(),
+      Error: !validateName(name) || !validateName(lastName) || !dob.isValid(),
       Duplicate: qs.size > 0,
       Active: true,
       ActivityGroups: groups,
-      Name: d.Name,
-      LastName: d.LastName,
+      Name: name,
+      LastName: lastName,
       CorpId: currentCorpId.value,
-      DOB: dayjs(d.DOB, ['YYYY-MM-DD', 'MM/DD/YYYY', 'M/D/YYYY']).format('YYYY-MM-DD'),
+      DOB: dob.isValid() ? dob.format('YYYY-MM-DD') : 'Invalid DOB',
       Consent: { Description: '', FileName: '' },
       Email: '',
-      Nickname: d.Nickname || d.Name,
+      Nickname: d.Nickname?.trim() || name,
       Phone: '',
       Plan: { Description: '', FileName: '' },
       id: oldId
@@ -453,7 +489,7 @@ function importList() {
               </div>
 
               <div class="mt-2 text-sm text-slate-500">
-                1) The DOB format might be: YYYY-MM-DD or MM/DD/YYYY
+                1) The DOB format might be: YYYY-MM-DD, MM/DD/YYYY or M/D/YY
               </div>
               <div class="mt-1 text-sm text-slate-500">
                 2) For special characters [ñ, á, ...], use UTF-8 encoding
@@ -484,7 +520,7 @@ function importList() {
               <div>
                 <div
                   v-for="(p, i) in listToImport"
-                  :key="p.DOB"
+                  :key="i"
                   class="flex"
                   :class="{ 'bg-red-200': p.Error }"
                 >
