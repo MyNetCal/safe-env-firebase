@@ -168,6 +168,15 @@ async function deactivateEmailNotification() {
 }
 
 async function deactivateUser() {
+  // The Coordinator has to hand the role over before going inactive. The
+  // handover on the committee page only clears the title from people still
+  // listed there, and an inactive Coordinator can no longer vote for his own
+  // successor, so deactivating first leaves the corporation with a Coordinator
+  // who is gone and no way to elect a new one.
+  if (model.value.SEC) {
+    showDialogDeactivate.value = false
+    return
+  }
   if (await needsPraesidiumDeactivation()) {
     await deactivateEmailNotification()
   }
@@ -215,7 +224,9 @@ async function reactivateUser() {
   })
   model.value.Active = true
   model.value.Status = store.USER_STATUS_PENDING
-  model.value.StatusRquiringAttentionReasons = (model.value.StatusRquiringAttentionReasons || []).filter(r => r !== 'No Active')
+  model.value.StatusRquiringAttentionReasons = (
+    model.value.StatusRquiringAttentionReasons || []
+  ).filter((r) => r !== 'No Active')
   model.value.InactiveSince = ''
   model.value.ApprovedOn = ''
   model.value.ApprovedBy = []
@@ -331,10 +342,19 @@ async function reactivateUser() {
       </div>
 
       <div class="flex gap-x-2">
-        <MyInputTextArea class="w-full" v-model="model.Notes" label="Notes" :disabled="!isCommittee"/>
+        <MyInputTextArea
+          class="w-full"
+          v-model="model.Notes"
+          label="Notes"
+          :disabled="!isCommittee"
+        />
       </div>
       <div v-if="model.id" class="my-2 text-center">
-        <MyButton v-if="model.Active" class="bg-red-600" @click="showDialogDeactivate = true"
+        <div v-if="model.Active && model.SEC" class="mx-auto max-w-sm text-sm text-slate-600">
+          This person is the Safe Environment Coordinator. A new Coordinator has to be elected on
+          the Safe Environment Committee page before this person can be made inactive.
+        </div>
+        <MyButton v-else-if="model.Active" class="bg-red-600" @click="showDialogDeactivate = true"
           >Not active anymore</MyButton
         >
         <MyButton v-else class="bg-grean-600" @click="showDialogReactivate = true"
