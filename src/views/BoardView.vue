@@ -40,6 +40,19 @@ const currentCorpData = ref({})
 const personnel = ref([])
 const isTrueRef = ref(true)
 
+// Electing a Coordinator takes two votes and nobody can vote for himself, so a
+// committee needs three active members before a handover is possible at all.
+// This is not the corporation's VotesNeeded setting, which governs approving
+// personnel and sites and has no bearing on who is Coordinator.
+const SEC_VOTES_REQUIRED = 2
+const canElectSEC = computed(() => personnel.value.length > SEC_VOTES_REQUIRED)
+
+// An extra vote past the second is not harmless: the handover only goes through
+// on exactly two, so the ACCEPT button stays hidden until one is taken back.
+const tooManyVotes = computed(() =>
+  personnel.value.some((p) => (p.VotedBy?.length || 0) > SEC_VOTES_REQUIRED)
+)
+
 const votesNeeded = ref(0)
 const emailFiles = ref('')
 const backgroundCheckValidFor = ref(2)
@@ -202,7 +215,7 @@ function savesCodeOfConductValidFor() {
 }
 
 function acceptSEC(p) {
-  if (p.VotedBy?.length == 2) {
+  if (p.VotedBy?.length == SEC_VOTES_REQUIRED) {
     personnel.value.forEach((p) => {
       updateDoc(doc(db, 'UsersCorporations', p.id), { SEC: false, VotedBy: [] })
     })
@@ -340,7 +353,7 @@ uploadFile(() => {
                 </div>
               </div>
               <div v-else class="w-8"></div>
-              <div v-if="p.VotedBy?.length >= 2 && p.UserId == store.loginUserId">
+              <div v-if="p.VotedBy?.length == SEC_VOTES_REQUIRED && p.UserId == store.loginUserId">
                 <div
                   class="absolute cursor-pointer rounded bg-green-700 px-2 py-1 text-xs font-semibold text-green-100 shadow hover:bg-green-800"
                   @click="acceptSEC(p)"
@@ -352,6 +365,20 @@ uploadFile(() => {
           </div>
         </div>
       </Transition>
+
+      <!-- Why the handover cannot happen, instead of a vote that goes nowhere -->
+      <div
+        v-if="personnel.length > 0 && !canElectSEC"
+        class="mx-auto mt-4 max-w-md text-sm text-slate-600"
+      >
+        Naming a new Safe Environment Coordinator takes two votes, and nobody can vote for himself.
+        This committee needs at least three active members before the Coordinator can be handed
+        over.
+      </div>
+      <div v-else-if="tooManyVotes" class="mx-auto mt-4 max-w-md text-sm text-slate-600">
+        It takes exactly two votes. One vote has to be taken back — click the ballot icon again —
+        before the new Coordinator can accept.
+      </div>
 
       <!-- Use to show votes labels -->
       <div ref="divuser" v-show="showUser" class="absolute rounded bg-green-300 p-2 shadow"></div>
