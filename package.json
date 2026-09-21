@@ -1,6 +1,6 @@
 {
   "name": "safe-env-firebase",
-  "version": "7.1.22",
+  "version": "7.1.23",
   "private": true,
   "type": "module",
   "scripts": {
@@ -27,7 +27,7 @@
     "firebase": "^12.4.0",
     "fuse.js": "^7.0.0",
     "html2canvas": "^1.4.1",
-    "jspdf": "^3.0.0",
+    "jspdf": "^4.2.1",
     "papaparse": "^5.5.0",
     "pinia": "^3.0.3",
     "qs": "^6.11.2",
