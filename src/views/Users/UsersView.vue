@@ -22,9 +22,6 @@
         <FontAwesomeIcon :icon="isDownloading ? 'spinner' : 'file-arrow-down'" :spin="isDownloading" />
       </button>
     </div>
-    <div v-if="searchActive" class="mt-1 text-xs text-slate-500">
-      Showing matches from every tab
-    </div>
 
     <!-- List of Users by cards -->
     <div class="thinsb mx-auto mb-5 mt-3 grow overflow-auto">
@@ -96,15 +93,7 @@
               </div>
               <!-- Content Row -->
               <div class="flex justify-between p-1">
-                <div class="mr-12 grow text-left">
-                  <span
-                    v-if="searchActive"
-                    class="mr-2 rounded-full px-2 py-0.5 text-xs font-semibold"
-                    :class="STATUS_CHIP[p.Status]"
-                    >{{ p.Status }}</span
-                  >
-                  Role: {{ p.Role }}
-                </div>
+                <div class="mr-12 grow text-left">Role: {{ p.Role }}</div>
                 <div class="mr-4" v-if="p.Board && p.Role != 'Board'">
                   Board
                   <!-- <FontAwesomeIcon :icon="p.Board ? ['far', 'check-square'] : ['far', 'square']" /> -->
@@ -119,9 +108,6 @@
             </div>
           </template>
         </template>
-        <div v-else-if="searchActive" key="no-match" class="p-4 text-sm text-slate-500">
-          No one by that name in any tab.
-        </div>
       </TransitionGroup>
     </div>
 
@@ -133,7 +119,7 @@
         <div
           class="tab"
           :class="{ 'tab-active': currentTab == store.USER_STATUS_PENDING }"
-          @click="selectTab(store.USER_STATUS_PENDING)"
+          @click="currentTab = store.USER_STATUS_PENDING"
         >
           <div>
             <FontAwesomeIcon icon="user-clock" size="2x" />
@@ -144,7 +130,7 @@
         <div
           class="tab"
           :class="{ 'tab-active': currentTab == store.USER_STATUS_ATTENTION }"
-          @click="selectTab(store.USER_STATUS_ATTENTION)"
+          @click="currentTab = store.USER_STATUS_ATTENTION"
         >
           <div>
             <FontAwesomeIcon icon="bell-concierge" size="2x" />
@@ -155,7 +141,7 @@
         <div
           class="tab"
           :class="{ 'tab-active': currentTab == store.USER_STATUS_APPROVED }"
-          @click="selectTab(store.USER_STATUS_APPROVED)"
+          @click="currentTab = store.USER_STATUS_APPROVED"
         >
           <div>
             <FontAwesomeIcon icon="thumbs-up" size="2x" />
@@ -166,7 +152,7 @@
         <div
           class="tab"
           :class="{ 'tab-active': currentTab == store.USER_STATUS_INACTIVE }"
-          @click="selectTab(store.USER_STATUS_INACTIVE)"
+          @click="currentTab = store.USER_STATUS_INACTIVE"
         >
           <div>
             <FontAwesomeIcon icon="user-slash" size="2x" />
@@ -263,39 +249,24 @@ let unsubPersonnel = null
 let unsubUsers = {} // Only for displayed users
 
 let inputFilterNames = shallowRef('')
+let allFilteredNames = ref([])
 
-const searchActive = computed(() => (inputFilterNames.value || '').trim() !== '')
-
-// A search looks through every tab, not only the one on screen. The list opens
-// on Pending Approval and nothing hints that the name being looked for is
-// sitting one tab over, so people were reported as "not in the list" when they
-// were simply approved or inactive.
-const { results: fuseResults } = useFuse(inputFilterNames, personnelOrder, {
-  fuseOptions: {
-    keys: ['UserName', 'UserNickname', 'UserLastName'],
-    threshold: 0.3,
-    ignoreLocation: true
-  },
-  matchAllWhenSearchEmpty: true
-})
-
-const allFilteredNames = computed(() => {
-  const matches = fuseResults.value.map((r) => r.item)
-  return searchActive.value ? matches : matches.filter((p) => p.Status === currentTab.value)
-})
-
-// Tabs say what they show, so picking one drops out of a cross-tab search.
-function selectTab(status) {
-  inputFilterNames.value = ''
-  currentTab.value = status
+function filterNames() {
+  const { results: filterNames } = useFuse(inputFilterNames, personnelOrder.value, {
+    fuseOptions: {
+      keys: ['UserName', 'UserNickname', 'UserLastName'],
+      threshold: 0.3,
+      ignoreLocation: true
+    },
+    matchAllWhenSearchEmpty: true
+  })
+  allFilteredNames.value = filterNames.value.map((r) => r.item)
 }
 
-const STATUS_CHIP = {
-  [store.USER_STATUS_PENDING]: 'bg-amber-200 text-amber-900',
-  [store.USER_STATUS_ATTENTION]: 'bg-red-200 text-red-900',
-  [store.USER_STATUS_APPROVED]: 'bg-emerald-200 text-emerald-900',
-  [store.USER_STATUS_INACTIVE]: 'bg-slate-300 text-slate-800'
-}
+watch(inputFilterNames, () => {
+  filterNames()
+  // personnelOrder.value = newVal.map((r) => r.item)
+})
 
 function unsubscribeAll() {
   if (unsubPersonnel) {
@@ -315,7 +286,7 @@ onUnmounted(() => {
   unsubscribeAll()
 })
 
-watch(currentCorpId, () => {
+watch([currentCorpId, currentTab], () => {
   getPersonnel()
 })
 
@@ -355,16 +326,19 @@ async function getPersonnel() {
   unsubscribeAll()
 
   // Query UsersCorporations with current filters
-  // Every status is loaded at once so the tabs and the search can work over the
-  // whole corporation without re-querying.
   let q = query(
     collection(db, 'UsersCorporations'),
+    where('Status', '==', currentTab.value),
     where('CorporationId', '==', currentCorpId.value)
   )
 
   if (corpRef.data().Entity === 'Prelature') {
     // If Prelature, include Both branch users
-    q = query(collection(db, 'UsersCorporations'), where('Entity', '==', 'Prelature'))
+    q = query(
+      collection(db, 'UsersCorporations'),
+      where('Status', '==', currentTab.value),
+      where('Entity', '==', 'Prelature')
+    )
   }
 
   unsubPersonnel = onSnapshot(q, async (res) => {
@@ -432,9 +406,6 @@ async function getPersonnel() {
           personnel.value[index] = {
             id: tDoc.id,
             ...userCorpData,
-            UserName: usersCache.value[userId]?.Name,
-            UserLastName: usersCache.value[userId]?.LastName,
-            UserNickname: usersCache.value[userId]?.Nickname,
             UserData: usersCache.value[userId] || {},
             userHasAllScreening: userHasAllScreening(userCorpData)
           }
@@ -454,6 +425,7 @@ async function getPersonnel() {
 
     // Order personnel only once after all changes are processed
     orderPersonnel()
+    allFilteredNames.value = personnelOrder.value
     isLoading.value = false
   })
 }
