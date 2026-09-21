@@ -1,6 +1,6 @@
 {
   "name": "safe-env-firebase",
-  "version": "7.1.25",
+  "version": "7.1.26",
   "private": true,
   "type": "module",
   "scripts": {

@@ -255,7 +255,27 @@ const corp = useDocument(corpDocRef)
 const currentTab = ref(store.USER_STATUS_PENDING)
 
 const personnel = ref([])
-const personnelOrder = ref([])
+
+// Screened people first, then by last name. Derived rather than rebuilt by hand,
+// so any change to a row reaches the list on screen without a re-sort call.
+const personnelOrder = computed(() =>
+  [...personnel.value].sort((a, b) => {
+    if (a.userHasAllScreening && !b.userHasAllScreening) {
+      return -1
+    }
+    if (!a.userHasAllScreening && b.userHasAllScreening) {
+      return 1
+    }
+
+    if (a.UserData.LastName < b.UserData.LastName) {
+      return -1
+    }
+    if (a.UserData.LastName > b.UserData.LastName) {
+      return 1
+    }
+    return 0
+  })
+)
 const usersCache = ref({}) // Cache for all user data
 const isLoading = ref(false)
 
@@ -319,26 +339,6 @@ watch(currentCorpId, () => {
   getPersonnel()
 })
 
-function orderPersonnel() {
-  personnelOrder.value = JSON.parse(JSON.stringify(personnel.value))
-  personnelOrder.value.sort((a, b) => {
-    if (a.userHasAllScreening && !b.userHasAllScreening) {
-      return -1
-    }
-    if (!a.userHasAllScreening && b.userHasAllScreening) {
-      return 1
-    }
-
-    if (a.UserData.LastName < b.UserData.LastName) {
-      return -1
-    }
-    if (a.UserData.LastName > b.UserData.LastName) {
-      return 1
-    }
-    return 0
-  })
-}
-
 // A row carries a flattened copy of the person's name so the search can match on
 // it and the card can render without a second lookup.
 function userFields(user) {
@@ -351,17 +351,14 @@ function userFields(user) {
 }
 
 // One person can hold several rows - a Prelature view spans corporations - so a
-// change to their record has to reach every row they appear in. personnelOrder
-// is a separate copy of the list, so it needs the same patch.
+// change to their record has to reach every row they appear in.
 function applyUserData(userId, user) {
   const patch = userFields(user)
-  for (const list of [personnel.value, personnelOrder.value]) {
-    list.forEach((row, i) => {
-      if (row.UserId === userId) {
-        list[i] = { ...row, ...patch }
-      }
-    })
-  }
+  personnel.value.forEach((row, i) => {
+    if (row.UserId === userId) {
+      personnel.value[i] = { ...row, ...patch }
+    }
+  })
 }
 
 async function getPersonnel() {
@@ -369,7 +366,6 @@ async function getPersonnel() {
 
   isLoading.value = true
   personnel.value = []
-  personnelOrder.value = []
   usersCache.value = {}
 
   const corpRef = await getDoc(doc(db, 'Corporations', currentCorpId.value))
@@ -475,8 +471,6 @@ async function getPersonnel() {
       }
     })
 
-    // Order personnel only once after all changes are processed
-    orderPersonnel()
     isLoading.value = false
   })
 }
