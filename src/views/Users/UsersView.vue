@@ -260,7 +260,7 @@ const usersCache = ref({}) // Cache for all user data
 const isLoading = ref(false)
 
 let unsubPersonnel = null
-let unsubUsers = {} // Only for displayed users
+let unsubUsers = {} // Keyed by user id: one listener per person, not per row
 
 let inputFilterNames = shallowRef('')
 
@@ -339,6 +339,31 @@ function orderPersonnel() {
   })
 }
 
+// A row carries a flattened copy of the person's name so the search can match on
+// it and the card can render without a second lookup.
+function userFields(user) {
+  return {
+    UserName: user?.Name,
+    UserLastName: user?.LastName,
+    UserNickname: user?.Nickname,
+    UserData: user || {}
+  }
+}
+
+// One person can hold several rows - a Prelature view spans corporations - so a
+// change to their record has to reach every row they appear in. personnelOrder
+// is a separate copy of the list, so it needs the same patch.
+function applyUserData(userId, user) {
+  const patch = userFields(user)
+  for (const list of [personnel.value, personnelOrder.value]) {
+    list.forEach((row, i) => {
+      if (row.UserId === userId) {
+        list[i] = { ...row, ...patch }
+      }
+    })
+  }
+}
+
 async function getPersonnel() {
   console.log('Getting Personnel...')
 
@@ -407,23 +432,22 @@ async function getPersonnel() {
         const userCorp = {
           id: tDoc.id,
           ...userCorpData,
-          UserName: usersCache.value[userId]?.Name,
-          UserLastName: usersCache.value[userId]?.LastName,
-          UserNickname: usersCache.value[userId]?.Nickname,
-          UserData: usersCache.value[userId] || {},
+          ...userFields(usersCache.value[userId]),
           userHasAllScreening: userHasAllScreening(userCorpData)
         }
 
         personnel.value.splice(newIndex, 0, userCorp)
 
-        // Set up listener ONLY for this displayed user
-        unsubUsers[tDoc.id] = onSnapshot(doc(db, 'Users', userId), (userSnap) => {
-          const index = personnel.value.findIndex((el) => el.id === tDoc.id)
-          if (index >= 0) {
-            personnel.value[index].UserData = userSnap.data()
-            usersCache.value[userId] = userSnap.data()
-          }
-        })
+        // Listen once per person. Opening a listener per row meant the same man
+        // was watched several times over on a view that spans corporations.
+        if (!unsubUsers[userId]) {
+          unsubUsers[userId] = onSnapshot(doc(db, 'Users', userId), (userSnap) => {
+            const user = userSnap.data()
+            if (!user) return
+            usersCache.value[userId] = user
+            applyUserData(userId, user)
+          })
+        }
       }
 
       if (change.type === 'modified') {
@@ -432,10 +456,7 @@ async function getPersonnel() {
           personnel.value[index] = {
             id: tDoc.id,
             ...userCorpData,
-            UserName: usersCache.value[userId]?.Name,
-            UserLastName: usersCache.value[userId]?.LastName,
-            UserNickname: usersCache.value[userId]?.Nickname,
-            UserData: usersCache.value[userId] || {},
+            ...userFields(usersCache.value[userId]),
             userHasAllScreening: userHasAllScreening(userCorpData)
           }
         }
@@ -445,9 +466,11 @@ async function getPersonnel() {
         const index = personnel.value.findIndex((el) => el.id === tDoc.id)
         if (index >= 0) {
           personnel.value.splice(index, 1)
-          // Clean up listener for removed user
-          unsubUsers[tDoc.id]?.()
-          delete unsubUsers[tDoc.id]
+        }
+        // Drop the listener only once no row shows this person any more.
+        if (!personnel.value.some((el) => el.UserId === userId)) {
+          unsubUsers[userId]?.()
+          delete unsubUsers[userId]
         }
       }
     })
