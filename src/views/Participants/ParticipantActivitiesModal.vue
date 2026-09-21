@@ -6,7 +6,7 @@ import dayjs from 'dayjs'
 import MyModal from '@/components/MyModal.vue'
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 
-const emit = defineEmits(['onClose'])
+defineEmits(['onClose'])
 const props = defineProps({ showModal: Boolean, participantId: String, corpId: String })
 const { showModal, participantId, corpId } = toRefs(props)
 
