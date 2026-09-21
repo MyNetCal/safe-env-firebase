@@ -117,8 +117,12 @@ export function useBackgroundCheck() {
                 }
                 // Only auto-approve a user who was already approved before.
                 // Never approve a pending user here — that must go through votes.
+                // Outstanding training also blocks it: clearing the background
+                // check must never be what puts someone back to Approved while
+                // a course is still overdue.
                 if (
                     uc.ApprovedOn &&
+                    !uc.MissingTrainingIds?.length &&
                     uc.StatusRquiringAttentionReasons?.length == 1 &&
                     uc.StatusRquiringAttentionReasons[0] == reason
                 ) {

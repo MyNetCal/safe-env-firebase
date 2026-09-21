@@ -426,7 +426,8 @@ export const useGeneralStore = defineStore('general', () => {
   const REQ_ATT_BACKGROUND = 'Background Check Expired'
   const REQ_ATT_CODE = 'Code of Conduct Expired'
   const REQ_ATT_INACTIVE = 'Inactive for 6 months'
-  const REQ_ATT_TRAINING = 'Failed Training'
+  // Must match the string the Cloud Functions write (backend index.js).
+  const REQ_ATT_TRAINING = 'Training Missing'
 
   return {
     loginUserCorporationCollection,
