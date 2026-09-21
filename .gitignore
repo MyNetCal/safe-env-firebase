@@ -28,3 +28,6 @@ nul
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code personal settings (permission grants are per-machine)
+.claude/settings.local.json
