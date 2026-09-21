@@ -28,6 +28,24 @@ npm run lint       # ESLint with --fix
 npm run format     # Prettier --write src/
 ```
 
+### Inspecting production data
+
+`scripts/firestore.sh` reads and repairs Firestore directly, without the console.
+**Query the real data before explaining app behavior** - a coordinator's description
+of what they see is often a wrong premise, and the fields that describe a person's
+status can disagree with each other (see Gotchas).
+
+```bash
+sh scripts/firestore.sh get   UsersCorporations/<id>
+sh scripts/firestore.sh list  UsersCorporations/<id>/UserCorpTraining
+sh scripts/firestore.sh query '<Firestore structuredQuery JSON>'
+sh scripts/firestore.sh patch UsersCorporations/<id> '<fields in Firestore value format>' Status,MissingTrainingIds
+```
+
+`get`/`list`/`query` print decoded JSON. `patch` takes an explicit field mask and only
+touches the fields named. Run it from Git Bash, not PowerShell. It works because
+`firestore.rules` are wide open; the key in it is the public web key.
+
 ## Deployment
 
 Deployed to **AWS Amplify** via `amplify.yml`:
@@ -178,6 +196,7 @@ Both repos share the same Firebase project (`vue-safe-env`). The frontend writes
 ## Gotchas
 
 - **`StatusRquiringAttentionReasons`** is intentionally misspelled (missing "e" in "Requiring"). This matches the Firestore field name used across both frontend and backend. **Do NOT fix this.**
+- **`Status`, `StatusRquiringAttentionReasons` and `MissingTrainingIds` on `UsersCorporations` are derived, not facts.** They are cached answers to "is this person's training in order?", computed from the `UserCorpTraining` subcollection by `recomputeTrainingStatus()` in the backend (`functions/index.js`) and reconciled daily by `trainingnotifications`. Do not patch them by hand or add new code paths that write them independently - that is how six people sat wrongly "Approved" for a year (fixed 2026-09-20). Change the training records and let the recompute run. The same rule applies to other cached fields (`ApprovedBy[]`, `AllFunctions[]`, `CorpsActiveIds[]`): store facts, derive answers.
 - **Firebase config is hardcoded** in `src/firebase.js` with the API key visible. This is the standard Firebase web SDK pattern.
 - **No tests.** There is no test suite or test framework configured.
 - **Firestore rules are wide open** (`allow read, write: if true`). These rules live in `firebase-functions/firestore.rules`. **Do NOT deploy these rules to production.**
