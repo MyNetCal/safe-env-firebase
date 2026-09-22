@@ -21,7 +21,8 @@ const {
   loginUserId,
   loginUserCorporation,
   accessLevelName,
-  currentBranch
+  currentBranch,
+  isViewingAs
 } = storeToRefs(storeGeneral)
 
 const db = useFirestore()
@@ -116,7 +117,26 @@ async function handleEmailChange() {
 </script>
 
 <template>
-  <div class="select-none bg-slate-50 text-center" @click="showUserMenu = false">
+  <div
+    class="select-none bg-slate-50 text-center"
+    :style="{ '--banner-h': isViewingAs ? '28px' : '0px' }"
+    @click="showUserMenu = false"
+  >
+    <!-- Viewing as someone else: impossible to miss, one click to leave. -->
+    <div
+      v-if="isViewingAs"
+      class="flex h-7 place-items-center justify-center gap-3 overflow-hidden whitespace-nowrap bg-amber-400 px-3 text-sm font-semibold text-amber-950"
+    >
+      <FontAwesomeIcon icon="eye" />
+      <span class="truncate">
+        Viewing as {{ loginUser?.Nickname || loginUser?.Name }} {{ loginUser?.LastName }}
+        <span class="hidden font-normal sm:inline">- anything you save is still recorded as you</span>
+      </span>
+      <button class="rounded bg-amber-950 px-2 py-0.5 text-amber-50" @click="storeGeneral.stopViewAs()">
+        Stop
+      </button>
+    </div>
+
     <!-- App Layout -->
     <div class="app-layout-grid">
       <div v-show="countRequests > 0" class="absolute w-full">
@@ -133,6 +153,7 @@ async function handleEmailChange() {
         <div v-if="loginUser" class="ml-1 flex grow place-items-center">
           <FontAwesomeIcon v-if="isLargeScreen" icon="shop" class="ml-3" />
           <MyListBox
+            v-if="!isViewingAs"
             v-model="selUserCorp"
             :items="loginUserActiveCorporationCollection"
             title="CorporationName"
@@ -140,6 +161,7 @@ async function handleEmailChange() {
             :class="[isLargeScreen ? 'ml-2' : 'ml-6']"
             @update:model-value="saveNuewLoginCorp"
           />
+          <span v-else class="ml-2 text-sm">{{ loginUserCorporation?.CorporationName }}</span>
         </div>
         <!-- Header Center -->
         <div></div>
@@ -312,7 +334,7 @@ async function handleEmailChange() {
     'sidebar content'
     'footer footer';
   width: 100vw;
-  height: 100vh;
+  height: calc(100vh - var(--banner-h, 0px));
 }
 .app-layout-sidebar {
   grid-area: sidebar;

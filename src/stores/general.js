@@ -21,9 +21,31 @@ export const useGeneralStore = defineStore('general', () => {
   const countListAll = ref(0)
 
   const currentUserEmail = ref('')
-  const loginUser = ref({})
+  const realLoginUser = ref({})
   const loginUserId = ref('xxx')
   const loginCurrentUsersCorporationsId = ref('xxx')
+
+  // "View as": look at the app through another person's records, to see what
+  // they see. Only the documents are swapped - loginUserId and
+  // loginCurrentUsersCorporationsId keep pointing at the real signed-in user.
+  // Every write in the app is keyed off those ids, so votes, approvals and
+  // LastLogin stamps stay recorded against whoever is actually signed in and
+  // nothing can be attributed to someone who was not there.
+  const viewAsUserCorpId = ref('')
+  const viewAsUser = ref({})
+  const isViewingAs = computed(() => viewAsUserCorpId.value !== '')
+  const loginUser = computed(() => (isViewingAs.value ? viewAsUser.value : realLoginUser.value))
+
+  function startViewAs(userCorp) {
+    if (!userCorp?.id) return
+    viewAsUser.value = userCorp.UserData || {}
+    viewAsUserCorpId.value = userCorp.id
+  }
+
+  function stopViewAs() {
+    viewAsUserCorpId.value = ''
+    viewAsUser.value = {}
+  }
 
   let unsubUser
   onAuthStateChanged(auth, (user) => {
@@ -32,8 +54,9 @@ export const useGeneralStore = defineStore('general', () => {
       getUser()
     } else {
       currentUserEmail.value = ''
-      loginUser.value = {}
+      realLoginUser.value = {}
       loginUserId.value = 'xxx'
+      stopViewAs()
       if (unsubUser) {
         unsubUser()
       }
@@ -57,7 +80,7 @@ export const useGeneralStore = defineStore('general', () => {
     
     unsubUser = onSnapshot(q, (res) => {
       res.forEach((d) => {
-        loginUser.value = d.data()
+        realLoginUser.value = d.data()
         loginUserId.value = d.id
         loginCurrentUsersCorporationsId.value = d.data().CurrentUsersCorporationsId
         if (loginCurrentUsersCorporationsId.value) {
@@ -74,7 +97,7 @@ export const useGeneralStore = defineStore('general', () => {
   })
 
   const loginCurrentUsersCorporationsRef = computed(() =>
-    doc(db, 'UsersCorporations', loginCurrentUsersCorporationsId.value)
+    doc(db, 'UsersCorporations', viewAsUserCorpId.value || loginCurrentUsersCorporationsId.value)
   )
   const loginUserCorporation = useDocument(loginCurrentUsersCorporationsRef)
 
@@ -108,7 +131,7 @@ export const useGeneralStore = defineStore('general', () => {
   )
 
   const accessLevelName = computed(() => {
-    if (loginUserId.value == 'EduardoCastillo1966-12-27') {
+    if (!isViewingAs.value && loginUserId.value == 'EduardoCastillo1966-12-27') {
       return 'Admin'
     }
 
@@ -224,7 +247,7 @@ export const useGeneralStore = defineStore('general', () => {
   const SCREENING_TYPES = [SCREENING_STAFF, SCREENING_LOW_ACCESS, SCREENING_JUNIOR_COUNSELOR]
 
   const accessLevel = computed(() => {
-    if (loginUserId.value == 'EduardoCastillo1966-12-27') {
+    if (!isViewingAs.value && loginUserId.value == 'EduardoCastillo1966-12-27') {
       return 5
     }
     if (loginUserCorporation.value?.CorporationName == 'Prelature') {
@@ -438,6 +461,9 @@ export const useGeneralStore = defineStore('general', () => {
     loginCorporation,
     loginUserId,
     loginUser,
+    isViewingAs,
+    startViewAs,
+    stopViewAs,
     currentBranch,
     isUserBoard,
     isUserBoardPrelature,

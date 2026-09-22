@@ -81,6 +81,14 @@
                     <FontAwesomeIcon icon="list-check" />
                   </div>
                   <div
+                    v-if="canViewAs"
+                    class="click-icon cursor-pointer text-sky-700"
+                    title="See the app as this person sees it"
+                    @click="viewAsPerson(p)"
+                  >
+                    <FontAwesomeIcon icon="eye" />
+                  </div>
+                  <div
                     v-if="[2.5, 3, 4.5, 5].includes(store.accessLevel)"
                     class="click-icon"
                     @click="openUsersViewVote(p.id)"
@@ -225,6 +233,7 @@ import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
 import { useDocument, useFirestore } from 'vuefire'
 import { collection, doc, getDoc, getDocs, onSnapshot, query, where } from 'firebase/firestore'
 import UsersViewAdd from '../Users/UsersViewAdd.vue'
+import { useRouter } from 'vue-router'
 import { useGeneralStore } from '@/stores/general'
 import UsersViewScreening from '../Users/UsersViewScreening.vue'
 import UsersViewTrainning from '../Users/UsersViewTrainning.vue'
@@ -239,11 +248,22 @@ import { buildPersonnelRow, downloadCsv, slugify, todayStr, fetchPendingTraining
 
 const db = useFirestore()
 const store = useGeneralStore()
+const router = useRouter()
 const { isUserBoardPrelature, loginCorporation } = storeToRefs(store)
 
 const currentCorpId = ref(store.loginCorporationId || 'xxx')
 
 const isCommittee = computed(() => [2.5, 3, 4.5, 5].includes(store.accessLevel))
+
+// Only a full admin, and never while already looking through someone else.
+const canViewAs = computed(() => store.accessLevel === 5 && !store.isViewingAs)
+
+// Land on My Status: it is the screen people describe over the phone, and the
+// one an admin can never otherwise see.
+function viewAsPerson(userCorp) {
+  store.startViewAs(userCorp)
+  router.push('/')
+}
 
 watchEffect(() => {
   currentCorpId.value = store.loginCorporationId

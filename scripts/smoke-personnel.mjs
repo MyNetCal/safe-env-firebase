@@ -124,10 +124,8 @@ for (const tab of ['Approved', 'Inactive', 'Requiring Attention', 'Pending Appro
 // away from breaking the test for reasons that have nothing to do with the app.
 await step('search by name', BUDGET.search, async () => {
   await page.locator('.tab', { hasText: 'Approved' }).first().click()
-  await page.waitForTimeout(700)
-
   const cards = page.locator('h3')
-  if ((await cards.count()) === 0) throw new Error('no rows to search - Approved tab is empty')
+  await cards.first().waitFor({ timeout: BUDGET.search })
   const name = (await cards.first().innerText()).trim()
   const term = name.split(/\s+/).filter((w) => w.length > 3)[0]
   if (!term) throw new Error(`could not pick a search term from "${name}"`)
@@ -147,7 +145,7 @@ await step('search by name', BUDGET.search, async () => {
 // is the step that took minutes in 7.1.26 - the reason the test exists.
 await step('open vote window', BUDGET.vote, async () => {
   await page.locator('.tab', { hasText: 'Approved' }).first().click()
-  await page.waitForTimeout(700)
+  await page.locator('h3').first().waitFor({ timeout: BUDGET.vote }).catch(() => {})
   const icon = page.locator('.click-icon.cursor-pointer:has([data-icon="check-to-slot"])').first()
   if ((await icon.count()) === 0) {
     console.log('      (no person with full screening on screen - nothing to open)')
@@ -156,6 +154,37 @@ await step('open vote window', BUDGET.vote, async () => {
   await icon.click()
   await page.getByText('Safe Environment Committee', { exact: false }).first().waitFor({ timeout: BUDGET.vote })
   await page.keyboard.press('Escape')
+})
+
+// View as another person. Safe to automate: the lens swaps documents, never
+// ids, and My Status writes nothing on load.
+await step('view as another person', BUDGET.vote, async () => {
+  // Reload first: the vote window may still be open and would swallow the click.
+  // goto() to the same hash is a no-op, so this has to be a real reload.
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.getByPlaceholder('Search name').waitFor({ timeout: BUDGET.personnel })
+  await page.locator('.tab', { hasText: 'Approved' }).first().click()
+  await page.locator('h3').first().waitFor({ timeout: BUDGET.vote }).catch(() => {})
+  const eye = page.locator('.click-icon.cursor-pointer:has([data-icon="eye"])').first()
+  if ((await eye.count()) === 0) {
+    console.log('      (no view-as icon - needs a full admin account)')
+    return
+  }
+  await eye.click()
+  await page.getByText('Viewing as', { exact: false }).first().waitFor({ timeout: BUDGET.vote })
+
+  // The banner sits above a layout that already fills the viewport, so a wrong
+  // height here shows up as two scrollbars on every screen.
+  const overflow = await page.evaluate(() => {
+    const d = document.documentElement
+    return { v: d.scrollHeight - d.clientHeight, h: d.scrollWidth - d.clientWidth }
+  })
+  if (overflow.v > 0 || overflow.h > 0) {
+    throw new Error(`banner pushes the page out of the viewport (v:${overflow.v}px h:${overflow.h}px)`)
+  }
+
+  await page.getByRole('button', { name: 'Stop' }).click()
+  await page.getByText('Viewing as', { exact: false }).first().waitFor({ state: 'detached', timeout: BUDGET.vote })
 })
 
 await browser.close()
