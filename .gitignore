@@ -31,3 +31,6 @@ nul
 
 # Claude Code personal settings (permission grants are per-machine)
 .claude/settings.local.json
+
+# Local smoke-test login - never commit real credentials
+.playwright-credentials.json
