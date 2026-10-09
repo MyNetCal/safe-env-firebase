@@ -24,6 +24,11 @@ import { useFileDialog } from '@vueuse/core'
 import Papa from 'papaparse'
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/vue'
 import MyButton from '@/components/MyButton.vue'
+import {
+  PARTICIPANT_MAX_AGE,
+  PARTICIPANT_MIN_AGE,
+  participantAgeError
+} from '@/composables/participantAge'
 
 dayjs.extend(customParseFormat)
 
@@ -248,8 +253,12 @@ async function parseData(list) {
       thereAreDuplicates.value = true
       oldId = qs.docs[0].id
     }
+    // A duplicate only gets its groups updated, never its birthdate, so only
+    // a new participant's age is checked.
+    const ageError = qs.size > 0 ? '' : participantAgeError(dob)
     listToImport.value.push({
-      Error: !validateName(name) || !validateName(lastName) || !dob.isValid(),
+      Error: !validateName(name) || !validateName(lastName) || !dob.isValid() || ageError !== '',
+      AgeError: ageError,
       Duplicate: qs.size > 0,
       Active: true,
       ActivityGroups: groups,
@@ -522,6 +531,10 @@ function importList() {
               <div class="mt-1 text-sm text-slate-500">
                 2) For special characters [ñ, á, ...], use UTF-8 encoding
               </div>
+              <div class="mt-1 text-sm text-slate-500">
+                3) Participants must be {{ PARTICIPANT_MIN_AGE }} to {{ PARTICIPANT_MAX_AGE }} years
+                old. Anyone outside that range is shown in red and not imported.
+              </div>
               <div class="my-dialog-buttons mt-10">
                 <MyButton color="bg-slate-600" @click="showInstructionsDialog = false"
                   >Close</MyButton
@@ -556,7 +569,10 @@ function importList() {
                   <div class="w-56">
                     <span v-if="p.Duplicate">***</span>{{ p.Name }} {{ p.LastName }}
                   </div>
-                  <div class="w-32">{{ p.DOB }}</div>
+                  <div class="w-48">
+                    {{ p.DOB }}
+                    <span v-if="p.AgeError" class="text-xs text-red-700">{{ p.AgeError }}</span>
+                  </div>
                   <div class="max-w-96 truncate">{{ p.ActiveGroups }}</div>
                 </div>
               </div>

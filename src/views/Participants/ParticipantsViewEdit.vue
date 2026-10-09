@@ -17,7 +17,7 @@ import {
   ref as storageRef,
   uploadBytesResumable
 } from 'firebase/storage'
-import dayjs from 'dayjs'
+import { participantAgeError } from '@/composables/participantAge'
 
 const emit = defineEmits(['onClose', 'onUpdate'])
 const props = defineProps({ showModal: Boolean, id: String, corpId: String })
@@ -117,17 +117,8 @@ const isErrorLastName = computed(() => {
 })
 
 const isErrorDOB = computed(() => {
-  const formula = !(
-    dayjs(participant.value.DOB).isValid() &&
-    dayjs().diff(dayjs(participant.value.DOB), 'y') > 7 &&
-    dayjs().diff(dayjs(participant.value.DOB), 'y') <= 18
-  )
-  const label = !dayjs(participant.value.DOB).isValid()
-    ? 'No valid'
-    : dayjs().diff(dayjs(participant.value.DOB), 'y') <= 7
-    ? 'Too young'
-    : 'Too old'
-  return { formula, label }
+  const label = participantAgeError(participant.value.DOB)
+  return { formula: label !== '', label }
 })
 
 const isInfoMissing = computed(
