@@ -592,6 +592,9 @@ function getAllParticipantsNotSelected() {
   getDocs(queryRef).then((res) => {
     allParticipantsNotSelected.value = []
     res.forEach((d) => {
+      if (d.data().Active === false) {
+        return
+      }
       allParticipantsNotSelected.value.push({
         id: d.id,
         Name: d.data().Nickname + ' ' + d.data().LastName
@@ -665,9 +668,19 @@ const allParticipants = ref([])
 const inputAllParticipants = ref('')
 const allParticipantsById = ref({})
 
+// Inactive participants are kept in the database so past rosters still
+// resolve, but they are not offered for new activities. One already on this
+// activity's roster stays visible so it can still be seen and removed.
+const isSelectable = (participant) =>
+  participant.Active !== false || (actToEdit.value.Participants || []).includes(participant.id)
+
+const participantsGroupSelectable = computed(() => participantsGroup.value.filter(isSelectable))
+
 const participantsNoGroup = computed(() =>
   allParticipants.value.filter(
-    (participant) => participantsGroup.value.findIndex((group) => group.id == participant.id) == -1
+    (participant) =>
+      isSelectable(participant) &&
+      participantsGroup.value.findIndex((group) => group.id == participant.id) == -1
   )
 )
 
@@ -1354,7 +1367,7 @@ async function createPDF() {
                 <div class="selector-outter-box">
                   <div class="selector-outter-list">
                     <TransitionGroup name="list">
-                      <template v-for="participant in participantsGroup" :key="participant.id">
+                      <template v-for="participant in participantsGroupSelectable" :key="participant.id">
                         <div
                           class="selector-list"
                           :class="[

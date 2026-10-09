@@ -36,6 +36,7 @@ const currentCorpId = ref(store.loginCorporationId)
 const sortByLastName = ref(false)
 const showActivitiesModal = ref(false)
 const selectedParticipantId = ref(null)
+const showInactive = ref(false)
 
 watchEffect(() => {
   currentCorpId.value = store.loginCorporationId
@@ -51,8 +52,16 @@ function viewActivities(id) {
   showActivitiesModal.value = true
 }
 
+// Inactive participants stay in the database, because past activities still
+// point at them, but they are hidden here unless asked for. A record without
+// the flag counts as active.
+const isActive = (p) => p.Active !== false
+
+const inactiveCount = computed(() => participants.value.filter((p) => !isActive(p)).length)
+
 const sortedParticipants = computed(() => {
-  const sorted = [...participants.value].sort((a, b) => {
+  const visible = participants.value.filter((p) => showInactive.value || isActive(p))
+  const sorted = visible.sort((a, b) => {
     if (sortByLastName.value) {
       const nameA = `${a.LastName || ''}${a.Name || ''}`.toLowerCase()
       const nameB = `${b.LastName || ''}${b.Name || ''}`.toLowerCase()
@@ -315,6 +324,21 @@ function importList() {
       <div v-if="store.isUserBoardPrelature" class="mx-auto w-fit">
         <MySelectCorporation v-model="currentCorpId" />
       </div>
+
+      <!-- Inactive toggle -->
+      <div v-if="inactiveCount > 0 || showInactive" class="mx-auto mt-2 w-fit">
+        <button
+          :class="[
+            'rounded px-2 py-0.5 text-xs font-medium transition-colors',
+            showInactive
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'bg-gray-200 hover:bg-gray-300'
+          ]"
+          @click="showInactive = !showInactive"
+        >
+          {{ showInactive ? 'Hide inactive' : 'Show inactive' }} ({{ inactiveCount }})
+        </button>
+      </div>
     </div>
 
     <!-- List -->
@@ -364,10 +388,14 @@ function importList() {
             v-for="(p, index) in sortedParticipants"
             :key="p.id"
             class="cursor-pointer rounded pl-2 hover:bg-stone-200"
+            :class="{ 'text-slate-400': !isActive(p) }"
             @click="editParticipant(p.id)"
           >
             <td>{{ index + 1 }}.</td>
-            <td>{{ getDisplayName(p) }}</td>
+            <td>
+              {{ getDisplayName(p) }}
+              <span v-if="!isActive(p)" class="ml-1 text-xs">(inactive)</span>
+            </td>
             <td>
               {{ dayjs().diff(dayjs(p.DOB), 'y') }} -
               {{ dayjs().diff(dayjs(p.DOB), 'M') - dayjs().diff(dayjs(p.DOB), 'y') * 12 }} months
